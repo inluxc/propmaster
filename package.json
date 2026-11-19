@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/stagehand",
     "version": "1.0.0",
-    "description": "Extensible fixture toolkit for Playwright Test — adds OpenAPI, database, Kafka, Redis, mobile, and OTP fixtures on top of @playwright/test",
+    "description": "Extensible fixture toolkit for Playwright Test — adds OpenAPI, database, Kafka, Redis, Neo4j, mobile, and OTP fixtures on top of @playwright/test",
     "type": "module",
     "bin": {
         "stagehand": "dist/src/cli/init.js"
@@ -65,6 +65,7 @@
         "mongodb": "^7.9.1",
         "mssql": "^12.7.16",
         "mysql2": "^3.24.6",
+        "neo4j-driver": "^6.3.2",
         "openapi-client-axios": "^7.9.1",
         "otplib": "^13.6.0",
         "pg": "^8.23.1"
@@ -91,6 +92,7 @@
         "openapi",
         "database",
         "mongodb",
+        "neo4j",
         "kafka",
         "redis",
         "mobile",

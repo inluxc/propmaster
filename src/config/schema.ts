@@ -90,6 +90,22 @@ export interface RedisFixtureConfig {
 }
 
 /**
+ * Configuration for the Neo4j graph database fixture.
+ */
+export interface Neo4jFixtureConfig {
+    /** Connection URI, e.g. `bolt://localhost:7687` or `neo4j://cluster:7687`. */
+    uri: string;
+    /** Authentication username. */
+    username: string;
+    /** Authentication password. */
+    password: string;
+    /** Target database name (default: the server's default database). */
+    database?: string;
+    /** Connection timeout in ms (default: 10000). */
+    connectionTimeout?: number;
+}
+
+/**
  * Configuration for the Mobilewright mobile testing fixture.
  */
 export interface MobilewrightFixtureConfig {
@@ -191,6 +207,8 @@ export interface FrameworkConfig {
     redis?: RedisFixtureConfig;
     /** MongoDB fixture configuration. */
     mongodb?: MongoDbFixtureConfig;
+    /** Neo4j fixture configuration. */
+    neo4j?: Neo4jFixtureConfig;
     /** Mobilewright fixture configuration. */
     mobilewright?: MobilewrightFixtureConfig;
     /** OTP fixture configuration. */

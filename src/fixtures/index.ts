@@ -10,7 +10,7 @@
  *   2. Via environment variables / ConfigLoader (fallback)
  *
  * Usage:
- *   import { test, expect } from '../src/fixtures';
+ *   import { test, expect } from '../src/fixtures.js';
  *
  *   test('my test', async ({ openApiClient, databaseClient }) => {
  *     // fixtures are automatically initialized and torn down
@@ -27,6 +27,7 @@ import type {
     KafkaFixtureConfig,
     RedisFixtureConfig,
     MongoDbFixtureConfig,
+    Neo4jFixtureConfig,
     MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
@@ -37,6 +38,7 @@ import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mobilewrightFixture, type MobilewrightScreen, type MobilewrightDevice } from './mobilewright.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
+import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
 
@@ -51,6 +53,7 @@ export interface ConfigOptions {
     kafka: KafkaFixtureConfig | undefined;
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
+    neo4j: Neo4jFixtureConfig | undefined;
     mobilewright: MobilewrightFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
     graphql: GraphQLFixtureConfig | undefined;
@@ -67,6 +70,8 @@ export interface FixtureTypes {
     redisConfig: RedisFixtureConfig;
     redisClient: RedisClient;
     mongoDbClient: MongoDbClient;
+    neo4jConfig: Neo4jFixtureConfig;
+    neo4jClient: Neo4jClient;
     mobilewrightDevice: MobilewrightDevice;
     mobilewrightScreen: MobilewrightScreen;
     otpConfig: OtpFixtureConfig;
@@ -87,6 +92,7 @@ const configOptionFixtures = {
     kafka: [undefined as KafkaFixtureConfig | undefined, { option: true }],
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
+    neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
     mobilewright: [undefined as MobilewrightFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
@@ -123,6 +129,36 @@ const redisConfigFixture = {
 };
 
 /**
+ * The neo4jConfig fixture loads Neo4j configuration from the project config option
+ * or falls back to ConfigLoader.
+ */
+const neo4jConfigFixture = {
+    neo4jConfig: async (
+        { neo4j }: { neo4j: Neo4jFixtureConfig | undefined },
+        use: (config: Neo4jFixtureConfig) => Promise<void>,
+    ) => {
+        if (neo4j) {
+            await use(neo4j);
+            return;
+        }
+
+        // Fallback: load from ConfigLoader
+        const { ConfigLoader } = await import('../config/loader.js');
+        const loader = new ConfigLoader();
+        const frameworkConfig = loader.load();
+
+        if (!frameworkConfig.neo4j) {
+            const { FixtureInitError } = await import('../errors.js');
+            throw new FixtureInitError('neo4j', 'connect', {
+                reason: 'Neo4j configuration is missing. Provide neo4j config in environments.json, environment variables, or project use block.',
+            });
+        }
+
+        await use(frameworkConfig.neo4j);
+    },
+};
+
+/**
  * The otpConfig fixture loads OTP configuration from the project config option
  * or falls back to ConfigLoader.
  */
@@ -152,6 +188,7 @@ const otpConfigFixture = {
  * Fixtures declare dependencies by listing other fixture names as parameters,
  * and Playwright's native fixture system handles dependency resolution:
  * - `redisClient` depends on `redisConfig`
+ * - `neo4jClient` depends on `neo4jConfig`
  * - `mobilewrightScreen` depends on `mobilewrightDevice`
  *
  * Config options are declared with { option: true } so they can be set
@@ -170,6 +207,8 @@ const allFixtures = {
     ...redisConfigFixture,
     ...redisFixture,
     ...mongoDbFixture,
+    ...neo4jConfigFixture,
+    ...neo4jFixture,
     ...mobilewrightFixture,
     ...otpConfigFixture,
     ...otpFixture,
@@ -189,6 +228,7 @@ export type { DatabaseClient } from './database.fixture.js';
 export type { KafkaClient } from './kafka.fixture.js';
 export type { RedisClient } from './redis.fixture.js';
 export type { MongoDbClient } from './mongodb.fixture.js';
+export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } from './neo4j.fixture.js';
 export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.fixture.js';
 export type { OtpClient } from './otp.fixture.js';
 export type { GraphQLClient } from './graphql.fixture.js';

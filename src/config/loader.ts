@@ -299,6 +299,22 @@ export class ConfigLoader {
                 if (!cfg.mongodb) cfg.mongodb = { database: '' };
                 cfg.mongodb.srv = val.toLowerCase() === 'true';
             },
+            'PW_NEO4J_URI': (cfg, val) => {
+                if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
+                cfg.neo4j.uri = val;
+            },
+            'PW_NEO4J_USERNAME': (cfg, val) => {
+                if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
+                cfg.neo4j.username = val;
+            },
+            'PW_NEO4J_PASSWORD': (cfg, val) => {
+                if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
+                cfg.neo4j.password = val;
+            },
+            'PW_NEO4J_DATABASE': (cfg, val) => {
+                if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
+                cfg.neo4j.database = val;
+            },
             'PW_MOBILE_PLATFORM': (cfg, val) => {
                 if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
                 cfg.mobilewright.platform = val as 'ios' | 'android';

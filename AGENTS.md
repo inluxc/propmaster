@@ -17,6 +17,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Messaging:** KafkaJS (`kafkajs ^2.2.4`)
 - **Cache:** ioredis (`ioredis ^6.0.0`)
 - **MongoDB:** mongodb (`mongodb ^7.x`)
+- **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
 - **OTP/2FA:** otplib (`otplib ^13.6.0`)
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
@@ -40,6 +41,7 @@ src/
 │   ├── graphql.fixture.ts      # GraphQL client fixture (queries, mutations, rawRequest)
 │   ├── kafka.fixture.ts        # Kafka producer/consumer fixture
 │   ├── mongodb.fixture.ts      # MongoDB client fixture (CRUD + aggregation)
+│   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
 │   ├── redis.fixture.ts        # Redis client fixture
 │   ├── otp.fixture.ts          # OTP (TOTP/HOTP) fixture for 2FA/MFA testing
 │   └── mobilewright.fixture.ts # Mobile testing fixture
@@ -57,6 +59,7 @@ tests/
 │   ├── graphql.spec.ts
 │   ├── kafka.spec.ts
 │   ├── mongodb.spec.ts
+│   ├── neo4j.spec.ts
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
 │   └── mobilewright.spec.ts
@@ -86,6 +89,7 @@ import { test, expect } from '../../src/fixtures';
 | GraphQL | `*.spec.ts` | `tests/examples/` or custom dir |
 | Database | `*.spec.ts` | `tests/examples/` or custom dir |
 | MongoDB | `*.spec.ts` | `tests/examples/` or custom dir |
+| Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | Redis | `*.spec.ts` | `tests/examples/` or custom dir |
 | Mobile | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -102,6 +106,7 @@ Request fixtures by name in the test function signature:
 | `graphqlClient` | `GraphQLClient` | GraphQL client with `query`, `mutate`, `rawRequest`, `setAuthToken` |
 | `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)` and `execute(sql, params?)` |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
+| `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
@@ -219,6 +224,28 @@ const stats = await mongoDbClient.aggregate<{ _id: boolean; count: number }>(
 );
 ```
 
+**Neo4j Client:**
+```typescript
+// Write — returns { nodesCreated, relationshipsCreated, propertiesSet, nodesDeleted, relationshipsDeleted }
+const counters = await neo4jClient.write(
+    'CREATE (:Person {name: $name, runId: $runId})', { name: 'Alice', runId }
+);
+
+// Read — returns record.toObject() rows; Neo4j Integers come back as JS numbers
+const rows = await neo4jClient.run<{ name: string; total: number }>(
+    'MATCH (p:Person {runId: $runId}) RETURN p.name AS name, count(*) AS total', { runId }
+);
+
+// Transaction — committed when the callback resolves, rolled back if it throws
+await neo4jClient.executeInTransaction(async (tx) => {
+    await tx.run('CREATE (:Order {id: $id})', { id: 'ORD-1' });
+    await tx.run('MATCH (o:Order {id: $id}) CREATE (o)-[:CONTAINS]->(:Item)', { id: 'ORD-1' });
+});
+
+// Cleanup — tag test nodes with a unique run ID and detach-delete them in afterEach
+await neo4jClient.write('MATCH (n {runId: $runId}) DETACH DELETE n', { runId });
+```
+
 **GraphQL Client:**
 ```typescript
 // Query — returns typed data directly
@@ -292,6 +319,9 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_MONGODB_URI` | Full MongoDB connection URI (overrides host/port) |
 | `PW_MONGODB_HOST`, `PW_MONGODB_PORT`, `PW_MONGODB_DATABASE` | MongoDB connection |
 | `PW_MONGODB_USERNAME`, `PW_MONGODB_PASSWORD` | MongoDB credentials |
+| `PW_NEO4J_URI` | Neo4j URI (`bolt://host:7687` or `neo4j://host:7687`) |
+| `PW_NEO4J_USERNAME`, `PW_NEO4J_PASSWORD` | Neo4j credentials |
+| `PW_NEO4J_DATABASE` | Neo4j database (optional; server default) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
 | `PW_MOBILE_PLATFORM` | `ios` or `android` |
@@ -314,11 +344,12 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
-| `api-integration` | `**/examples/{database,kafka,redis,mongodb}.spec.ts` | `databaseClient`, `kafkaClient`, `redisClient`, `mongoDbClient` |
+| `api-integration` | `**/examples/{database,kafka,redis,mongodb,neo4j}.spec.ts` | `databaseClient`, `kafkaClient`, `redisClient`, `mongoDbClient`, `neo4jClient` |
 | `integration-database` | `**/examples/database.spec.ts` | `databaseClient` |
 | `integration-kafka` | `**/examples/kafka.spec.ts` | `kafkaClient` |
 | `integration-redis` | `**/examples/redis.spec.ts` | `redisClient` |
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
+| `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
 | `property-tests` | `**/*.prop.ts` | None (uses fast-check) |
 
 ## Error Handling
@@ -373,7 +404,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `GQL`, `BRW`, `MOB`, `OTP`, `INT`, `PROP`, or a custom short code for new domains.
+- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `MOB`, `OTP`, `INT`, `PROP`, or a custom short code for new domains.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

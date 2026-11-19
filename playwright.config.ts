@@ -70,12 +70,13 @@ export default defineConfig<ConfigOptions>({
         },
         {
             name: 'api-integration',
-            testMatch: '**/examples/{database,kafka,redis,mongodb}.spec.ts',
+            testMatch: '**/examples/{database,kafka,redis,mongodb,neo4j}.spec.ts',
             use: {
                 database: config.database,
                 kafka: config.kafka,
                 redis: config.redis,
                 mongodb: config.mongodb,
+                neo4j: config.neo4j,
             },
         },
         {
@@ -104,6 +105,13 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/examples/mongodb.spec.ts',
             use: {
                 mongodb: config.mongodb,
+            },
+        },
+        {
+            name: 'integration-neo4j',
+            testMatch: '**/examples/neo4j.spec.ts',
+            use: {
+                neo4j: config.neo4j,
             },
         },
         {
