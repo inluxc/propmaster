@@ -253,6 +253,49 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-neo4j:
+    needs: [property-tests]
+    runs-on: ubuntu-latest
+    container: node:24
+    services:
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p testpassword 'RETURN 1'"
+          --health-interval 10s
+          --health-timeout 60s
+          --health-retries 10
+    env:
+      CI: true
+      PW_NEO4J_URI: bolt://neo4j:7687
+      PW_NEO4J_USERNAME: neo4j
+      PW_NEO4J_PASSWORD: testpassword
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_NEO4J_URI PW_NEO4J_USERNAME PW_NEO4J_PASSWORD
+      - name: Run Neo4j integration tests
+        run: npx playwright test --project=integration-neo4j
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-neo4j
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-neo4j
+          path: test-results/
+          retention-days: 7
+
   test-kafka:
     needs: [property-tests]
     runs-on: ubuntu-latest

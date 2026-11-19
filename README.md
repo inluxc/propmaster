@@ -52,6 +52,7 @@ test('api test with OpenAPI client', async ({ openApiClient }) => {
 | `kafkaClient` | `KafkaClient` | Kafka producer/consumer | [Setup & Usage](docs/kafka-fixture.md) |
 | `redisClient` | `RedisClient` | Redis client with pub/sub | [Setup & Usage](docs/redis-fixture.md) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
+| `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
 | `mobilewrightDevice` | `MobilewrightDevice` | Mobile device control | [Setup & Usage](docs/mobilewright-fixture.md) |
@@ -191,6 +192,28 @@ test.describe('Redis Cache', () => {
 });
 ```
 
+### Neo4j Client
+
+```typescript
+import { test, expect } from '@inluxc/stagehand';
+
+test.describe('Social Graph', () => {
+  test('create and traverse a relationship', async ({ neo4jClient }) => {
+    const counters = await neo4jClient.write(
+      'CREATE (:Person {name: $a})-[:KNOWS]->(:Person {name: $b})',
+      { a: 'Alice', b: 'Bob' },
+    );
+    expect(counters.relationshipsCreated).toBe(1);
+
+    const rows = await neo4jClient.run<{ friend: string }>(
+      'MATCH (:Person {name: $name})-[:KNOWS]->(f) RETURN f.name AS friend',
+      { name: 'Alice' },
+    );
+    expect(rows).toEqual([{ friend: 'Bob' }]);
+  });
+});
+```
+
 ### OTP Client (2FA/MFA Testing)
 
 ```typescript
@@ -309,6 +332,9 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
 | `PW_REDIS_HOST` / `PW_REDIS_PORT` / `PW_REDIS_PASSWORD` | Redis connection |
 | `PW_REDIS_KEY_PREFIX` | Key prefix for test isolation |
+| `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
+| `PW_NEO4J_USERNAME` / `PW_NEO4J_PASSWORD` | Neo4j credentials |
+| `PW_NEO4J_DATABASE` | Neo4j database (default: server default) |
 | `PW_MOBILE_PLATFORM` | `ios` or `android` |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
