@@ -361,13 +361,18 @@ export default defineConfig({
 
 ## Secrets Management
 
-```typescript
-import { SecretsManager } from '@inluxc/stagehand';
+Set `secrets.provider` in `environments.json` to `aws`, `vault`, `openbao`, `azure`, `gitlab` or `env-file`, and map secret keys to config fields with `keyMappings`. Or use the manager directly:
 
-// Supports: aws, vault, azure, gitlab, env-file
-const secrets = new SecretsManager({ provider: 'aws', region: 'us-east-1' });
-const dbPassword = await secrets.get('prod/db-password');
+```typescript
+import { SecretsManager, OpenBaoSecretsProvider } from '@inluxc/stagehand';
+
+const manager = new SecretsManager();
+// url/token fall back to PW_OPENBAO_* → BAO_* → VAULT_* env vars
+manager.registerProvider(new OpenBaoSecretsProvider({ mountPath: 'secret/data/playwright' }));
+const dbPassword = await manager.getSecret('db-password', 'openbao');
 ```
+
+See [docs/secrets.md](docs/secrets.md) for every provider's options.
 
 ---
 

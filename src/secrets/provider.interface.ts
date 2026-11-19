@@ -5,7 +5,7 @@
  * and batch-fetch multiple secrets from their backend service.
  *
  * Built-in providers: AWS Secrets Manager, GitLab CI/CD Variables,
- * HashiCorp Vault, Azure Key Vault, and local env-file fallback.
+ * HashiCorp Vault, OpenBao, Azure Key Vault, and local env-file fallback.
  */
 export interface SecretsProvider {
     /** Unique name identifying this provider backend (e.g., 'aws', 'vault', 'gitlab'). */

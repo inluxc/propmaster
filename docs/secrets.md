@@ -6,7 +6,7 @@ The secrets module provides a unified interface for retrieving sensitive values 
 
 ## What It Does
 
-- Resolves secrets from multiple provider backends (AWS, Vault, GitLab, Azure, env-file)
+- Resolves secrets from multiple provider backends (AWS, Vault, OpenBao, GitLab, Azure, env-file)
 - Injects fetched secrets into `FrameworkConfig` via dot-notation key mappings
 - Caches all fetched secrets for the entire test runner invocation
 - Enforces configurable fetch timeouts per provider
@@ -27,6 +27,7 @@ SecretsManager (orchestrator)
 Providers:
 ├── aws          — AWS Secrets Manager
 ├── vault        — HashiCorp Vault (KV v1/v2)
+├── openbao      — OpenBao (KV v1/v2), shares the Vault implementation
 ├── gitlab       — GitLab CI/CD Variables API
 ├── azure        — Azure Key Vault
 └── env-file     — Local .env file fallback
@@ -101,7 +102,7 @@ export default defineConfig({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `provider` | `string` | — | Provider backend name: `aws`, `vault`, `gitlab`, `azure`, `env-file` |
+| `provider` | `string` | — | Provider backend name: `aws`, `vault`, `openbao`, `gitlab`, `azure`, `env-file` |
 | `options` | `object` | — | Provider-specific options (see each provider below) |
 | `keyMappings` | `Record<string, string>` | — | Maps secret key → config field path (dot-notation) |
 | `timeout` | `number` | `10000` | Fetch timeout in ms for all secret operations |
@@ -191,7 +192,7 @@ Retrieves secrets from HashiCorp Vault via the HTTP API. Supports KV v1 and KV v
 
 #### Prerequisites
 
-A running Vault instance accessible over HTTPS. No additional npm packages required (uses native `fetch`).
+A running Vault instance accessible over HTTPS. No additional npm packages required (uses native `fetch`, or `node:https` when TLS options are set).
 
 #### Authentication
 
@@ -199,20 +200,37 @@ A running Vault instance accessible over HTTPS. No additional npm packages requi
 |--------|--------------|---------------------|
 | Token | `options.token` | `VAULT_TOKEN` |
 | AppRole | `options.roleId` + `options.secretId` | `VAULT_ROLE_ID` + `VAULT_SECRET_ID` |
+| Kubernetes | `authMethod: "kubernetes"` + `role` (JWT read from the pod's service-account token) | `VAULT_AUTH_METHOD`, `VAULT_AUTH_ROLE`, `VAULT_JWT_PATH` |
+| JWT / OIDC | `role` + `jwt` or `jwtPath` | `VAULT_AUTH_ROLE`, `VAULT_JWT` / `VAULT_JWT_PATH` |
 
-AppRole is recommended for CI/CD pipelines. Token-based auth is suitable for local development.
+When `authMethod` is omitted it is inferred: a token wins, then AppRole (role_id + secret_id), then JWT (if a JWT or JWT path is set). Kubernetes must be selected explicitly. Auth methods mounted somewhere other than their default path (`approle`, `kubernetes`, `jwt`) need `authMount`.
+
+AppRole, Kubernetes or JWT are recommended for CI/CD pipelines. Token-based auth is suitable for local development.
 
 #### Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `url` | `string` | Yes | Vault server URL (e.g., `https://vault.example.com`) |
-| `mountPath` | `string` | Yes | KV engine mount path (e.g., `secret/data/playwright`) |
-| `token` | `string` | No | Vault token. Falls back to `VAULT_TOKEN` env var |
-| `roleId` | `string` | No | AppRole role_id. Falls back to `VAULT_ROLE_ID` env var |
-| `secretId` | `string` | No | AppRole secret_id. Falls back to `VAULT_SECRET_ID` env var |
-| `namespace` | `string` | No | Vault Enterprise namespace. Falls back to `VAULT_NAMESPACE` env var |
-| `kvVersion` | `1 \| 2` | No | KV secrets engine version (default: `2`) |
+Every option except `kvVersion`'s default can also come from an environment variable; explicit options always win.
+
+| Option | Type | Required | Env fallback | Description |
+|--------|------|----------|--------------|-------------|
+| `url` | `string` | Yes | `VAULT_ADDR` | Server URL (e.g., `https://vault.example.com`) |
+| `mountPath` | `string` | Yes | `VAULT_MOUNT_PATH` | Path prefix after `/v1/`. For KV v2 include `data` (e.g., `secret/data/playwright`) |
+| `kvVersion` | `1 \| 2` | No | `VAULT_KV_VERSION` | KV secrets engine version (default: `2`) |
+| `namespace` | `string` | No | `VAULT_NAMESPACE` | Namespace, sent as `X-Vault-Namespace` |
+| `authMethod` | `token \| approle \| kubernetes \| jwt` | No | `VAULT_AUTH_METHOD` | Auth method (inferred when omitted) |
+| `authMount` | `string` | No | `VAULT_AUTH_MOUNT` | Auth mount path, if not the default |
+| `token` | `string` | No | `VAULT_TOKEN` | Client token |
+| `roleId` | `string` | No | `VAULT_ROLE_ID` | AppRole role_id |
+| `secretId` | `string` | No | `VAULT_SECRET_ID` | AppRole secret_id |
+| `role` | `string` | No | `VAULT_AUTH_ROLE` | Role for Kubernetes / JWT login |
+| `jwt` | `string` | No | `VAULT_JWT` | JWT for Kubernetes / JWT login |
+| `jwtPath` | `string` | No | `VAULT_JWT_PATH` | File holding the JWT (Kubernetes default: `/var/run/secrets/kubernetes.io/serviceaccount/token`) |
+| `caCert` | `string` | No | `VAULT_CACERT` | PEM CA bundle file used to verify the server |
+| `caPath` | `string` | No | `VAULT_CAPATH` | Directory of PEM CA certificates (ignored if `caCert` is set) |
+| `clientCert` | `string` | No | `VAULT_CLIENT_CERT` | PEM client certificate for mutual TLS |
+| `clientKey` | `string` | No | `VAULT_CLIENT_KEY` | Unencrypted PEM client key for mutual TLS |
+| `tlsServerName` | `string` | No | `VAULT_TLS_SERVER_NAME` | SNI server name |
+| `skipVerify` | `boolean` | No | `VAULT_SKIP_VERIFY` | Disable certificate verification (local only, never in shared environments) |
 
 #### Configuration Example
 
@@ -236,7 +254,7 @@ AppRole is recommended for CI/CD pipelines. Token-based auth is suitable for loc
 
 #### Secret Resolution Logic
 
-When fetching a secret by key, the provider looks for the value in this order:
+Each key is appended to `mountPath` (nested keys such as `team/db-password` keep their slashes). The provider then looks for the value in this order:
 
 1. A `value` field in the secret data
 2. A field matching the key name
@@ -244,9 +262,90 @@ When fetching a secret by key, the provider looks for the value in this order:
 
 #### Notes
 
-- Supports Vault Enterprise namespaces via the `X-Vault-Namespace` header
-- AppRole authentication is performed lazily on first secret fetch
-- The token is cached for the lifetime of the provider instance
+- Supports namespaces via the `X-Vault-Namespace` header
+- Login (AppRole, Kubernetes, JWT) is performed lazily on first secret fetch, once per provider instance; concurrent fetches share the same login
+- The token is cached for the lifetime of the provider instance (it is not renewed)
+- Tokens, secret_ids, JWTs and client keys are never included in `SecretsError` details, and are replaced with `[REDACTED]` if the server echoes them back
+
+---
+
+### OpenBao
+
+Retrieves secrets from [OpenBao](https://openbao.org), the Linux Foundation's open-source fork of HashiCorp Vault.
+
+OpenBao's HTTP API is wire-compatible with Vault's for everything this provider uses: `/v1` KV v1/v2 reads, the `X-Vault-Token` and `X-Vault-Namespace` headers, and the AppRole, Kubernetes and JWT login endpoints. The `openbao` provider therefore shares the Vault implementation, and every option, auth method, TLS setting and note in the [HashiCorp Vault](#hashicorp-vault) section applies unchanged. Only the provider name and the environment variables differ.
+
+#### Environment Variables
+
+Each option falls back to environment variables in this order, highest precedence first:
+
+```
+PW_OPENBAO_<NAME>  →  BAO_<NAME>  →  VAULT_<NAME>
+```
+
+The framework's own `PW_OPENBAO_*` variables win over the `bao` CLI's `BAO_*` variables, which win over the `VAULT_*` names that OpenBao also accepts. Explicit `options` in `environments.json` or `playwright.config.ts` always win over all of them.
+
+| Option | Environment variables |
+|--------|-----------------------|
+| `url` | `PW_OPENBAO_ADDR`, `BAO_ADDR`, `VAULT_ADDR` |
+| `token` | `PW_OPENBAO_TOKEN`, `BAO_TOKEN`, `VAULT_TOKEN` |
+| `namespace` | `PW_OPENBAO_NAMESPACE`, `BAO_NAMESPACE`, `VAULT_NAMESPACE` |
+| `mountPath` | `PW_OPENBAO_MOUNT_PATH`, `BAO_MOUNT_PATH`, `VAULT_MOUNT_PATH` |
+| `kvVersion` | `PW_OPENBAO_KV_VERSION`, `BAO_KV_VERSION`, `VAULT_KV_VERSION` |
+| `authMethod` / `authMount` | `PW_OPENBAO_AUTH_METHOD`, `PW_OPENBAO_AUTH_MOUNT` (+ `BAO_*` / `VAULT_*`) |
+| `roleId` / `secretId` | `PW_OPENBAO_ROLE_ID`, `PW_OPENBAO_SECRET_ID` (+ `BAO_*` / `VAULT_*`) |
+| `role` / `jwt` / `jwtPath` | `PW_OPENBAO_AUTH_ROLE`, `PW_OPENBAO_JWT`, `PW_OPENBAO_JWT_PATH` (+ `BAO_*` / `VAULT_*`) |
+| `caCert` / `caPath` | `PW_OPENBAO_CACERT`, `PW_OPENBAO_CAPATH`, `BAO_CACERT`, `BAO_CAPATH` (+ `VAULT_*`) |
+| `clientCert` / `clientKey` | `PW_OPENBAO_CLIENT_CERT`, `PW_OPENBAO_CLIENT_KEY`, `BAO_CLIENT_CERT`, `BAO_CLIENT_KEY` (+ `VAULT_*`) |
+| `tlsServerName` | `PW_OPENBAO_TLS_SERVER_NAME`, `BAO_TLS_SERVER_NAME`, `VAULT_TLS_SERVER_NAME` |
+| `skipVerify` | `PW_OPENBAO_SKIP_VERIFY`, `BAO_SKIP_VERIFY`, `VAULT_SKIP_VERIFY` |
+
+Because the server URL can come from `BAO_ADDR`, `url` is optional for `openbao`; the provider raises a `SecretsError` naming the variables above if no URL or mount path is found.
+
+#### Configuration Example
+
+```json
+{
+  "secrets": {
+    "provider": "openbao",
+    "options": {
+      "url": "https://bao.example.com",
+      "mountPath": "secret/data/playwright",
+      "namespace": "team-qa"
+    },
+    "keyMappings": {
+      "db-password": "database.password",
+      "redis-password": "redis.password"
+    }
+  }
+}
+```
+
+With `BAO_ADDR` and `BAO_TOKEN` already exported (as for the `bao` CLI), only `mountPath` needs to be in `options`.
+
+#### Kubernetes Example
+
+```json
+{
+  "secrets": {
+    "provider": "openbao",
+    "options": {
+      "url": "https://bao.internal:8200",
+      "mountPath": "secret/data/playwright",
+      "authMethod": "kubernetes",
+      "role": "playwright-ci",
+      "caCert": "/etc/openbao/ca.pem"
+    },
+    "keyMappings": { "db-password": "database.password" }
+  }
+}
+```
+
+#### Notes
+
+- `mountPath` is the full path prefix after `/v1/`, so KV v2 needs the `data` segment (`secret/data/...`), as the `bao kv` CLI adds for you. A KV v2 response without `data.data` raises a `SecretsError` that points at `mountPath`
+- Namespaces are sent with the `X-Vault-Namespace` header, which OpenBao uses unchanged
+- OpenBao does not guarantee backwards compatibility of its API yet, even under `/v1`; pin the server version in shared test environments
 
 ---
 
@@ -450,7 +549,7 @@ All secrets errors use the `SecretsError` class with structured context:
 // SecretsError: aws/resolve — reason: Provider "aws" is not registered
 
 // Fetch failure:
-// SecretsError: vault/fetch [db-password] — reason: Vault API returned 403: permission denied
+// SecretsError: vault/fetch [db-password] — reason: API returned 403: permission denied
 
 // Timeout:
 // SecretsError: aws/timeout [db-password] — timeoutMs: 10000
@@ -466,7 +565,8 @@ All secrets errors use the `SecretsError` class with structured context:
 | Provider | Auth Method | Best For | Dependencies |
 |----------|------------|----------|--------------|
 | `aws` | IAM / env credentials | AWS-hosted infrastructure | `@aws-sdk/client-secrets-manager` |
-| `vault` | Token / AppRole | Multi-cloud, on-prem | None (native `fetch`) |
+| `vault` | Token / AppRole / Kubernetes / JWT | Multi-cloud, on-prem | None (native `fetch`) |
+| `openbao` | Token / AppRole / Kubernetes / JWT | Open-source Vault alternative, on-prem | None (native `fetch`) |
 | `gitlab` | Private token / Job token | GitLab CI/CD pipelines | None (native `fetch`) |
 | `azure` | DefaultAzureCredential | Azure-hosted infrastructure | `@azure/keyvault-secrets`, `@azure/identity` |
 | `env-file` | File system | Local development | None (built-in) |
@@ -479,10 +579,10 @@ All secrets errors use the `SecretsError` class with structured context:
 |-------------|----------|-------|
 | Local | `env-file` | Use `.env.local` with dummy/dev credentials |
 | CI/CD (GitLab) | `gitlab` | Leverages `CI_JOB_TOKEN` automatically |
-| CI/CD (GitHub) | `env-file` or `vault` | Map GitHub secrets to env vars, or use Vault |
+| CI/CD (GitHub) | `env-file`, `vault` or `openbao` | Map GitHub secrets to env vars, or use Vault/OpenBao JWT auth with the GitHub OIDC token |
 | Staging/Prod (AWS) | `aws` | Use IAM roles for zero-config auth |
 | Staging/Prod (Azure) | `azure` | Use Managed Identity for zero-config auth |
-| Multi-cloud | `vault` | Central secrets management across providers |
+| Multi-cloud | `vault` or `openbao` | Central secrets management across providers |
 
 ---
 
@@ -494,7 +594,7 @@ All secrets errors use the `SecretsError` class with structured context:
 4. **Set timeouts** — Prevent test hangs if a secrets backend is unreachable
 5. **Use secret prefixes** — Namespace secrets per application/environment (e.g., `myapp/prod/db-password`)
 6. **Rotate regularly** — The caching layer means secrets are fetched once per test run, so rotations take effect on next run
-7. **Limit scope** — Use protected/masked variables in GitLab, or scoped policies in Vault
+7. **Limit scope** — Use protected/masked variables in GitLab, or scoped policies in Vault/OpenBao
 
 ---
 

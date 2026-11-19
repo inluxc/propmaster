@@ -72,3 +72,25 @@ export {
 // Secrets interfaces
 export type { SecretsProvider } from './secrets/index.js';
 export { SecretsManager } from './secrets/index.js';
+export {
+    AwsSecretsProvider,
+    GitLabSecretsProvider,
+    VaultSecretsProvider,
+    OpenBaoSecretsProvider,
+    VaultCompatibleProvider,
+    AzureSecretsProvider,
+    EnvFileSecretsProvider,
+    createProvider,
+    createDefaultProviders,
+} from './secrets/index.js';
+export type {
+    AwsProviderOptions,
+    GitLabProviderOptions,
+    VaultProviderOptions,
+    OpenBaoProviderOptions,
+    VaultCompatibleOptions,
+    VaultAuthMethod,
+    AzureProviderOptions,
+    EnvFileProviderOptions,
+    ProviderRegistryOptions,
+} from './secrets/index.js';

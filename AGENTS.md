@@ -63,7 +63,7 @@ src/
 │   ├── index.ts                # Secrets module exports
 │   ├── provider.interface.ts   # SecretsProvider interface
 │   ├── secrets-manager.ts      # SecretsManager orchestrator
-│   └── providers/              # Provider implementations (aws, vault, gitlab, azure, env-file)
+│   └── providers/              # Provider implementations (aws, vault, openbao, gitlab, azure, env-file)
 ├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
 │                               #   each method wraps its work in test.step() — prefer these in specs
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
@@ -377,6 +377,11 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |
 | `PW_OTP_ALGORITHM` | Hash algorithm: `sha1`, `sha256`, `sha512` |
 | `PW_OTP_ISSUER` | Issuer name for URI generation |
+| `PW_OPENBAO_ADDR`, `PW_OPENBAO_TOKEN`, `PW_OPENBAO_NAMESPACE` | OpenBao secrets provider (`secrets.provider: "openbao"`); fall back to `BAO_*`, then `VAULT_*` |
+| `PW_OPENBAO_MOUNT_PATH`, `PW_OPENBAO_KV_VERSION` | OpenBao KV path prefix (include `data` for KV v2) and engine version |
+| `PW_OPENBAO_AUTH_METHOD`, `PW_OPENBAO_ROLE_ID`, `PW_OPENBAO_SECRET_ID`, `PW_OPENBAO_AUTH_ROLE`, `PW_OPENBAO_JWT_PATH` | OpenBao auth: `token`, `approle`, `kubernetes`, `jwt` |
+| `PW_OPENBAO_CACERT`, `PW_OPENBAO_CLIENT_CERT`, `PW_OPENBAO_CLIENT_KEY`, `PW_OPENBAO_SKIP_VERIFY` | OpenBao TLS (also `BAO_*`; see [docs/secrets.md](docs/secrets.md#openbao)) |
+| `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_NAMESPACE`, ... | HashiCorp Vault secrets provider (`secrets.provider: "vault"`); same names as OpenBao with the `VAULT_` prefix |
 
 ## Playwright Projects
 

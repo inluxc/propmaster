@@ -210,7 +210,7 @@ export interface OtpFixtureConfig {
  * Configuration for the secrets provider.
  */
 export interface SecretsConfig {
-    /** Provider backend name (e.g., 'aws', 'vault', 'gitlab', 'azure', 'env-file'). */
+    /** Provider backend name (e.g., 'aws', 'vault', 'openbao', 'gitlab', 'azure', 'env-file'). */
     provider: string;
     /** Provider-specific options (region, vault URL, etc.). */
     options?: Record<string, unknown>;
