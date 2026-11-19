@@ -19,25 +19,19 @@ import { redactCredentials } from '../../src/annotations/truncation';
  * Generates a random alphanumeric string suitable for use as a secret value.
  * Uses minimum length of 4 and avoids characters that would terminate pattern matching.
  */
-const arbSecretValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'.split('')),
-    { minLength: 4, maxLength: 40 }
+const arbSecretValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'.split('')), minLength: 4, maxLength: 40 }
 );
 
 /**
  * Generates a random non-sensitive prefix/suffix string that won't match credential patterns.
  */
-const arbNonSensitiveText = fc.stringOf(
-    fc.constantFrom(...'0123456789 ,.:()[]{}!@#$%^*'.split('')),
-    { minLength: 0, maxLength: 30 }
+const arbNonSensitiveText = fc.string({ unit: fc.constantFrom(...'0123456789 ,.:()[]{}!@#$%^*'.split('')), minLength: 0, maxLength: 30 }
 );
 
 /**
  * Generates a random uppercase alphanumeric string of exactly 16 characters for AWS key suffix.
  */
-const arbAwsKeySuffix = fc.stringOf(
-    fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('')),
-    { minLength: 16, maxLength: 16 }
+const arbAwsKeySuffix = fc.string({ unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('')), minLength: 16, maxLength: 16 }
 );
 
 /**
@@ -45,9 +39,7 @@ const arbAwsKeySuffix = fc.stringOf(
  * Must end with a word character (alphanumeric or underscore) to match the \b boundary in the regex.
  */
 const arbBase64UrlSegment = fc.tuple(
-    fc.stringOf(
-        fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'.split('')),
-        { minLength: 4, maxLength: 29 }
+    fc.string({ unit: fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'.split('')), minLength: 4, maxLength: 29 }
     ),
     fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_'.split(''))
 ).map(([body, lastChar]) => body + lastChar);
@@ -171,9 +163,7 @@ test.describe('Property 3: Credential redaction replaces all sensitive patterns'
 
     test('strings without any credential patterns are returned unchanged', async () => {
         // Generate strings that don't contain any credential patterns
-        const arbSafeString = fc.stringOf(
-            fc.constantFrom(...'0123456789 ,.:()[]{}!@#$%^*'.split('')),
-            { minLength: 0, maxLength: 100 }
+        const arbSafeString = fc.string({ unit: fc.constantFrom(...'0123456789 ,.:()[]{}!@#$%^*'.split('')), minLength: 0, maxLength: 100 }
         );
 
         await fc.assert(

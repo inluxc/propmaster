@@ -25,9 +25,7 @@ function generateGroupId(testId: string, timestamp: number): string {
 /**
  * Generates arbitrary test IDs (alphanumeric with dashes).
  */
-const arbTestId = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbTestId = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')), minLength: 1, maxLength: 30 }
 );
 
 /**

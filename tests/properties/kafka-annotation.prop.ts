@@ -23,9 +23,7 @@ function createMockTestInfo() {
 const arbOperation = fc.constantFrom('produce', 'consume') as fc.Arbitrary<'produce' | 'consume'>;
 
 /** Arbitrary for topic name — non-empty string without credential patterns */
-const arbTopic = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789._-'.split('')),
-    { minLength: 1, maxLength: 100 }
+const arbTopic = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789._-'.split('')), minLength: 1, maxLength: 100 }
 );
 
 /** Arbitrary for non-negative message count */

@@ -15,17 +15,13 @@ import { SecretsProvider } from '../../src/secrets/provider.interface';
 /**
  * Generates valid secret key names (alphanumeric with dashes/underscores).
  */
-const arbSecretKey = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbSecretKey = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')), minLength: 1, maxLength: 30 }
 );
 
 /**
  * Generates arbitrary secret values.
  */
-const arbSecretValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+'.split('')),
-    { minLength: 1, maxLength: 100 }
+const arbSecretValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+'.split('')), minLength: 1, maxLength: 100 }
 );
 
 /**

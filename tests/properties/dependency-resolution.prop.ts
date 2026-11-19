@@ -25,9 +25,7 @@ import { DependencyError } from '../../src/errors';
 /**
  * Generates valid fixture names (lowercase alphanumeric, no collisions with Playwright internals).
  */
-const arbFixtureName = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
-    { minLength: 3, maxLength: 12 }
+const arbFixtureName = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')), minLength: 3, maxLength: 12 }
 );
 
 /**

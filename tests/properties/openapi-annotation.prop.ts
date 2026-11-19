@@ -27,9 +27,7 @@ function createMockTestInfo() {
 const arbMethod = fc.constantFrom('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS');
 
 /** Arbitrary request paths */
-const arbPath = fc.stringOf(
-    fc.constantFrom(...'/abcdefghijklmnopqrstuvwxyz0123456789-_.~'.split('')),
-    { minLength: 1, maxLength: 200 }
+const arbPath = fc.string({ unit: fc.constantFrom(...'/abcdefghijklmnopqrstuvwxyz0123456789-_.~'.split('')), minLength: 1, maxLength: 200 }
 ).map(s => '/' + s);
 
 /** Arbitrary body strings (can be empty or large) */

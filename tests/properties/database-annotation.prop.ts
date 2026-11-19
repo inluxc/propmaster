@@ -28,9 +28,7 @@ function createMockTestInfo() {
  * Generates arbitrary SQL strings that do NOT contain credential patterns,
  * so we can test metadata structure without redaction interference.
  */
-const arbSafeSql = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _.,;:()[]{}=<>*+-/\n\t'.split('')),
-    { minLength: 0, maxLength: 4096 }
+const arbSafeSql = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _.,;:()[]{}=<>*+-/\n\t'.split('')), minLength: 0, maxLength: 4096 }
 );
 
 /**
