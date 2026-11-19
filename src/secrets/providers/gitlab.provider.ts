@@ -5,8 +5,8 @@
  * Uses the native `fetch` API for HTTP requests (available in Node.js 18+).
  */
 
-import type { SecretsProvider } from '../provider.interface';
-import { SecretsError } from '../../errors';
+import type { SecretsProvider } from '../provider.interface.js';
+import { SecretsError } from '../../errors.js';
 
 export interface GitLabProviderOptions {
     /** GitLab project ID (numeric or URL-encoded path) */

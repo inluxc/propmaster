@@ -11,8 +11,8 @@
  * Supports Vault Enterprise namespaces via the `namespace` option.
  */
 
-import type { SecretsProvider } from '../provider.interface';
-import { SecretsError } from '../../errors';
+import type { SecretsProvider } from '../provider.interface.js';
+import { SecretsError } from '../../errors.js';
 
 export interface VaultProviderOptions {
     /** Vault server URL (e.g., 'https://vault.example.com') */

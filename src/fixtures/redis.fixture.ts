@@ -9,9 +9,9 @@
  * @requirements 5.1, 5.2, 5.3, 5.4, 5.5
  */
 
-import Redis from 'ioredis';
-import { RedisFixtureConfig } from '../config/schema';
-import { FixtureInitError } from '../errors';
+import { Redis } from 'ioredis';
+import { RedisFixtureConfig } from '../config/schema.js';
+import { FixtureInitError } from '../errors.js';
 
 /**
  * Options for the subscribe method.

@@ -5,18 +5,18 @@
  * that creates default provider instances from configuration options.
  */
 
-export { AwsSecretsProvider, type AwsProviderOptions } from './aws.provider';
-export { GitLabSecretsProvider, type GitLabProviderOptions } from './gitlab.provider';
-export { VaultSecretsProvider, type VaultProviderOptions } from './vault.provider';
-export { AzureSecretsProvider, type AzureProviderOptions } from './azure.provider';
-export { EnvFileSecretsProvider, type EnvFileProviderOptions } from './env-file.provider';
+export { AwsSecretsProvider, type AwsProviderOptions } from './aws.provider.js';
+export { GitLabSecretsProvider, type GitLabProviderOptions } from './gitlab.provider.js';
+export { VaultSecretsProvider, type VaultProviderOptions } from './vault.provider.js';
+export { AzureSecretsProvider, type AzureProviderOptions } from './azure.provider.js';
+export { EnvFileSecretsProvider, type EnvFileProviderOptions } from './env-file.provider.js';
 
-import type { SecretsProvider } from '../provider.interface';
-import { AwsSecretsProvider, AwsProviderOptions } from './aws.provider';
-import { GitLabSecretsProvider, GitLabProviderOptions } from './gitlab.provider';
-import { VaultSecretsProvider, VaultProviderOptions } from './vault.provider';
-import { AzureSecretsProvider, AzureProviderOptions } from './azure.provider';
-import { EnvFileSecretsProvider, EnvFileProviderOptions } from './env-file.provider';
+import type { SecretsProvider } from '../provider.interface.js';
+import { AwsSecretsProvider, AwsProviderOptions } from './aws.provider.js';
+import { GitLabSecretsProvider, GitLabProviderOptions } from './gitlab.provider.js';
+import { VaultSecretsProvider, VaultProviderOptions } from './vault.provider.js';
+import { AzureSecretsProvider, AzureProviderOptions } from './azure.provider.js';
+import { EnvFileSecretsProvider, EnvFileProviderOptions } from './env-file.provider.js';
 
 /**
  * Options for creating provider instances.

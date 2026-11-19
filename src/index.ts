@@ -12,7 +12,7 @@
  */
 
 // Extended Playwright test object and expect
-export { test, expect } from './fixtures';
+export { test, expect } from './fixtures/index.js';
 
 // Fixture client types
 export type {
@@ -27,7 +27,7 @@ export type {
     GraphQLClient,
     FixtureTypes,
     ConfigOptions,
-} from './fixtures';
+} from './fixtures/index.js';
 
 // Configuration types and loaders
 export type {
@@ -42,9 +42,9 @@ export type {
     GraphQLFixtureConfig,
     SecretsConfig,
     EnvironmentsFile,
-} from './config';
-export { ConfigLoader } from './config';
-export { EnvLoader } from './config';
+} from './config/index.js';
+export { ConfigLoader } from './config/index.js';
+export { EnvLoader } from './config/index.js';
 
 // Error types
 export {
@@ -54,8 +54,8 @@ export {
     FixtureOperationError,
     SecretsError,
     DependencyError,
-} from './errors';
+} from './errors.js';
 
 // Secrets interfaces
-export type { SecretsProvider } from './secrets';
-export { SecretsManager } from './secrets';
+export type { SecretsProvider } from './secrets/index.js';
+export { SecretsManager } from './secrets/index.js';

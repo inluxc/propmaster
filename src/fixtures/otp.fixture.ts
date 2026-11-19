@@ -9,8 +9,8 @@
  */
 
 import { TOTP, HOTP, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib';
-import type { OtpFixtureConfig } from '../config/schema';
-import { FixtureInitError } from '../errors';
+import type { OtpFixtureConfig } from '../config/schema.js';
+import { FixtureInitError } from '../errors.js';
 
 /**
  * OTP client interface exposed to tests.

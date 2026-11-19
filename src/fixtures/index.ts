@@ -30,15 +30,15 @@ import type {
     MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
-} from '../config/schema';
-import { openApiFixture, type OpenApiClient } from './openapi.fixture';
-import { databaseFixture, type DatabaseClient } from './database.fixture';
-import { kafkaFixture, type KafkaClient } from './kafka.fixture';
-import { redisFixture, type RedisClient } from './redis.fixture';
-import { mobilewrightFixture, type MobilewrightScreen, type MobilewrightDevice } from './mobilewright.fixture';
-import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture';
-import { otpFixture, type OtpClient } from './otp.fixture';
-import { graphqlFixture, type GraphQLClient } from './graphql.fixture';
+} from '../config/schema.js';
+import { openApiFixture, type OpenApiClient } from './openapi.fixture.js';
+import { databaseFixture, type DatabaseClient } from './database.fixture.js';
+import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
+import { redisFixture, type RedisClient } from './redis.fixture.js';
+import { mobilewrightFixture, type MobilewrightScreen, type MobilewrightDevice } from './mobilewright.fixture.js';
+import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
+import { otpFixture, type OtpClient } from './otp.fixture.js';
+import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
 
 /**
  * Configuration options that can be passed via project `use` block.
@@ -107,12 +107,12 @@ const redisConfigFixture = {
         }
 
         // Fallback: load from ConfigLoader
-        const { ConfigLoader } = await import('../config/loader');
+        const { ConfigLoader } = await import('../config/loader.js');
         const loader = new ConfigLoader();
         const frameworkConfig = loader.load();
 
         if (!frameworkConfig.redis) {
-            const { FixtureInitError } = await import('../errors');
+            const { FixtureInitError } = await import('../errors.js');
             throw new FixtureInitError('redis', 'connect', {
                 reason: 'Redis configuration is missing. Provide redis config in environments.json, environment variables, or project use block.',
             });
@@ -137,7 +137,7 @@ const otpConfigFixture = {
         }
 
         // Fallback: load from ConfigLoader
-        const { ConfigLoader } = await import('../config/loader');
+        const { ConfigLoader } = await import('../config/loader.js');
         const loader = new ConfigLoader();
         const frameworkConfig = loader.load();
 
@@ -184,11 +184,11 @@ export const test = base.extend<FixtureTypes & ConfigOptions>(allFixtures as unk
 export { expect } from '@playwright/test';
 
 // Re-export fixture client types for consumer convenience
-export type { OpenApiClient } from './openapi.fixture';
-export type { DatabaseClient } from './database.fixture';
-export type { KafkaClient } from './kafka.fixture';
-export type { RedisClient } from './redis.fixture';
-export type { MongoDbClient } from './mongodb.fixture';
-export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.fixture';
-export type { OtpClient } from './otp.fixture';
-export type { GraphQLClient } from './graphql.fixture';
+export type { OpenApiClient } from './openapi.fixture.js';
+export type { DatabaseClient } from './database.fixture.js';
+export type { KafkaClient } from './kafka.fixture.js';
+export type { RedisClient } from './redis.fixture.js';
+export type { MongoDbClient } from './mongodb.fixture.js';
+export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.fixture.js';
+export type { OtpClient } from './otp.fixture.js';
+export type { GraphQLClient } from './graphql.fixture.js';

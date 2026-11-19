@@ -13,8 +13,8 @@
 
 import type { Screen } from '@mobilewright/core';
 import type { Device } from '@mobilewright/core';
-import type { MobilewrightFixtureConfig } from '../config/schema';
-import { FixtureInitError } from '../errors';
+import type { MobilewrightFixtureConfig } from '../config/schema.js';
+import { FixtureInitError } from '../errors.js';
 
 /** Default initialization timeout in milliseconds. */
 const DEFAULT_INIT_TIMEOUT = 60_000;

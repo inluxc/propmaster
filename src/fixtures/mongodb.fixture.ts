@@ -17,8 +17,8 @@
  * @requirements 8.1, 8.2, 8.3
  */
 
-import { FixtureInitError, FixtureOperationError } from '../errors';
-import { MongoDbFixtureConfig } from '../config/schema';
+import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import { MongoDbFixtureConfig } from '../config/schema.js';
 
 /**
  * Options for find operations.
@@ -350,7 +350,7 @@ export const mongoDbFixture = {
         let config: MongoDbFixtureConfig | undefined = mongodb;
 
         if (!config) {
-            const { ConfigLoader } = await import('../config/loader');
+            const { ConfigLoader } = await import('../config/loader.js');
             const loader = new ConfigLoader();
             const frameworkConfig = loader.load();
             config = frameworkConfig.mongodb;

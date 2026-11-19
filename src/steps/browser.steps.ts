@@ -5,7 +5,7 @@
  * Wraps common navigation and interaction patterns for Playwright page operations.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 import type { Page, Locator } from '@playwright/test';
 
 export class BrowserSteps {

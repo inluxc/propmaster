@@ -5,7 +5,7 @@
  * Wraps common generation and verification patterns for test reuse.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface OtpClient {
     generateSecret(): string;

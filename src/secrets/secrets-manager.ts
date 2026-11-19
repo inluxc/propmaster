@@ -9,9 +9,9 @@
  * - Throws SecretsError for unrecognized providers, fetch failures, timeouts, or invalid mappings
  */
 
-import { SecretsError } from '../errors';
-import { FrameworkConfig, SecretsConfig } from '../config/schema';
-import type { SecretsProvider } from './provider.interface';
+import { SecretsError } from '../errors.js';
+import { FrameworkConfig, SecretsConfig } from '../config/schema.js';
+import type { SecretsProvider } from './provider.interface.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 

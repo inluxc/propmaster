@@ -18,9 +18,9 @@
 
 import { GraphQLClient as GQLClient } from 'graphql-request';
 import type { Variables, RequestDocument } from 'graphql-request';
-import type { GraphQLFixtureConfig } from '../config/schema';
-import { FixtureInitError, FixtureOperationError } from '../errors';
-import { ConfigLoader } from '../config/loader';
+import type { GraphQLFixtureConfig } from '../config/schema.js';
+import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import { ConfigLoader } from '../config/loader.js';
 
 /**
  * Response wrapper for GraphQL operations.

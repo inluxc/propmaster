@@ -5,7 +5,7 @@
  * Wraps common key-value and pub/sub patterns for test reuse.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface RedisClient {
     get(key: string): Promise<string | null>;
