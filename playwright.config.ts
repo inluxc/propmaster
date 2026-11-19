@@ -119,6 +119,11 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/*.prop.ts',
             use: {},
         },
+        {
+            name: 'unit-tests',
+            testMatch: '**/unit/**/*.spec.ts',
+            use: {},
+        },
 
     ],
 });
