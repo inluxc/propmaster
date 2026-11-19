@@ -173,14 +173,14 @@ export default defineConfig<ConfigOptions>({
     },
     "dependencies": {
         "@inluxc/stagehand": "^1.0.0",
-        "@playwright/test": "^1.52.0"
+        "@playwright/test": "^1.65.1"
     },
     "devDependencies": {
-        "@types/node": "^22.0.0",
-        "typescript": "^5.6.0"
+        "@types/node": "^22.20.5",
+        "typescript": "^7.0.2"
     },
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=22.12.0"
     }
 }
 `,
@@ -199,7 +199,6 @@ export default defineConfig<ConfigOptions>({
         "sourceMap": true,
         "outDir": "./dist",
         "rootDir": ".",
-        "baseUrl": ".",
         "paths": {
             "@pages/*": ["./tests/pages/*"],
             "@utils/*": ["./tests/utils/*"],

@@ -31,9 +31,7 @@ function writeEnvironmentsJson(dir: string, content: object): void {
  * Generates non-empty alphanumeric strings suitable for config values.
  * Avoids empty strings since the ConfigLoader skips empty env var values.
  */
-const arbConfigValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-./:_'.split('')),
-    { minLength: 1, maxLength: 50 }
+const arbConfigValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-./:_'.split('')), minLength: 1, maxLength: 50 }
 );
 
 /**

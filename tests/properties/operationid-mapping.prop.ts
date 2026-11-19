@@ -23,9 +23,7 @@ import { OpenAPIClientAxios } from 'openapi-client-axios';
 const arbOperationId = fc
     .tuple(
         fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('')),
-            { minLength: 1, maxLength: 20 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('')), minLength: 1, maxLength: 20 }
         )
     )
     .map(([first, rest]) => first + rest);

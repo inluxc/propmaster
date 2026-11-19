@@ -54,9 +54,7 @@ function simulateTeardownFlush(allKeys: string[], keyPrefix: string): string[] {
  */
 const arbKeyPrefix = fc
     .tuple(
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')),
-            { minLength: 1, maxLength: 10 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')), minLength: 1, maxLength: 10 }
         ),
         fc.constantFrom(':', '-', '_')
     )
@@ -65,9 +63,7 @@ const arbKeyPrefix = fc
 /**
  * Generates valid Redis key names.
  */
-const arbKeyName = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789:/-_'.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbKeyName = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789:/-_'.split('')), minLength: 1, maxLength: 30 }
 );
 
 test.describe('Property 7: Redis key prefix isolation on teardown', () => {

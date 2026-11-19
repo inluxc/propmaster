@@ -24,17 +24,13 @@ import {
 /**
  * Generates non-empty alphanumeric strings for error field values.
  */
-const arbFieldValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_./: '.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbFieldValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_./: '.split('')), minLength: 1, maxLength: 30 }
 );
 
 /**
  * Generates valid host names.
  */
-const arbHost = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-.'.split('')),
-    { minLength: 3, maxLength: 20 }
+const arbHost = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-.'.split('')), minLength: 3, maxLength: 20 }
 );
 
 /**

@@ -85,13 +85,9 @@ const arbCloseOutcome: fc.Arbitrary<'success' | 'failure'> = fc.constantFrom('su
 const arbBundleId = fc
     .tuple(
         fc.constantFrom('com', 'org', 'io', 'net'),
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
-            { minLength: 2, maxLength: 10 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')), minLength: 2, maxLength: 10 }
         ),
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')),
-            { minLength: 2, maxLength: 10 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')), minLength: 2, maxLength: 10 }
         )
     )
     .map(([tld, org, app]) => `${tld}.${org}.${app}`);

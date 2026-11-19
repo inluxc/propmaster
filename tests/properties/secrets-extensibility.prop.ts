@@ -16,25 +16,19 @@ import { SecretsProvider } from '../../src/secrets/provider.interface';
 /**
  * Generates valid provider names (alphanumeric with dashes).
  */
-const arbProviderName = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-'.split('')),
-    { minLength: 1, maxLength: 20 }
+const arbProviderName = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-'.split('')), minLength: 1, maxLength: 20 }
 );
 
 /**
  * Generates valid secret key names.
  */
-const arbSecretKey = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbSecretKey = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_'.split('')), minLength: 1, maxLength: 30 }
 );
 
 /**
  * Generates arbitrary secret values.
  */
-const arbSecretValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+'.split('')),
-    { minLength: 1, maxLength: 100 }
+const arbSecretValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+'.split('')), minLength: 1, maxLength: 100 }
 );
 
 /**

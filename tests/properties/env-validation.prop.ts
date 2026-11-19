@@ -41,9 +41,7 @@ const SCRIPT_PATH = path.resolve(__dirname, '../../.github/scripts/validate-env.
 /**
  * Generates a non-empty value suitable for an environment variable.
  */
-const arbEnvValue = fc.stringOf(
-    fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789_-.:/'.split('')),
-    { minLength: 1, maxLength: 30 }
+const arbEnvValue = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789_-.:/'.split('')), minLength: 1, maxLength: 30 }
 );
 
 /**

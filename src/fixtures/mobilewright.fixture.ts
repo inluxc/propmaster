@@ -52,7 +52,7 @@ function createScreenWrapper(screen: Screen): MobilewrightScreen {
         getByText: (text: string) => screen.getByText(text),
         getByLabel: (label: string) => screen.getByLabel(label),
         getByTestId: (testId: string) => screen.getByTestId(testId),
-        getByRole: (role: string) => screen.getByRole(role),
+        getByRole: (role: string) => screen.getByRole(role as Parameters<Screen['getByRole']>[0]),
         getByType: (type: string) => screen.getByType(type),
         tap: async (locator) => locator.tap(),
         doubleTap: async (locator) => locator.doubleTap(),

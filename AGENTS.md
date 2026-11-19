@@ -8,19 +8,19 @@ A reusable Playwright test framework with an extensible fixture architecture for
 
 ## Tech Stack
 
-- **Runtime:** Node.js 18+
-- **Test Framework:** Playwright Test (`@playwright/test ^1.52.0`)
-- **Language:** TypeScript 5.6+
-- **Mobile Testing:** Mobilewright (`mobilewright ^0.0.35`)
-- **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.5.5`)
+- **Runtime:** Node.js 22.12+
+- **Test Framework:** Playwright Test (`@playwright/test ^1.65.1`)
+- **Language:** TypeScript 7+
+- **Mobile Testing:** Mobilewright (`mobilewright ^0.0.70`)
+- **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.9.1`)
 - **Database:** PostgreSQL (`pg`), MySQL (`mysql2`), MSSQL (`mssql`), SQLite (`better-sqlite3`)
 - **Messaging:** KafkaJS (`kafkajs ^2.2.4`)
-- **Cache:** ioredis (`ioredis ^5.4.1`)
-- **MongoDB:** mongodb (`mongodb ^6.x`)
-- **GraphQL:** graphql-request (`graphql-request ^6.x`)
-- **OTP/2FA:** otplib (`otplib ^13.4.0`)
-- **Property Testing:** fast-check (`fast-check ^3.22.0`)
-- **Env Loading:** dotenv (`dotenv ^16.4.5`)
+- **Cache:** ioredis (`ioredis ^6.0.0`)
+- **MongoDB:** mongodb (`mongodb ^7.x`)
+- **GraphQL:** graphql-request (`graphql-request ^7.x`)
+- **OTP/2FA:** otplib (`otplib ^13.6.0`)
+- **Property Testing:** fast-check (`fast-check ^4.10.3`)
+- **Env Loading:** dotenv (`dotenv ^18.0.10`)
 
 ## Project Structure
 

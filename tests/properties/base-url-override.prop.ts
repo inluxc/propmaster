@@ -21,9 +21,7 @@ import { OpenAPIClientAxios } from 'openapi-client-axios';
 const arbBaseUrl = fc
     .tuple(
         fc.constantFrom('http', 'https'),
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')),
-            { minLength: 3, maxLength: 15 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')), minLength: 3, maxLength: 15 }
         ),
         fc.constantFrom('.com', '.io', '.dev', '.net', '.org'),
         fc.option(
@@ -39,9 +37,7 @@ const arbBaseUrl = fc
 const arbSpecServerUrl = fc
     .tuple(
         fc.constantFrom('http', 'https'),
-        fc.stringOf(
-            fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')),
-            { minLength: 3, maxLength: 15 }
+        fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789'.split('')), minLength: 3, maxLength: 15 }
         ),
         fc.constantFrom('.example.com', '.spec-server.io', '.original.dev')
     )
