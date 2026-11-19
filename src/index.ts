@@ -25,10 +25,14 @@ export type {
     Neo4jTransaction,
     Neo4jWriteResult,
     CypherParams,
-    MobilewrightScreen,
-    MobilewrightDevice,
     OtpClient,
     GraphQLClient,
+    AppiumDriver,
+    GadsHubClient,
+    GadsDeviceInfo,
+    GadsDeviceCriteria,
+    GadsGridStatus,
+    GadsSessionInfo,
     FixtureTypes,
     ConfigOptions,
 } from './fixtures/index.js';
@@ -42,14 +46,18 @@ export type {
     Neo4jFixtureConfig,
     KafkaFixtureConfig,
     RedisFixtureConfig,
-    MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
+    AppiumFixtureConfig,
+    GadsPresetConfig,
     SecretsConfig,
     EnvironmentsFile,
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
 export { EnvLoader } from './config/index.js';
+
+// Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
+export { startAppiumSession, createGadsHubClient, gadsSessionInfo } from './fixtures/appium.fixture.js';
 
 // Error types
 export {

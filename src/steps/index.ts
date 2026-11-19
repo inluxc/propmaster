@@ -19,5 +19,5 @@ export type { RedisClient } from './redis.steps.js';
 export { OtpSteps } from './otp.steps.js';
 export type { OtpClient } from './otp.steps.js';
 export { BrowserSteps } from './browser.steps.js';
-export { MobilewrightSteps } from './mobilewright.steps.js';
-export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.steps.js';
+export { AppiumSteps } from './appium.steps.js';
+export type { AppiumDriver } from './appium.steps.js';

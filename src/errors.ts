@@ -50,7 +50,7 @@ export class ConfigurationError extends FrameworkError {
  * - host, port: for connection failures (database, redis)
  * - specPath/specUrl: for OpenAPI spec load failures
  * - brokerAddress: for Kafka connection failures
- * - platform, deviceName, appPath: for Mobilewright boot/install failures
+ * - serverUrl, capabilities: for Appium session failures (credentials redacted)
  * - timeout: timeout value that was exceeded
  * - reason: human-readable failure reason
  */
@@ -78,7 +78,7 @@ export class FixtureInitError extends FrameworkError {
 export class FixtureOperationError extends FrameworkError {
     constructor(
         public readonly fixtureName: string,
-        public readonly operation: 'query' | 'produce' | 'consume' | 'find' | 'findOne' | 'insertOne' | 'insertMany' | 'updateOne' | 'updateMany' | 'deleteOne' | 'deleteMany' | 'aggregate' | 'run' | 'write' | 'transaction',
+        public readonly operation: 'query' | 'produce' | 'consume' | 'find' | 'findOne' | 'insertOne' | 'insertMany' | 'updateOne' | 'updateMany' | 'deleteOne' | 'deleteMany' | 'aggregate' | 'run' | 'write' | 'transaction' | 'command' | 'release',
         public readonly details: Record<string, unknown>,
         public readonly cause?: Error
     ) {
@@ -141,6 +141,8 @@ function formatConfigError(
         parts.push(`failed to parse "${filePath}": ${parseError}`);
     } else if (filePath) {
         parts.push(`file "${filePath}" could not be loaded`);
+    } else if (parseError) {
+        parts.push(parseError);
     }
 
     if (missingKeys.length > 0) {

@@ -508,7 +508,7 @@ export function runNextId(argv: string[]): number {
     const positional = withoutRoot(argv).filter((a) => !a.startsWith('--'));
     const category = (positional[0] ?? '').toUpperCase();
     if (!CATEGORY_RE.test(category)) {
-        console.error('Usage: stagehand next-id <CATEGORY> [count]   (e.g. API, DB, KFK, RDS, MDB, NEO, GQL, BRW, MOB, OTP)');
+        console.error('Usage: stagehand next-id <CATEGORY> [count]   (e.g. API, DB, KFK, RDS, MDB, NEO, GQL, BRW, APM, GDS, OTP)');
         return 2;
     }
     const count = Math.max(1, Math.floor(Number(positional[1])) || 1);

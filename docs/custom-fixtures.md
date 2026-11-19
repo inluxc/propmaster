@@ -62,7 +62,7 @@ import { openApiFixture } from './openapi.fixture';
 import { databaseFixture } from './database.fixture';
 import { kafkaFixture } from './kafka.fixture';
 import { redisFixture } from './redis.fixture';
-import { mobilewrightFixture } from './mobilewright.fixture';
+import { appiumFixture } from './appium.fixture';
 import { myCustomFixture } from './my-custom.fixture'; // Add your import
 
 export const test = base.extend({
@@ -70,7 +70,7 @@ export const test = base.extend({
   ...databaseFixture,
   ...kafkaFixture,
   ...redisFixture,
-  ...mobilewrightFixture,
+  ...appiumFixture,
   ...myCustomFixture, // Spread your fixture definitions
 });
 ```

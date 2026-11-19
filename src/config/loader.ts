@@ -315,21 +315,55 @@ export class ConfigLoader {
                 if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
                 cfg.neo4j.database = val;
             },
-            'PW_MOBILE_PLATFORM': (cfg, val) => {
-                if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
-                cfg.mobilewright.platform = val as 'ios' | 'android';
+            'PW_APPIUM_SERVER_URL': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.serverUrl = val;
             },
-            'PW_MOBILE_BUNDLE_ID': (cfg, val) => {
-                if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
-                cfg.mobilewright.bundleId = val;
+            'PW_APPIUM_PLATFORM': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.platform = val.toLowerCase() as 'ios' | 'android';
             },
-            'PW_MOBILE_DEVICE_NAME': (cfg, val) => {
-                if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
-                cfg.mobilewright.deviceName = val;
+            'PW_APPIUM_UDID': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.udid = val;
             },
-            'PW_MOBILE_APP_PATH': (cfg, val) => {
-                if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
-                cfg.mobilewright.appPath = val;
+            'PW_APPIUM_DEVICE_NAME': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.deviceName = val;
+            },
+            'PW_APPIUM_PLATFORM_VERSION': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.platformVersion = val;
+            },
+            'PW_APPIUM_AUTOMATION_NAME': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.automationName = val;
+            },
+            'PW_APPIUM_APP': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.app = val;
+            },
+            'PW_APPIUM_NEW_COMMAND_TIMEOUT': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.newCommandTimeout = parseInt(val, 10);
+            },
+            'PW_APPIUM_SESSION_TIMEOUT': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.sessionTimeout = parseInt(val, 10);
+            },
+            'PW_APPIUM_CAPABILITIES': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                cfg.appium.capabilities = { ...cfg.appium.capabilities, ...parseJsonObject('PW_APPIUM_CAPABILITIES', val) };
+            },
+            'PW_GADS_CLIENT_SECRET': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                if (!cfg.appium.gads) cfg.appium.gads = { clientSecret: '' };
+                cfg.appium.gads.clientSecret = val;
+            },
+            'PW_GADS_QUEUE_TIMEOUT': (cfg, val) => {
+                if (!cfg.appium) cfg.appium = { serverUrl: '' };
+                if (!cfg.appium.gads) cfg.appium.gads = { clientSecret: '' };
+                cfg.appium.gads.queueTimeout = parseInt(val, 10);
             },
             'PW_GRAPHQL_ENDPOINT': (cfg, val) => {
                 if (!cfg.graphql) cfg.graphql = { endpoint: '' };
@@ -352,4 +386,21 @@ export class ConfigLoader {
             }
         }
     }
+}
+
+/**
+ * Parses a JSON object from an environment variable, failing with a ConfigurationError
+ * that names the variable (never the value, which may hold credentials).
+ */
+function parseJsonObject(key: string, value: string): Record<string, unknown> {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(value);
+    } catch (err) {
+        throw new ConfigurationError([], undefined, `${key} is not valid JSON: ${(err as Error).message}`);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new ConfigurationError([], undefined, `${key} must be a JSON object`);
+    }
+    return parsed as Record<string, unknown>;
 }

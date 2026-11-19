@@ -4,7 +4,7 @@
  * For any fixture operation that fails, the thrown error message SHALL contain
  * all contextual fields specified for that error type (e.g., host and port for
  * connection errors, SQL statement for query errors, topic for produce errors,
- * file path for config errors, platform and deviceName for mobile errors).
+ * file path for config errors, server URL and capabilities for Appium errors).
  *
  * We generate arbitrary error details and verify the error message contains all
  * required contextual fields.
@@ -41,7 +41,7 @@ const arbPort = fc.integer({ min: 1, max: 65535 });
 /**
  * Generates valid fixture names.
  */
-const arbFixtureName = fc.constantFrom('redis', 'kafka', 'database', 'openApiClient', 'mobilewright');
+const arbFixtureName = fc.constantFrom('redis', 'kafka', 'database', 'openApiClient', 'appium');
 
 test.describe('Property 9: Error descriptiveness', () => {
     test('FixtureInitError for connection failures includes host, port, and reason', () => {
@@ -91,27 +91,24 @@ test.describe('Property 9: Error descriptiveness', () => {
         );
     });
 
-    test('FixtureInitError for Mobilewright failures includes platform, deviceName, appPath, and reason', () => {
+    test('FixtureInitError for Appium session failures includes serverUrl, capabilities, and reason', () => {
         fc.assert(
             fc.property(
-                fc.constantFrom('ios', 'android') as fc.Arbitrary<string>,
+                fc.constantFrom('iOS', 'Android') as fc.Arbitrary<string>,
                 arbFieldValue,
                 arbFieldValue,
-                arbFieldValue,
-                (platform, deviceName, appPath, reason) => {
-                    const error = new FixtureInitError('mobilewright', 'boot', {
-                        platform,
-                        deviceName,
-                        appPath,
+                (platformName, serverUrl, reason) => {
+                    const error = new FixtureInitError('appium', 'connect', {
+                        serverUrl,
+                        capabilities: { platformName },
                         reason,
                     });
 
-                    expect(error.message).toContain('mobilewright');
-                    expect(error.message).toContain('boot');
-                    expect(error.message).toContain(platform);
-                    expect(error.message).toContain(deviceName);
-                    expect(error.message).toContain(appPath);
-                    expect(error.message).toContain(reason);
+                    expect(error.message).toContain('appium');
+                    expect(error.message).toContain('connect');
+                    expect(error.message).toContain(JSON.stringify(serverUrl));
+                    expect(error.message).toContain(platformName);
+                    expect(error.message).toContain(JSON.stringify(reason));
                 }
             ),
             { numRuns: 100 }

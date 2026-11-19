@@ -106,19 +106,48 @@ export interface Neo4jFixtureConfig {
 }
 
 /**
- * Configuration for the Mobilewright mobile testing fixture.
+ * GADS preset for the Appium fixture (https://github.com/shamanec/GADS).
+ * When present, `serverUrl` is the GADS hub and sessions go through its `/grid` endpoint.
  */
-export interface MobilewrightFixtureConfig {
-    /** Target mobile platform. */
-    platform: 'ios' | 'android';
-    /** Application bundle identifier. */
-    bundleId: string;
-    /** Target device or simulator name. */
-    deviceName: string;
-    /** Path to the application binary. */
-    appPath: string;
-    /** Initialization timeout in ms (default: 60000). */
-    timeout?: number;
+export interface GadsPresetConfig {
+    /** Client secret from GADS Admin → Client credentials (sent as `gads:clientSecret`). */
+    clientSecret: string;
+    /** Seconds the hub waits for a free device before failing (`gads:queueTimeout`; hub default 10, max 300). */
+    queueTimeout?: number;
+}
+
+/**
+ * Configuration for the Appium fixture. Works with any Appium-compatible server:
+ * a local `appium` server, Selenium Grid, a cloud farm, or a GADS hub (set `gads`).
+ */
+export interface AppiumFixtureConfig {
+    /** Appium server URL, e.g. `http://127.0.0.1:4723` (GADS: the hub URL, e.g. `http://gads-hub:10000`). */
+    serverUrl: string;
+    /** Target platform; sets `platformName` and the default automation engine. */
+    platform?: 'ios' | 'android';
+    /** Pin one device by UDID (`appium:udid`). */
+    udid?: string;
+    /**
+     * Device name. Plain Appium: sent as `appium:deviceName`.
+     * GADS: a case-insensitive regular expression resolved to a UDID from the hub's device list.
+     */
+    deviceName?: string;
+    /** OS version (`appium:platformVersion`). GADS accepts exact (`17.5.1`) or major (`17`). */
+    platformVersion?: string;
+    /** Appium automation engine (default: XCUITest for iOS, UiAutomator2 for Android). */
+    automationName?: string;
+    /** App to install: local path, URL, or a cloud/farm app reference (`appium:app`). */
+    app?: string;
+    /** Seconds of inactivity before the server ends the session (`appium:newCommandTimeout`). */
+    newCommandTimeout?: number;
+    /** Extra W3C capabilities, e.g. `{ 'appium:bundleId': 'com.example.app' }`. */
+    capabilities?: Record<string, unknown>;
+    /** Session creation timeout in ms, including device queueing and app install (default: 240000). */
+    sessionTimeout?: number;
+    /** WebdriverIO log level (default: 'warn' so capabilities and secrets stay out of logs). */
+    logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
+    /** Route sessions through a GADS hub. */
+    gads?: GadsPresetConfig;
 }
 
 /**
@@ -209,8 +238,8 @@ export interface FrameworkConfig {
     mongodb?: MongoDbFixtureConfig;
     /** Neo4j fixture configuration. */
     neo4j?: Neo4jFixtureConfig;
-    /** Mobilewright fixture configuration. */
-    mobilewright?: MobilewrightFixtureConfig;
+    /** Appium fixture configuration (local Appium, grids, cloud farms, GADS). */
+    appium?: AppiumFixtureConfig;
     /** OTP fixture configuration. */
     otp?: OtpFixtureConfig;
     /** GraphQL client fixture configuration. */

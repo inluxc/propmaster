@@ -37,7 +37,8 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `NEO` | Neo4j tests |
 | `GQL` | GraphQL tests |
 | `BRW` | Browser tests |
-| `MOB` | Mobile (Mobilewright) tests |
+| `APM` | Appium mobile tests |
+| `GDS` | GADS device farm tests |
 | `OTP` | OTP/2FA tests |
 | `INT` | Integration (multi-fixture) tests |
 | `PROP` | Property-based tests |
@@ -885,11 +886,11 @@ test.describe('Redis — [Feature Name]', () => {
 
 ---
 
-## Skill 5: Create a Mobile Test (Mobilewright)
+## Skill 5: Create a Mobile Test (Appium)
 
-**When to use:** Testing native mobile app interactions on iOS or Android.
+**When to use:** Testing native iOS or Android apps through an Appium server: local Appium with an emulator, simulator or device, Selenium Grid, or a cloud farm. For a GADS device farm, see Skill 17. The test code is the same, and only the config changes.
 
-Replace every `TC-MOB-NNN` with IDs from `npm run next-id -- MOB <count>`.
+Replace every `TC-APM-NNN` with IDs from `npm run next-id -- APM <count>`. `MOB` is retired, so don't use it.
 
 **Template:**
 
@@ -897,51 +898,54 @@ Replace every `TC-MOB-NNN` with IDs from `npm run next-id -- MOB <count>`.
 import { test, expect } from '../../src';
 
 test.describe('Mobile — [Screen/Flow Name]', () => {
-    test('[TC-MOB-NNN] navigate and interact with elements', { tag: ['@TC-MOB-NNN'] }, async ({ mobilewrightDevice, mobilewrightScreen }) => {
-        await test.step('Step 1: Open the home screen via deep link', async () => {
-            await mobilewrightDevice.openUrl('myapp://home');
+    test('[TC-APM-NNN] log in and see the welcome screen', { tag: ['@TC-APM-NNN'] }, async ({ appiumDriver }) => {
+        await test.step('Step 1: Open the login screen via deep link', async () => {
+            await appiumDriver.url('myapp://login');
         });
 
-        await test.step('Step 2: Fill in the email and submit', async () => {
-            // Locator strategies: getByText, getByLabel, getByTestId, getByRole, getByType
-            const emailInput = mobilewrightScreen.getByLabel('Email Address');
-            const submitBtn = mobilewrightScreen.getByTestId('submit-button');
-            await mobilewrightScreen.fill(emailInput, 'user@example.com');
-            await mobilewrightScreen.tap(submitBtn);
+        await test.step('Step 2: Fill in the credentials and submit', async () => {
+            // '~id' = accessibility id. Also: 'id=...', '//xpath',
+            // 'android=new UiSelector()...', '-ios predicate string:...', '-ios class chain:...'
+            await appiumDriver.$('~email').setValue('user@example.com');
+            await appiumDriver.$('~password').setValue('secret');
+            await appiumDriver.$('~login').click();
         });
 
-        await test.step('Step 3: Verify the welcome title is present', async () => {
-            expect(mobilewrightScreen.getByText('Welcome')).toBeDefined();
+        await test.step('Step 3: Verify the welcome title is displayed', async () => {
+            const title = appiumDriver.$('~welcome-title');
+            await title.waitForDisplayed({ timeout: 15_000 });
+            expect(await title.getText()).toContain('Welcome');
         });
     });
 
-    test('[TC-MOB-NNN] gesture interactions', { tag: ['@TC-MOB-NNN'] }, async ({ mobilewrightScreen }) => {
-        await test.step('Step 1: Pull to refresh', async () => {
-            // Swipe directions: 'up', 'down', 'left', 'right'
-            await mobilewrightScreen.swipe('down');
+    test('[TC-APM-NNN] gestures and app control', { tag: ['@TC-APM-NNN'] }, async ({ appiumDriver }) => {
+        const appId = 'com.example.app';
+
+        await test.step('Step 1: Bring the app to the foreground', async () => {
+            await appiumDriver.execute('mobile: activateApp', { bundleId: appId, appId });
         });
 
-        await test.step('Step 2: Long-press a document to open its context menu', async () => {
-            await mobilewrightScreen.longPress(mobilewrightScreen.getByText('Document.pdf'));
+        await test.step('Step 2: Swipe up on the screen', async () => {
+            await appiumDriver.execute('mobile: swipe', { direction: 'up' });
         });
 
-        await test.step('Step 3: Double-tap a photo', async () => {
-            await mobilewrightScreen.doubleTap(mobilewrightScreen.getByTestId('photo'));
-        });
-
-        await test.step('Step 4: Press the hardware back button', async () => {
-            // Hardware buttons: 'home', 'back', 'volumeUp', 'volumeDown'
-            await mobilewrightScreen.pressButton('back');
+        await test.step('Step 3: Press the platform back action', async () => {
+            if (appiumDriver.isAndroid) {
+                await appiumDriver.execute('mobile: pressKey', { keycode: 4 }); // KEYCODE_BACK
+            } else {
+                await appiumDriver.$('~Back').click();
+            }
         });
     });
 });
 ```
 
 **Key points:**
-- `mobilewrightDevice` — device-level control (deep links, device state)
-- `mobilewrightScreen` — UI interactions (tap, fill, swipe, locators)
-- Locator methods: `getByText`, `getByLabel`, `getByTestId`, `getByRole`, `getByType`
-- Session lifecycle (boot, install, teardown) is automatic
+- `appiumDriver` is a WebdriverIO `Browser`, so the full [WebdriverIO API](https://webdriver.io/docs/api) is available. Assert with Playwright's `expect`.
+- Configure with `appium` in `environments.json` or `PW_APPIUM_*`: `serverUrl`, `platform`, plus optional `udid`, `deviceName`, `app` and `capabilities`. See [docs/appium-fixture.md](docs/appium-fixture.md).
+- The session is deleted on teardown, which frees the device.
+- `AppiumSteps` (`src/steps`) wraps tap, fill, expectText and attachScreenshot in `test.step()`.
+- Give mobile projects a long `timeout` (e.g. `300_000`), because creating a session can include installing the app.
 
 ---
 
@@ -2342,6 +2346,65 @@ use: {
 
 ---
 
+## Skill 17: Create a GADS Device Farm Test
+
+**When to use:** Running Appium tests on real iOS/Android devices hosted in a [GADS](https://github.com/shamanec/GADS) device farm. This is the Appium fixture (Skill 5) with the GADS preset turned on.
+
+**Steps:**
+
+1. Point `appium.serverUrl` at the hub (`PW_APPIUM_SERVER_URL=http://gads-hub:10000`) and set `appium.gads.clientSecret` (`PW_GADS_CLIENT_SECRET`). Keep the secret in env vars or a secrets provider. See [docs/appium-fixture.md#gads-preset](docs/appium-fixture.md#gads-preset).
+2. Choose the device with `platform` (any free device), `udid` (one device) or `deviceName` (regex, free devices first).
+3. Request `appiumDriver` for a session on an allocated device, or only `gadsHub` to inspect devices without reserving one.
+4. Give the Playwright project a long `timeout` (e.g. `300_000`), and set `gads.queueTimeout`, because the hub may queue for a free device.
+5. Replace every `TC-GDS-NNN` with IDs from `npm run next-id -- GDS <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect, gadsSessionInfo } from '../../src';
+import { AppiumSteps } from '../../src/steps';
+
+test.describe('GADS — [App/Flow Name]', () => {
+    test.skip(!process.env.PW_GADS_CLIENT_SECRET, 'Skipped: no GADS hub configured');
+
+    test('[TC-GDS-NNN] farm has a free device for this platform', { tag: ['@TC-GDS-NNN'] }, async ({ gadsHub }) => {
+        await test.step('Step 1: List free Android devices', async () => {
+            const free = (await gadsHub.listDevices({ platform: 'android' })).filter((d) => d.available);
+            expect(free.length).toBeGreaterThan(0);
+        });
+    });
+
+    test('[TC-GDS-NNN] log in on a farm device', { tag: ['@TC-GDS-NNN'] }, async ({ appiumDriver }) => {
+        const steps = new AppiumSteps(appiumDriver);
+
+        await test.step('Step 1: Record which device the hub allocated', async () => {
+            const { udid, name, controlUrl } = gadsSessionInfo(appiumDriver);
+            expect(udid).toBeTruthy();
+            test.info().annotations.push({ type: 'device', description: `${name} (${udid}) ${controlUrl ?? ''}` });
+        });
+
+        await test.step('Step 2: Launch the app and log in', async () => {
+            await steps.launchApp('Launch the app', 'com.example.app');
+            await steps.fill('Enter the email', '~email', 'user@example.com');
+            await steps.tap('Submit the form', '~login');
+        });
+
+        await test.step('Step 3: Verify the result and attach a screenshot', async () => {
+            await steps.expectText('Verify the greeting', '~welcome-title', /Welcome/);
+            await steps.attachScreenshot('Attach the final screen');
+        });
+    });
+});
+```
+
+**Key points:**
+- Same `appiumDriver` and WebdriverIO API as Skill 5, so specs can move between local Appium and GADS with only a config change.
+- The hub allocates the device through `<hub>/grid`, and teardown deletes the session so the device is freed even when the test fails.
+- Keep `workers` at or below the number of devices, or raise `gads.queueTimeout`.
+- Allocation failures raise `FixtureInitError('gads', ...)` with the client secret redacted. Command failures are WebdriverIO errors.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2351,7 +2414,7 @@ use: {
 | Query or modify database records | Skill 2 (Database) |
 | Test event publishing/consuming | Skill 3 (Kafka) |
 | Test caching or pub/sub | Skill 4 (Redis) |
-| Test a native mobile app | Skill 5 (Mobilewright) |
+| Test a native mobile app (Appium) | Skill 5 (Appium) |
 | Test document storage or aggregations | Skill 6 (MongoDB) |
 | Test a GraphQL API | Skill 7 (GraphQL) |
 | Test a web page in a browser | Skill 8 (Browser) |
@@ -2363,6 +2426,7 @@ use: {
 | Organize tests by category | Skill 14 (Tags) |
 | Test across multiple systems | Skill 15 (Multi-Fixture) |
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
+| Test a mobile app on a GADS device farm | Skill 17 (GADS) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 
 **Before finishing any task:** run `npm run verify` (typecheck + `lint:tests` + unit + property tests).

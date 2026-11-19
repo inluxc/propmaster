@@ -87,27 +87,19 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
-            name: 'mobile-ios',
+            name: 'mobile-android',
             testMatch: '**/specs/**/*.mobile.ts',
+            timeout: 300_000,
             use: {
-                mobilewright: config.mobilewright ?? {
-                    platform: 'ios',
-                    bundleId: '',
-                    deviceName: 'iPhone 15',
-                    appPath: '',
-                },
+                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, platform: 'android' },
             },
         },
         {
-            name: 'mobile-android',
+            name: 'mobile-ios',
             testMatch: '**/specs/**/*.mobile.ts',
+            timeout: 300_000,
             use: {
-                mobilewright: {
-                    platform: 'android',
-                    bundleId: config.mobilewright?.bundleId ?? '',
-                    deviceName: 'Pixel 8',
-                    appPath: config.mobilewright?.appPath ?? '',
-                },
+                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, platform: 'ios' },
             },
         },
     ],
@@ -172,7 +164,7 @@ export default defineConfig<ConfigOptions>({
         "test": "npx playwright test",
         "test:specs": "npx playwright test --project=specs",
         "test:browser": "npx playwright test --project=browser-chromium",
-        "test:mobile": "npx playwright test --project=mobile-ios",
+        "test:mobile": "npx playwright test --project=mobile-android",
         "test:tag": "npx playwright test --grep",
         "typecheck": "tsc --noEmit",
         "lint:tests": "stagehand check",
@@ -305,7 +297,7 @@ test.describe('API — Users', () => {
 ## Test Case ID Convention
 
 - **Pattern:** \`TC-XXX-NNN\` — \`XXX\` is a category code, \`NNN\` a zero-padded sequential number.
-- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
+- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
 - **Title:** starts with \`[TC-XXX-NNN]\`.
 - **Tag:** \`{ tag: ['@TC-XXX-NNN'] }\` as the second argument to \`test()\`, with the same ID.
 - **Unique:** no two tests share an ID. Always take IDs from \`npm run next-id -- <CATEGORY>\`; never guess.
@@ -389,7 +381,7 @@ Rules: IDs are unique across the project, never reused after a test is deleted, 
 
 ## Skill 1: Create a Spec Test
 
-Create files in \`tests/specs/\` with a \`.spec.ts\` extension (\`.browser.ts\` for browser tests, \`.mobile.ts\` for mobile tests).
+Create files in \`tests/specs/\` with a \`.spec.ts\` extension (\`.browser.ts\` for browser tests, \`.mobile.ts\` for Appium mobile tests — \`appiumDriver\` is a WebdriverIO \`Browser\`; set \`appium.gads\` to run on a GADS device farm).
 
 \`\`\`typescript
 import { test, expect } from '@inluxc/stagehand';
@@ -414,7 +406,7 @@ test.describe('Feature Name', () => {
 \`\`\`
 
 Steps:
-1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom one)
+1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom one)
 2. Run \`npm run next-id -- <CATEGORY> <count>\` and replace every placeholder ID
 3. Run \`npm run lint:tests\`
 
