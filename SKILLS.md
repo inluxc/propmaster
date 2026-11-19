@@ -24,7 +24,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
    ```bash
    npm run lint:tests            # IDs, tags, uniqueness, steps, imports
    npm run lint:tests -- --json  # same, machine-readable
-   npm run verify                # typecheck + lint:tests + property tests
+   npm run verify                # typecheck + lint:tests + unit + property tests
    ```
 
 | Category Code | Domain |
@@ -2365,4 +2365,4 @@ use: {
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 
-**Before finishing any task:** run `npm run verify` (typecheck + `lint:tests` + property tests).
+**Before finishing any task:** run `npm run verify` (typecheck + `lint:tests` + unit + property tests).

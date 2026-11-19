@@ -2,6 +2,10 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { runCheck, runNextId } from './check-tests.js';
+
+export * from './check-tests.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Directory structure to scaffold
@@ -35,8 +39,7 @@ blob-report/
 `,
 
     'playwright.config.ts': `import { defineConfig, devices } from '@playwright/test';
-import { ConfigLoader } from './src/config/loader';
-import type { ConfigOptions } from './src/fixtures';
+import { ConfigLoader, type ConfigOptions } from '@inluxc/stagehand';
 
 const config = new ConfigLoader().load();
 
@@ -163,13 +166,24 @@ export default defineConfig<ConfigOptions>({
     "name": "my-stagehand-project",
     "version": "1.0.0",
     "description": "Playwright test project powered by @inluxc/stagehand",
+    "private": true,
+    "type": "module",
     "scripts": {
         "test": "npx playwright test",
         "test:specs": "npx playwright test --project=specs",
         "test:browser": "npx playwright test --project=browser-chromium",
         "test:mobile": "npx playwright test --project=mobile-ios",
         "test:tag": "npx playwright test --grep",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "lint:tests": "stagehand check",
+        "next-id": "stagehand next-id",
+        "verify": "npm run typecheck && npm run lint:tests"
+    },
+    "stagehand": {
+        "testDirs": ["tests/specs"],
+        "testFileSuffixes": [".spec.ts", ".browser.ts", ".mobile.ts"],
+        "exemptDirs": [],
+        "docFiles": ["AGENTS.md", "SKILLS.md"]
     },
     "dependencies": {
         "@inluxc/stagehand": "^1.0.0",
@@ -199,6 +213,7 @@ export default defineConfig<ConfigOptions>({
         "sourceMap": true,
         "outDir": "./dist",
         "rootDir": ".",
+        "types": ["node"],
         "paths": {
             "@pages/*": ["./tests/pages/*"],
             "@utils/*": ["./tests/utils/*"],
@@ -220,64 +235,210 @@ export default defineConfig<ConfigOptions>({
 
     'AGENTS.md': `# AI Agent Instructions
 
-## Project Overview
+Playwright test project using the [@inluxc/stagehand](https://github.com/Inluxc/stagehand) fixture framework. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
 
-Playwright test project using @inluxc/stagehand fixture framework.
+## Agent Workflow — Required Checks
+
+These commands give you fast, machine-checkable feedback. Use them instead of checking conventions by hand:
+
+\`\`\`bash
+npm run next-id -- API          # next free TestCaseID in a category, e.g. TC-API-001
+npm run next-id -- API 3        # three sequential IDs
+npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (specs + AGENTS.md/SKILLS.md samples)
+npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
+npm run lint:tests -- --list-ids  # every TestCaseID in use, with file:line
+npm run verify                  # typecheck + lint:tests — run before finishing any task
+\`\`\`
+
+\`lint:tests\` (\`stagehand check\`) exits non-zero on any violation. Each violation names the rule (\`tc-id\`, \`tc-tag\`, \`tc-unique\`, \`test-step\`, \`import\`) and the fix.
 
 ## Structure
 
 \`\`\`
 tests/
 ├── specs/       # Test spec files (*.spec.ts, *.browser.ts, *.mobile.ts)
-├── pages/       # Page Object Model classes
+├── pages/       # Page Object Model classes (*.page.ts)
 ├── utils/       # Test utilities and helpers
-├── fixtures/    # Custom test fixtures
+├── fixtures/    # Custom test fixtures (*.fixture.ts)
 ├── data/        # Fixed test data (JSON/YAML)
 ├── models/      # Database models and schemas
 └── config/      # Test configuration files
 \`\`\`
 
+## Writing Tests
+
+### Imports
+
+Import \`test\` and \`expect\` from \`@inluxc/stagehand\` — its \`test\` object has every fixture registered:
+
+\`\`\`typescript
+import { test, expect } from '@inluxc/stagehand';
+\`\`\`
+
+**Never** value-import \`test\`/\`expect\` from \`@playwright/test\` in a test file. Type-only imports (\`import type { Page } from '@playwright/test'\`) are fine.
+
+### Test Structure
+
+Every test has a unique TestCaseID in its title **and** as a tag, and its body is broken into \`test.step()\` blocks:
+
+\`\`\`typescript
+import { test, expect } from '@inluxc/stagehand';
+
+test.describe('API — Users', () => {
+    test('[TC-API-NNN] GET /users returns 200', { tag: ['@TC-API-NNN'] }, async ({ openApiClient }) => {
+        let response: any;
+
+        await test.step('Step 1: Send GET request to /users', async () => {
+            response = await (openApiClient.client as any).listUsers();
+        });
+
+        await test.step('Step 2: Verify the response', async () => {
+            expect(response.status).toBe(200);
+            expect(Array.isArray(response.data)).toBe(true);
+        });
+    });
+});
+\`\`\`
+
+\`TC-API-NNN\` above is a placeholder. Replace it with a real ID from \`npm run next-id -- API\`; \`npm run lint:tests\` fails while a placeholder is left in a spec file.
+
+## Test Case ID Convention
+
+- **Pattern:** \`TC-XXX-NNN\` — \`XXX\` is a category code, \`NNN\` a zero-padded sequential number.
+- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
+- **Title:** starts with \`[TC-XXX-NNN]\`.
+- **Tag:** \`{ tag: ['@TC-XXX-NNN'] }\` as the second argument to \`test()\`, with the same ID.
+- **Unique:** no two tests share an ID. Always take IDs from \`npm run next-id -- <CATEGORY>\`; never guess.
+- **Never reuse:** a deleted test's ID is retired. \`next-id\` only sees IDs still in the code, so never renumber.
+- **Steps are mandatory:** every test body uses \`await test.step('Step N: <verb phrase>', async () => { ... })\`.
+
+Parameterized tests (generated in a loop) put an ID in each data row and build the title and tag from it:
+
+\`\`\`typescript
+import { test, expect } from '@inluxc/stagehand';
+
+const cases = [
+    { id: 'TC-BRW-NNN', width: 375 },
+    { id: 'TC-BRW-NNN', width: 1280 },
+];
+
+for (const c of cases) {
+    test(\`[\${c.id}] home page renders at \${c.width}px\`, { tag: [\`@\${c.id}\`] }, async ({ page }) => {
+        await test.step('Step 1: Open the home page', async () => {
+            await page.setViewportSize({ width: c.width, height: 800 });
+            await page.goto('/');
+        });
+
+        await test.step('Step 2: Verify the heading is visible', async () => {
+            await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        });
+    });
+}
+\`\`\`
+
+## Checker Configuration
+
+\`stagehand check\` reads the \`stagehand\` key in \`package.json\`:
+
+\`\`\`json
+"stagehand": {
+    "testDirs": ["tests/specs"],
+    "testFileSuffixes": [".spec.ts", ".browser.ts", ".mobile.ts"],
+    "exemptDirs": [],
+    "docFiles": ["AGENTS.md", "SKILLS.md"]
+}
+\`\`\`
+
+Files under \`exemptDirs\` are skipped (their IDs are still reserved for \`next-id\`). Code samples in \`docFiles\` are checked too, with placeholder IDs like \`TC-API-NNN\` allowed.
+
 ## Conventions
 
-- Import \`test\` and \`expect\` from \`@inluxc/stagehand\`
-- Page objects go in \`tests/pages/\` with \`.page.ts\` suffix
+- Page objects go in \`tests/pages/\` with a \`.page.ts\` suffix
 - Test data goes in \`tests/data/\` as JSON or YAML files
-- Custom fixtures extend the base in \`tests/fixtures/\`
-- Use parameterized queries for all database operations
-- Follow AAA pattern: Arrange, Act, Assert
+- Custom fixtures extend the base \`test\` in \`tests/fixtures/\`
+- Use parameterized queries for all database operations — never string interpolation
+- Use \`test.describe()\` to group related tests; keep each file focused on one feature
+- **Every test has a unique TestCaseID in its title and tag**
+- **Every test body uses \`test.step()\`**
+- **Run \`npm run verify\` before finishing**
 `,
 
     'SKILLS.md': `# AI Skills
 
+**Every template below follows the conventions in Skill 0.** Templates use placeholder IDs such as \`TC-API-NNN\`. Replace each one with a real ID from \`npm run next-id\`; \`npm run lint:tests\` fails while any placeholder is left in a spec file.
+
+## Skill 0: Test Conventions (applies to every test)
+
+1. Get IDs before writing tests — one per test:
+   \`\`\`bash
+   npm run next-id -- API        # prints e.g. TC-API-001
+   npm run next-id -- API 3      # prints TC-API-001, TC-API-002, TC-API-003
+   \`\`\`
+2. Put the ID at the start of the title **and** in the tag:
+   \`test('[TC-API-001] does something', { tag: ['@TC-API-001'] }, async ({ ... }) => { ... })\`
+3. Break every test body into \`await test.step('Step N: <verb phrase>', async () => { ... })\` blocks.
+4. Import \`test\` and \`expect\` from \`@inluxc/stagehand\`, never from \`@playwright/test\` (type-only imports are fine).
+5. Check your work:
+   \`\`\`bash
+   npm run lint:tests            # IDs, tags, uniqueness, steps, imports
+   npm run lint:tests -- --json  # same, machine-readable
+   npm run verify                # typecheck + lint:tests
+   \`\`\`
+
+Rules: IDs are unique across the project, never reused after a test is deleted, and always taken from \`npm run next-id\` — don't guess.
+
 ## Skill 1: Create a Spec Test
 
-Create files in \`tests/specs/\` with \`.spec.ts\` extension.
+Create files in \`tests/specs/\` with a \`.spec.ts\` extension (\`.browser.ts\` for browser tests, \`.mobile.ts\` for mobile tests).
 
 \`\`\`typescript
 import { test, expect } from '@inluxc/stagehand';
 
 test.describe('Feature Name', () => {
-    test('should do something', async ({ openApiClient }) => {
-        // Arrange
-        // Act
-        // Assert
+    test('[TC-API-NNN] should do something', { tag: ['@TC-API-NNN'] }, async ({ openApiClient }) => {
+        let response: any;
+
+        await test.step('Step 1: Prepare test data', async () => {
+            // Arrange
+        });
+
+        await test.step('Step 2: Call the API', async () => {
+            response = await (openApiClient.client as any).someOperation();
+        });
+
+        await test.step('Step 3: Verify the response', async () => {
+            expect(response.status).toBe(200);
+        });
     });
 });
 \`\`\`
 
-## Skill 2: Create a Page Object
+Steps:
+1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom one)
+2. Run \`npm run next-id -- <CATEGORY> <count>\` and replace every placeholder ID
+3. Run \`npm run lint:tests\`
 
-Create files in \`tests/pages/\` with \`.page.ts\` extension.
+## Skill 2: Create a Browser Test with a Page Object
+
+Create page objects in \`tests/pages/\` with a \`.page.ts\` extension, and browser specs in \`tests/specs/\` with a \`.browser.ts\` extension.
 
 \`\`\`typescript
-import { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 export class LoginPage {
-    constructor(private page: Page) {}
+    readonly emailInput: Locator;
+    readonly passwordInput: Locator;
+    readonly submitButton: Locator;
 
-    readonly emailInput = this.page.getByLabel('Email');
-    readonly passwordInput = this.page.getByLabel('Password');
-    readonly submitButton = this.page.getByRole('button', { name: 'Sign In' });
+    constructor(private readonly page: Page) {
+        this.emailInput = page.getByLabel('Email');
+        this.passwordInput = page.getByLabel('Password');
+        this.submitButton = page.getByRole('button', { name: 'Sign In' });
+    }
+
+    async goto() {
+        await this.page.goto('/login');
+    }
 
     async login(email: string, password: string) {
         await this.emailInput.fill(email);
@@ -287,9 +448,64 @@ export class LoginPage {
 }
 \`\`\`
 
-## Skill 3: Create a Custom Fixture
+\`\`\`typescript
+import { test, expect } from '@inluxc/stagehand';
+import { LoginPage } from '../pages/login.page';
 
-Create files in \`tests/fixtures/\` with \`.fixture.ts\` extension.
+test.describe('Browser — Login', () => {
+    test('[TC-BRW-NNN] valid credentials reach the dashboard', { tag: ['@TC-BRW-NNN'] }, async ({ page }) => {
+        const login = new LoginPage(page);
+
+        await test.step('Step 1: Navigate to the login page', async () => {
+            await login.goto();
+        });
+
+        await test.step('Step 2: Submit valid credentials', async () => {
+            await login.login('user@example.com', 'secret123');
+        });
+
+        await test.step('Step 3: Verify redirect to the dashboard', async () => {
+            await expect(page).toHaveURL(/dashboard/);
+        });
+    });
+});
+\`\`\`
+
+## Skill 3: Create a Database Test
+
+\`\`\`typescript
+import { test, expect } from '@inluxc/stagehand';
+
+test.describe('Database — Users', () => {
+    test('[TC-DB-NNN] inserted user can be read back', { tag: ['@TC-DB-NNN'] }, async ({ databaseClient }) => {
+        const email = \`user-\${Date.now()}@example.com\`;
+
+        await test.step('Step 1: Insert a user', async () => {
+            const result = await databaseClient.execute(
+                'INSERT INTO users (name, email) VALUES ($1, $2)', ['Alice', email]
+            );
+            expect(result.affectedRows).toBe(1);
+        });
+
+        await test.step('Step 2: Verify the user is stored', async () => {
+            const rows = await databaseClient.query<{ name: string }>(
+                'SELECT name FROM users WHERE email = $1', [email]
+            );
+            expect(rows[0]?.name).toBe('Alice');
+        });
+
+        await test.step('Step 3: Clean up the user', async () => {
+            await databaseClient.execute('DELETE FROM users WHERE email = $1', [email]);
+        });
+    });
+});
+\`\`\`
+
+Always use parameterized queries (\`$1\`, \`?\`) — never string interpolation.
+
+## Skill 4: Create a Custom Fixture
+
+Create files in \`tests/fixtures/\` with a \`.fixture.ts\` extension.
 
 \`\`\`typescript
 import { test as base } from '@inluxc/stagehand';
@@ -301,25 +517,32 @@ export const test = base.extend<{ myFixture: MyType }>({
         await teardown(instance);
     },
 });
+
+export { expect } from '@inluxc/stagehand';
 \`\`\`
+
+Specs that need the custom fixture import \`test\`/\`expect\` from this file instead of \`@inluxc/stagehand\`; every other convention still applies.
 `,
 
     // ─── Directory starter files ─────────────────────────────────────────────
 
     'tests/specs/.gitkeep': '',
 
-    'tests/pages/example.page.ts': `import type { Page } from '@playwright/test';
+    'tests/pages/example.page.ts': `import type { Locator, Page } from '@playwright/test';
 
 /**
  * Example Page Object Model.
  * Create one class per page/component for reusable interactions.
  */
 export class ExamplePage {
-    constructor(private page: Page) {}
-
     // Locators
-    readonly heading = this.page.getByRole('heading', { level: 1 });
-    readonly navLinks = this.page.getByRole('navigation').getByRole('link');
+    readonly heading: Locator;
+    readonly navLinks: Locator;
+
+    constructor(private readonly page: Page) {
+        this.heading = page.getByRole('heading', { level: 1 });
+        this.navLinks = page.getByRole('navigation').getByRole('link');
+    }
 
     // Actions
     async navigate() {
@@ -435,24 +658,45 @@ export const testConfig = {
 // CLI Logic
 // ─────────────────────────────────────────────────────────────────────────────
 
-function main() {
-    const args = process.argv.slice(2);
-    const command = args[0];
-
-    if (command !== 'init') {
-        console.log(`
+const HELP = `
   @inluxc/stagehand CLI
 
   Usage:
     npx stagehand init [directory]
+    npx stagehand check [--json] [--list-ids] [--root <dir>]
+    npx stagehand next-id <CATEGORY> [count] [--root <dir>]
 
   Commands:
-    init    Scaffold a new Stagehand project structure
+    init      Scaffold a new Stagehand project structure
+    check     Check test conventions: [TC-XXX-NNN] title prefix, matching
+              { tag: ['@TC-XXX-NNN'] }, unique IDs, test.step() bodies, and
+              no value imports of @playwright/test in test files.
+              Exits 1 on violations. --json for machine-readable output,
+              --list-ids to print every TestCaseID in use.
+    next-id   Print the next free TestCaseID(s) for a category, e.g.
+              \`stagehand next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
+
+  Configuration (optional, "stagehand" key in package.json):
+    "stagehand": {
+      "testDirs": ["tests"],
+      "testFileSuffixes": [".spec.ts", ".prop.ts"],
+      "exemptDirs": ["tests/unit/", "tests/properties/"],
+      "docFiles": ["AGENTS.md", "SKILLS.md"]
+    }
 
   Options:
     --help  Show this help message
-`);
-        process.exit(0);
+`;
+
+function main(): number {
+    const args = process.argv.slice(2);
+    const command = args[0];
+
+    if (command === 'check') return runCheck(args.slice(1));
+    if (command === 'next-id') return runNextId(args.slice(1));
+    if (command !== 'init') {
+        console.log(HELP);
+        return command === undefined || command === '--help' || command === 'help' ? 0 : 2;
     }
 
     const targetDir = path.resolve(args[1] || '.');
@@ -505,8 +749,22 @@ function main() {
     console.log('    1. npm install');
     console.log('    2. npx playwright install');
     console.log('    3. Update environments.json with your service URLs');
-    console.log('    4. Create your first spec: tests/specs/my-feature.spec.ts');
+    console.log('    4. Get a TestCaseID: npm run next-id -- API');
+    console.log('    5. Create your first spec: tests/specs/my-feature.spec.ts');
+    console.log('    6. Check conventions: npm run lint:tests');
     console.log('');
+    return 0;
 }
 
-main();
+// Run only when executed as the `stagehand` bin (or via tsx), not when the
+// `@inluxc/stagehand/cli` export is imported for its checker API.
+function isEntryPoint(): boolean {
+    if (!process.argv[1]) return false;
+    try {
+        return import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href;
+    } catch {
+        return false;
+    }
+}
+
+if (isEntryPoint()) process.exitCode = main();

@@ -11,7 +11,7 @@ npm run next-id -- API          # next free TestCaseID in a category, e.g. TC-AP
 npm run next-id -- API 3        # three sequential IDs
 npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (specs + SKILLS.md/AGENTS.md samples)
 npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
-npm run verify                  # typecheck + lint:tests + property tests — run before finishing any task
+npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
 ```
 
 `lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`) and the fix.
@@ -67,10 +67,10 @@ src/
 ├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
 │                               #   each method wraps its work in test.step() — prefer these in specs
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
-└── cli/                        # CLI tool for scaffolding
+└── cli/                        # `stagehand` CLI: init (scaffolding), check + next-id (test conventions)
 
 scripts/
-└── check-tests.mjs             # Test convention checker (npm run lint:tests / next-id)
+└── check-tests.mjs             # Back-compat wrapper; the checker is src/cli/check-tests.ts (`stagehand check` / `next-id`)
 
 tests/
 ├── examples/                   # Reference test files for each fixture
@@ -372,6 +372,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
 | `property-tests` | `**/*.prop.ts` | None (uses fast-check) |
+| `unit-tests` | `**/unit/**/*.spec.ts` | None (framework self-tests) |
 
 ## Error Handling
 
@@ -396,11 +397,12 @@ npm test                                          # All tests
 npx playwright test --project=openapi             # Single project
 npx playwright test --project=api-integration     # Integration tests
 npx playwright test --project=property-tests      # Property tests
+npx playwright test --project=unit-tests          # Framework unit tests
 npm run test:tag -- @smoke                        # By tag
 PW_ENVIRONMENT=dev npx playwright test            # Specific environment
 npm run typecheck                                 # Type checking only
 npm run lint:tests                                # Test conventions (IDs, tags, steps, imports)
-npm run verify                                    # typecheck + lint:tests + property tests
+npm run verify                                    # typecheck + lint:tests + unit + property tests
 ```
 
 ## Creating Custom Fixtures
@@ -538,7 +540,7 @@ Don't grep by hand. Ask the checker, which scans every `*.spec.ts` and `*.prop.t
 ```bash
 npm run next-id -- API        # → TC-API-005
 npm run next-id -- BRW 7      # → seven sequential IDs, e.g. for a parameterized viewport test
-node scripts/check-tests.mjs --list-ids   # every ID in use, with file:line
+npm run lint:tests -- --list-ids  # every ID in use, with file:line
 ```
 
 For parameterized tests (generated in a loop), put an ID in each data row and build the title and tag from it:
