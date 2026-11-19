@@ -12,6 +12,8 @@ import { test, expect } from '@playwright/test';
 import fc from 'fast-check';
 import { SecretsManager } from '../../src/secrets/secrets-manager';
 import { SecretsProvider } from '../../src/secrets/provider.interface';
+import { createProvider } from '../../src/secrets/providers';
+import { SecretsError } from '../../src/errors';
 
 /**
  * Generates valid provider names (alphanumeric with dashes).
@@ -224,6 +226,73 @@ test.describe('Property 12: Secrets provider extensibility', () => {
                     expect(resolved.database?.password).toBe(secretValue);
                 }
             ),
+            { numRuns: 100 }
+        );
+    });
+});
+
+/**
+ * Built-in Vault-API providers ('vault' and 'openbao') share one implementation, so
+ * for any secret path and value they must behave identically against the same server,
+ * be selectable by name through `secrets.provider`, and never leak the client token.
+ */
+test.describe('Property 12b: Vault-API-compatible built-in providers', () => {
+    const realFetch = globalThis.fetch;
+    test.afterEach(() => {
+        globalThis.fetch = realFetch;
+    });
+
+    const arbSegment = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789-_. '.split('')), minLength: 1, maxLength: 12 })
+        .filter((s) => s.trim() === s && s !== '.' && s !== '..');
+    const arbPath = fc.array(arbSegment, { minLength: 1, maxLength: 3 }).map((parts) => parts.join('/'));
+    const arbToken = fc.string({ unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.'.split('')), minLength: 8, maxLength: 40 });
+
+    test('vault and openbao resolve the same value via secrets.provider', async () => {
+        await fc.assert(
+            fc.asyncProperty(fc.constantFrom('vault', 'openbao'), arbPath, arbSecretValue, async (name, secretPath, secretValue) => {
+                const requested: string[] = [];
+                globalThis.fetch = (async (input: string | URL) => {
+                    requested.push(String(input));
+                    return new Response(JSON.stringify({ data: { data: { value: secretValue } } }));
+                }) as typeof fetch;
+
+                const manager = new SecretsManager();
+                manager.registerProvider(createProvider(name, { url: 'https://kv.test', mountPath: 'secret/data/app', token: 'token-1234' }));
+
+                const resolved = await manager.resolve({
+                    environment: 'dev',
+                    database: { type: 'postgresql', database: 'db', password: 'placeholder' },
+                    secrets: { provider: name, keyMappings: { [secretPath]: 'database.password' } },
+                });
+
+                expect(resolved.database?.password).toBe(secretValue);
+                expect(requested).toHaveLength(1);
+                // The request path decodes back to exactly the secret path.
+                const suffix = new URL(requested[0]).pathname.slice('/v1/secret/data/app/'.length);
+                expect(decodeURIComponent(suffix)).toBe(secretPath);
+            }),
+            { numRuns: 100 }
+        );
+    });
+
+    test('a token echoed by the server never appears in the SecretsError', async () => {
+        await fc.assert(
+            fc.asyncProperty(fc.constantFrom('vault', 'openbao'), arbToken, fc.integer({ min: 400, max: 599 }), async (name, token, status) => {
+                globalThis.fetch = (async (_input: string | URL, init?: RequestInit) => {
+                    const sent = (init?.headers as Record<string, string>)['X-Vault-Token'];
+                    return new Response(JSON.stringify({ errors: [`denied: ${sent}`] }), { status });
+                }) as typeof fetch;
+
+                const provider = createProvider(name, { url: 'https://kv.test', mountPath: 'secret/data', token });
+                const error = await provider.getSecret('k').then(
+                    () => undefined,
+                    (e: unknown) => e
+                );
+
+                expect(error).toBeInstanceOf(SecretsError);
+                expect((error as SecretsError).message).toContain(String(status));
+                expect((error as SecretsError).message).not.toContain(token);
+            }),
             { numRuns: 100 }
         );
     });

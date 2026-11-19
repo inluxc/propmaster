@@ -2065,6 +2065,18 @@ const allFixtures = {
 }
 ```
 
+**Secrets providers:** `secrets.provider` is one of `aws`, `vault`, `openbao`, `gitlab`, `azure` or `env-file`. For OpenBao (or Vault), set the KV path prefix and let the token, URL and TLS settings come from env vars (`PW_OPENBAO_*` → `BAO_*` → `VAULT_*`):
+
+```json
+"secrets": {
+    "provider": "openbao",
+    "options": { "mountPath": "secret/data/qa", "authMethod": "kubernetes", "role": "playwright-qa" },
+    "keyMappings": { "db-password": "database.password" }
+}
+```
+
+Never put tokens, secret_ids or JWTs in `environments.json`. See [docs/secrets.md](docs/secrets.md) for every provider's options.
+
 ---
 
 ## Skill 12: Add a New Playwright Project
