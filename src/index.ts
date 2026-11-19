@@ -29,6 +29,12 @@ export type {
     MobilewrightDevice,
     OtpClient,
     GraphQLClient,
+    GadsDevice,
+    GadsHubClient,
+    GadsDeviceInfo,
+    GadsDeviceCriteria,
+    GadsGridStatus,
+    GadsLocatorStrategy,
     FixtureTypes,
     ConfigOptions,
 } from './fixtures/index.js';
@@ -45,11 +51,15 @@ export type {
     MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
+    GadsFixtureConfig,
     SecretsConfig,
     EnvironmentsFile,
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
 export { EnvLoader } from './config/index.js';
+
+// GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
+export { createGadsHubClient, startGadsSession } from './fixtures/gads.fixture.js';
 
 // Error types
 export {

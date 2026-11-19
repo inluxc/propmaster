@@ -78,7 +78,7 @@ export class FixtureInitError extends FrameworkError {
 export class FixtureOperationError extends FrameworkError {
     constructor(
         public readonly fixtureName: string,
-        public readonly operation: 'query' | 'produce' | 'consume' | 'find' | 'findOne' | 'insertOne' | 'insertMany' | 'updateOne' | 'updateMany' | 'deleteOne' | 'deleteMany' | 'aggregate' | 'run' | 'write' | 'transaction',
+        public readonly operation: 'query' | 'produce' | 'consume' | 'find' | 'findOne' | 'insertOne' | 'insertMany' | 'updateOne' | 'updateMany' | 'deleteOne' | 'deleteMany' | 'aggregate' | 'run' | 'write' | 'transaction' | 'command' | 'release',
         public readonly details: Record<string, unknown>,
         public readonly cause?: Error
     ) {

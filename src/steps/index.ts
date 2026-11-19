@@ -21,3 +21,5 @@ export type { OtpClient } from './otp.steps.js';
 export { BrowserSteps } from './browser.steps.js';
 export { MobilewrightSteps } from './mobilewright.steps.js';
 export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.steps.js';
+export { GadsSteps } from './gads.steps.js';
+export type { GadsDevice, GadsHubClient } from './gads.steps.js';

@@ -122,6 +122,36 @@ export interface MobilewrightFixtureConfig {
 }
 
 /**
+ * Configuration for the GADS device farm fixture (https://github.com/shamanec/GADS).
+ */
+export interface GadsFixtureConfig {
+    /** GADS hub base URL, e.g. `http://gads-hub:10000`. */
+    hubUrl: string;
+    /** Client secret from GADS Admin → Client credentials (sent as `gads:clientSecret`). */
+    clientSecret: string;
+    /** Target platform; sets `platformName` and the default automation engine. */
+    platform?: 'ios' | 'android';
+    /** Pin one device by UDID (`appium:udid`). */
+    udid?: string;
+    /** Pick a device whose name matches this regular expression (case-insensitive). */
+    deviceName?: string;
+    /** OS version: exact (`17.5.1`) or major (`17`). */
+    platformVersion?: string;
+    /** Appium automation engine (default: XCUITest for iOS, UiAutomator2 for Android). */
+    automationName?: string;
+    /** Seconds the hub waits for a free device before failing (`gads:queueTimeout`, hub default 10, max 300). */
+    queueTimeout?: number;
+    /** Seconds of inactivity before the hub ends the session and frees the device (`appium:newCommandTimeout`). */
+    newCommandTimeout?: number;
+    /** Extra W3C capabilities, e.g. `{ 'appium:bundleId': 'com.example.app' }`. */
+    capabilities?: Record<string, unknown>;
+    /** Session creation timeout in ms, including queueing (default: 240000). */
+    sessionTimeout?: number;
+    /** Timeout in ms for hub requests and WebDriver commands (default: 90000). */
+    requestTimeout?: number;
+}
+
+/**
  * Configuration for the MongoDB connection fixture.
  */
 export interface MongoDbFixtureConfig {
@@ -211,6 +241,8 @@ export interface FrameworkConfig {
     neo4j?: Neo4jFixtureConfig;
     /** Mobilewright fixture configuration. */
     mobilewright?: MobilewrightFixtureConfig;
+    /** GADS device farm fixture configuration. */
+    gads?: GadsFixtureConfig;
     /** OTP fixture configuration. */
     otp?: OtpFixtureConfig;
     /** GraphQL client fixture configuration. */

@@ -38,6 +38,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `GQL` | GraphQL tests |
 | `BRW` | Browser tests |
 | `MOB` | Mobile (Mobilewright) tests |
+| `GDS` | GADS device farm tests |
 | `OTP` | OTP/2FA tests |
 | `INT` | Integration (multi-fixture) tests |
 | `PROP` | Property-based tests |
@@ -2342,6 +2343,73 @@ use: {
 
 ---
 
+## Skill 17: Create a GADS Device Farm Test
+
+**When to use:** Running Appium tests on real iOS/Android devices hosted in a [GADS](https://github.com/shamanec/GADS) device farm. Use Skill 5 (Mobilewright) for local simulators and emulators.
+
+**Steps:**
+
+1. Configure `gads` with `hubUrl` and `clientSecret`, plus one of `platform`, `udid` or `deviceName`. Use `environments.json` or `PW_GADS_*`, and keep the secret in env vars or a secrets provider. See [docs/gads-fixture.md](docs/gads-fixture.md).
+2. Request `gadsDevice` for an Appium session on an allocated device, or only `gadsHub` to inspect devices without reserving one.
+3. Give the Playwright project a long `timeout` (e.g. `300_000`), because session creation can wait in the hub's queue.
+4. Replace every `TC-GDS-NNN` with IDs from `npm run next-id -- GDS <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '../../src';
+import { GadsSteps } from '../../src/steps';
+
+test.describe('GADS — [App/Flow Name]', () => {
+    test.skip(!process.env.PW_GADS_HUB_URL, 'Skipped: no GADS hub configured');
+
+    test('[TC-GDS-NNN] log in on a farm device', { tag: ['@TC-GDS-NNN'] }, async ({ gadsDevice }) => {
+        await test.step('Step 1: Launch the app', async () => {
+            // Bundle ID on iOS, package name on Android
+            await gadsDevice.activateApp('com.example.app');
+        });
+
+        await test.step('Step 2: Fill in the login form', async () => {
+            // Strategies: 'accessibility id', 'id', 'xpath', 'class name',
+            // '-android uiautomator', '-ios predicate string', '-ios class chain'
+            const email = await gadsDevice.waitForElement('accessibility id', 'email', 15_000);
+            await gadsDevice.sendKeys(email, 'user@example.com');
+            await gadsDevice.click(await gadsDevice.findElement('accessibility id', 'login'));
+        });
+
+        await test.step('Step 3: Verify the welcome screen', async () => {
+            const title = await gadsDevice.waitForElement('accessibility id', 'welcome-title', 15_000);
+            expect(await gadsDevice.getText(title)).toContain('Welcome');
+        });
+    });
+
+    test('[TC-GDS-NNN] same flow with GadsSteps', { tag: ['@TC-GDS-NNN'] }, async ({ gadsDevice, gadsHub }) => {
+        const steps = new GadsSteps(gadsDevice, gadsHub);
+
+        await test.step('Step 1: Launch the app and log in', async () => {
+            await steps.launchApp('Launch the app', 'com.example.app');
+            await steps.fill('Enter the email', 'accessibility id', 'email', 'user@example.com');
+            await steps.tap('Submit the form', 'accessibility id', 'login');
+        });
+
+        await test.step('Step 2: Verify the result and attach a screenshot', async () => {
+            await steps.expectText('Verify the greeting', 'accessibility id', 'welcome-title', /Welcome/);
+            await steps.attachScreenshot('Attach the final screen');
+        });
+    });
+});
+```
+
+**Key points:**
+- `gadsDevice` allocates a device through `<hub>/grid` and **releases it on teardown**, even when the test fails
+- Pick the device with `platform` (any free device), `udid` (one device) or `deviceName` (regex; free devices first)
+- Pass app capabilities through `gads.capabilities`, e.g. `{ 'appium:appPackage': '...', 'appium:appActivity': '...' }`
+- Use `gadsDevice.command(method, path, body)` for any WebDriver endpoint the helpers don't cover. `gadsDevice.webDriverUrl` lets you attach WebdriverIO if you need more.
+- Keep `workers` at or below the number of devices, or raise `queueTimeout`
+- Failures raise `FixtureInitError('gads', ...)` for allocation and `FixtureOperationError('gads', 'command' | 'release')` for commands, with the client secret redacted
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2363,6 +2431,7 @@ use: {
 | Organize tests by category | Skill 14 (Tags) |
 | Test across multiple systems | Skill 15 (Multi-Fixture) |
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
+| Test a mobile app on a GADS device farm | Skill 17 (GADS) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 
 **Before finishing any task:** run `npm run verify` (typecheck + `lint:tests` + unit + property tests).

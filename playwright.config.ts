@@ -45,6 +45,14 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            name: 'mobile-gads',
+            testMatch: '**/examples/gads.spec.ts',
+            timeout: 300_000,
+            use: {
+                gads: config.gads,
+            },
+        },
+        {
             name: 'browser-chromium',
             testMatch: '**/examples/browser.spec.ts',
             use: {

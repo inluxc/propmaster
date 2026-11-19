@@ -26,6 +26,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Test Framework:** Playwright Test (`@playwright/test ^1.65.1`)
 - **Language:** TypeScript 7+
 - **Mobile Testing:** Mobilewright (`mobilewright ^0.0.70`)
+- **Device Farm:** GADS hub grid over W3C WebDriver (built-in `fetch`, no extra dependency)
 - **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.9.1`)
 - **Database:** PostgreSQL (`pg`), MySQL (`mysql2`), MSSQL (`mssql`), SQLite (`better-sqlite3`)
 - **Messaging:** KafkaJS (`kafkajs ^2.2.4`)
@@ -58,6 +59,7 @@ src/
 │   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
 │   ├── redis.fixture.ts        # Redis client fixture
 │   ├── otp.fixture.ts          # OTP (TOTP/HOTP) fixture for 2FA/MFA testing
+│   ├── gads.fixture.ts         # GADS device farm fixture (Appium sessions via the GADS hub grid)
 │   └── mobilewright.fixture.ts # Mobile testing fixture
 ├── secrets/
 │   ├── index.ts                # Secrets module exports
@@ -83,6 +85,7 @@ tests/
 │   ├── neo4j.spec.ts
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
+│   ├── gads.spec.ts
 │   └── mobilewright.spec.ts
 ├── unit/                       # Framework self-tests (exempt from TestCaseID rules)
 └── properties/                 # Framework property tests, *.prop.ts (exempt from TestCaseID rules)
@@ -114,6 +117,7 @@ import { test, expect } from '../../src/fixtures';
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | Redis | `*.spec.ts` | `tests/examples/` or custom dir |
 | Mobile | `*.spec.ts` | `tests/examples/` or custom dir |
+| GADS | `*.spec.ts` | `tests/examples/` or custom dir |
 | Browser | `*.spec.ts` | `tests/examples/` or custom dir |
 | Property | `*.prop.ts` | `tests/properties/` |
 
@@ -133,6 +137,8 @@ Request fixtures by name in the test function signature:
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
 | `mobilewrightDevice` | `MobilewrightDevice` | Device control (`openUrl`) |
 | `mobilewrightScreen` | `MobilewrightScreen` | Screen interactions (`tap`, `fill`, `swipe`, `getByText`, etc.) |
+| `gadsDevice` | `GadsDevice` | Appium session on a GADS farm device (`findElement`, `waitForElement`, `click`, `sendKeys`, `getText`, `screenshot`, `execute`, `activateApp`, `command`); device released on teardown |
+| `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing |
 
 ### Test Structure Pattern
 
@@ -267,6 +273,22 @@ await neo4jClient.executeInTransaction(async (tx) => {
 await neo4jClient.write('MATCH (n {runId: $runId}) DETACH DELETE n', { runId });
 ```
 
+**GADS (device farm):**
+```typescript
+// gadsDevice is an Appium session on a device the hub allocated (by PW_GADS_PLATFORM / _UDID / _DEVICE_NAME)
+await gadsDevice.activateApp('com.example.app');                 // bundle ID (iOS) or package (Android)
+const email = await gadsDevice.waitForElement('accessibility id', 'email', 15_000);
+await gadsDevice.sendKeys(email, 'user@example.com');
+await gadsDevice.click(await gadsDevice.findElement('accessibility id', 'login'));
+expect(await gadsDevice.getText(await gadsDevice.findElement('id', 'title'))).toContain('Welcome');
+await gadsDevice.execute('mobile: swipe', [{ direction: 'up' }]); // any Appium `mobile:` command
+const png = await gadsDevice.screenshot();                        // Buffer
+await gadsDevice.command('GET', '/orientation');                  // raw WebDriver command
+
+// gadsHub lists devices without reserving one
+const free = (await gadsHub.listDevices({ platform: 'android' })).filter((d) => d.available);
+```
+
 **GraphQL Client:**
 ```typescript
 // Query — returns typed data directly
@@ -347,6 +369,11 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
 | `PW_MOBILE_PLATFORM` | `ios` or `android` |
 | `PW_MOBILE_BUNDLE_ID`, `PW_MOBILE_DEVICE_NAME`, `PW_MOBILE_APP_PATH` | Mobile config |
+| `PW_GADS_HUB_URL` | GADS hub base URL, e.g. `http://gads-hub:10000` |
+| `PW_GADS_CLIENT_SECRET` | GADS client secret (Admin → Client credentials); sent as `gads:clientSecret` |
+| `PW_GADS_PLATFORM`, `PW_GADS_UDID`, `PW_GADS_DEVICE_NAME` | Device selection — platform, exact UDID, or name regex |
+| `PW_GADS_PLATFORM_VERSION`, `PW_GADS_AUTOMATION_NAME` | Optional OS version (`17` or `17.5.1`) and Appium engine |
+| `PW_GADS_QUEUE_TIMEOUT`, `PW_GADS_NEW_COMMAND_TIMEOUT`, `PW_GADS_SESSION_TIMEOUT` | Queue wait (s), idle release (s), session-create timeout (ms) |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |
@@ -362,6 +389,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `openapi` | `**/examples/openapi.spec.ts` | `openApiClient` |
 | `mobile-ios` | `**/examples/mobilewright.spec.ts` | `mobilewrightDevice`, `mobilewrightScreen` |
 | `mobile-android` | `**/examples/mobilewright.spec.ts` | `mobilewrightDevice`, `mobilewrightScreen` |
+| `mobile-gads` | `**/examples/gads.spec.ts` | `gadsDevice`, `gadsHub` (5-minute test timeout for device queueing) |
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
@@ -429,7 +457,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `MOB`, `OTP`, `INT`, `PROP`, or a custom short code for new domains.
+- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `MOB`, `GDS`, `OTP`, `INT`, `PROP`, or a custom short code for new domains.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

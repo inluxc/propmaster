@@ -331,6 +331,46 @@ export class ConfigLoader {
                 if (!cfg.mobilewright) cfg.mobilewright = { platform: 'ios', bundleId: '', deviceName: '', appPath: '' };
                 cfg.mobilewright.appPath = val;
             },
+            'PW_GADS_HUB_URL': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.hubUrl = val;
+            },
+            'PW_GADS_CLIENT_SECRET': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.clientSecret = val;
+            },
+            'PW_GADS_PLATFORM': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.platform = val.toLowerCase() as 'ios' | 'android';
+            },
+            'PW_GADS_UDID': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.udid = val;
+            },
+            'PW_GADS_DEVICE_NAME': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.deviceName = val;
+            },
+            'PW_GADS_PLATFORM_VERSION': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.platformVersion = val;
+            },
+            'PW_GADS_AUTOMATION_NAME': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.automationName = val;
+            },
+            'PW_GADS_QUEUE_TIMEOUT': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.queueTimeout = parseInt(val, 10);
+            },
+            'PW_GADS_NEW_COMMAND_TIMEOUT': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.newCommandTimeout = parseInt(val, 10);
+            },
+            'PW_GADS_SESSION_TIMEOUT': (cfg, val) => {
+                if (!cfg.gads) cfg.gads = { hubUrl: '', clientSecret: '' };
+                cfg.gads.sessionTimeout = parseInt(val, 10);
+            },
             'PW_GRAPHQL_ENDPOINT': (cfg, val) => {
                 if (!cfg.graphql) cfg.graphql = { endpoint: '' };
                 cfg.graphql.endpoint = val;

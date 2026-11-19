@@ -28,6 +28,12 @@
                 "deviceName": "iPhone 15",
                 "appPath": "./apps/example.app"
             },
+            "gads": {
+                "hubUrl": "http://localhost:10000",
+                "clientSecret": "",
+                "platform": "android",
+                "queueTimeout": 60
+            },
             "secrets": {
                 "provider": "env-file",
                 "keyMappings": {
@@ -63,6 +69,12 @@
                 "bundleId": "com.example.app.dev",
                 "deviceName": "iPhone 15",
                 "appPath": "./apps/example-dev.app"
+            },
+            "gads": {
+                "hubUrl": "http://gads.dev.example.com:10000",
+                "clientSecret": "",
+                "platform": "android",
+                "queueTimeout": 60
             },
             "secrets": {
                 "provider": "env-file",

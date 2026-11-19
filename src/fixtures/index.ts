@@ -31,6 +31,7 @@ import type {
     MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
+    GadsFixtureConfig,
 } from '../config/schema.js';
 import { openApiFixture, type OpenApiClient } from './openapi.fixture.js';
 import { databaseFixture, type DatabaseClient } from './database.fixture.js';
@@ -41,6 +42,7 @@ import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
+import { gadsFixture, type GadsDevice, type GadsHubClient } from './gads.fixture.js';
 
 /**
  * Configuration options that can be passed via project `use` block.
@@ -57,6 +59,7 @@ export interface ConfigOptions {
     mobilewright: MobilewrightFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
     graphql: GraphQLFixtureConfig | undefined;
+    gads: GadsFixtureConfig | undefined;
 }
 
 /**
@@ -77,6 +80,9 @@ export interface FixtureTypes {
     otpConfig: OtpFixtureConfig;
     otpClient: OtpClient;
     graphqlClient: GraphQLClient;
+    gadsConfig: GadsFixtureConfig;
+    gadsHub: GadsHubClient;
+    gadsDevice: GadsDevice;
 }
 
 /**
@@ -96,6 +102,7 @@ const configOptionFixtures = {
     mobilewright: [undefined as MobilewrightFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
+    gads: [undefined as GadsFixtureConfig | undefined, { option: true }],
 };
 
 /**
@@ -183,6 +190,36 @@ const otpConfigFixture = {
 };
 
 /**
+ * The gadsConfig fixture loads GADS configuration from the project config option
+ * or falls back to ConfigLoader.
+ */
+const gadsConfigFixture = {
+    gadsConfig: async (
+        { gads }: { gads: GadsFixtureConfig | undefined },
+        use: (config: GadsFixtureConfig) => Promise<void>,
+    ) => {
+        if (gads) {
+            await use(gads);
+            return;
+        }
+
+        // Fallback: load from ConfigLoader
+        const { ConfigLoader } = await import('../config/loader.js');
+        const loader = new ConfigLoader();
+        const frameworkConfig = loader.load();
+
+        if (!frameworkConfig.gads) {
+            const { FixtureInitError } = await import('../errors.js');
+            throw new FixtureInitError('gads', 'init', {
+                reason: 'GADS configuration is missing. Provide gads config in environments.json, PW_GADS_* environment variables, or project use block.',
+            });
+        }
+
+        await use(frameworkConfig.gads);
+    },
+};
+
+/**
  * All fixture definitions combined into a single object.
  *
  * Fixtures declare dependencies by listing other fixture names as parameters,
@@ -190,6 +227,7 @@ const otpConfigFixture = {
  * - `redisClient` depends on `redisConfig`
  * - `neo4jClient` depends on `neo4jConfig`
  * - `mobilewrightScreen` depends on `mobilewrightDevice`
+ * - `gadsHub` depends on `gadsConfig`; `gadsDevice` depends on `gadsConfig` and `gadsHub`
  *
  * Config options are declared with { option: true } so they can be set
  * from the project `use` block in playwright.config.ts.
@@ -213,6 +251,8 @@ const allFixtures = {
     ...otpConfigFixture,
     ...otpFixture,
     ...graphqlFixture,
+    ...gadsConfigFixture,
+    ...gadsFixture,
 };
 
 /**
@@ -232,3 +272,11 @@ export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } fr
 export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.fixture.js';
 export type { OtpClient } from './otp.fixture.js';
 export type { GraphQLClient } from './graphql.fixture.js';
+export type {
+    GadsDevice,
+    GadsHubClient,
+    GadsDeviceInfo,
+    GadsDeviceCriteria,
+    GadsGridStatus,
+    GadsLocatorStrategy,
+} from './gads.fixture.js';

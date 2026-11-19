@@ -57,6 +57,8 @@ test('api test with OpenAPI client', async ({ openApiClient }) => {
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
 | `mobilewrightDevice` | `MobilewrightDevice` | Mobile device control | [Setup & Usage](docs/mobilewright-fixture.md) |
 | `mobilewrightScreen` | `MobilewrightScreen` | Mobile screen interactions | [Setup & Usage](docs/mobilewright-fixture.md) |
+| `gadsDevice` | `GadsDevice` | Appium session on a real device from a [GADS](https://github.com/shamanec/GADS) farm, released on teardown | [Setup & Usage](docs/gads-fixture.md) |
+| `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/gads-fixture.md) |
 
 All standard Playwright fixtures (`page`, `request`, `context`, `browser`, `browserName`) remain fully available.
 
@@ -336,6 +338,8 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_NEO4J_USERNAME` / `PW_NEO4J_PASSWORD` | Neo4j credentials |
 | `PW_NEO4J_DATABASE` | Neo4j database (default: server default) |
 | `PW_MOBILE_PLATFORM` | `ios` or `android` |
+| `PW_GADS_HUB_URL` / `PW_GADS_CLIENT_SECRET` | GADS hub URL and client secret |
+| `PW_GADS_PLATFORM` / `PW_GADS_UDID` / `PW_GADS_DEVICE_NAME` | GADS device selection |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |

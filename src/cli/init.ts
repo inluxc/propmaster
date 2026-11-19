@@ -60,6 +60,7 @@ export default defineConfig<ConfigOptions>({
                 database: config.database,
                 kafka: config.kafka,
                 redis: config.redis,
+                gads: config.gads,
             },
         },
         {
@@ -305,7 +306,7 @@ test.describe('API — Users', () => {
 ## Test Case ID Convention
 
 - **Pattern:** \`TC-XXX-NNN\` — \`XXX\` is a category code, \`NNN\` a zero-padded sequential number.
-- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
+- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
 - **Title:** starts with \`[TC-XXX-NNN]\`.
 - **Tag:** \`{ tag: ['@TC-XXX-NNN'] }\` as the second argument to \`test()\`, with the same ID.
 - **Unique:** no two tests share an ID. Always take IDs from \`npm run next-id -- <CATEGORY>\`; never guess.
@@ -414,7 +415,7 @@ test.describe('Feature Name', () => {
 \`\`\`
 
 Steps:
-1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`OTP\`, \`INT\`, or a custom one)
+1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`BRW\`, \`MOB\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom one)
 2. Run \`npm run next-id -- <CATEGORY> <count>\` and replace every placeholder ID
 3. Run \`npm run lint:tests\`
 
