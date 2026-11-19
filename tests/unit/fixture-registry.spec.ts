@@ -56,14 +56,15 @@ playwrightTest.describe('Fixture Registry', () => {
             type _kafka = AssertHasKey<FixtureTypes, 'kafkaClient'>;
             type _redisConfig = AssertHasKey<FixtureTypes, 'redisConfig'>;
             type _redis = AssertHasKey<FixtureTypes, 'redisClient'>;
-            type _device = AssertHasKey<FixtureTypes, 'mobilewrightDevice'>;
-            type _screen = AssertHasKey<FixtureTypes, 'mobilewrightScreen'>;
+            type _appiumConfig = AssertHasKey<FixtureTypes, 'appiumConfig'>;
+            type _appium = AssertHasKey<FixtureTypes, 'appiumDriver'>;
+            type _gadsHub = AssertHasKey<FixtureTypes, 'gadsHub'>;
 
             // Runtime verification that the type utility works (always true if compiled)
             playwrightExpect(true).toBe(true);
         });
 
-        playwrightTest('FixtureTypes has exactly 7 fixture keys', () => {
+        playwrightTest('FixtureTypes includes the core fixture keys', () => {
             // Verify the expected fixture count at runtime using a type-safe object
             const fixtureKeys: (keyof FixtureTypes)[] = [
                 'openApiClient',
@@ -71,11 +72,12 @@ playwrightTest.describe('Fixture Registry', () => {
                 'kafkaClient',
                 'redisConfig',
                 'redisClient',
-                'mobilewrightDevice',
-                'mobilewrightScreen',
+                'appiumConfig',
+                'appiumDriver',
+                'gadsHub',
             ];
 
-            playwrightExpect(fixtureKeys).toHaveLength(7);
+            playwrightExpect(fixtureKeys).toHaveLength(8);
         });
     });
 
@@ -98,10 +100,10 @@ playwrightTest.describe('Fixture Registry', () => {
         });
 
         playwrightTest('message format includes fixture and dependency names', () => {
-            const error = new DependencyError('mobilewrightScreen', 'mobilewrightDevice');
+            const error = new DependencyError('appiumDriver', 'appiumConfig');
 
             playwrightExpect(error.message).toBe(
-                'Fixture "mobilewrightScreen" depends on "mobilewrightDevice" which is not registered'
+                'Fixture "appiumDriver" depends on "appiumConfig" which is not registered'
             );
         });
 

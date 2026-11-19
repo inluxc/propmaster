@@ -28,21 +28,19 @@ import type {
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
-    MobilewrightFixtureConfig,
     OtpFixtureConfig,
     GraphQLFixtureConfig,
-    GadsFixtureConfig,
+    AppiumFixtureConfig,
 } from '../config/schema.js';
 import { openApiFixture, type OpenApiClient } from './openapi.fixture.js';
 import { databaseFixture, type DatabaseClient } from './database.fixture.js';
 import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
-import { mobilewrightFixture, type MobilewrightScreen, type MobilewrightDevice } from './mobilewright.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
-import { gadsFixture, type GadsDevice, type GadsHubClient } from './gads.fixture.js';
+import { appiumFixture, type AppiumDriver, type GadsHubClient } from './appium.fixture.js';
 
 /**
  * Configuration options that can be passed via project `use` block.
@@ -56,10 +54,9 @@ export interface ConfigOptions {
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
-    mobilewright: MobilewrightFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
     graphql: GraphQLFixtureConfig | undefined;
-    gads: GadsFixtureConfig | undefined;
+    appium: AppiumFixtureConfig | undefined;
 }
 
 /**
@@ -75,14 +72,12 @@ export interface FixtureTypes {
     mongoDbClient: MongoDbClient;
     neo4jConfig: Neo4jFixtureConfig;
     neo4jClient: Neo4jClient;
-    mobilewrightDevice: MobilewrightDevice;
-    mobilewrightScreen: MobilewrightScreen;
     otpConfig: OtpFixtureConfig;
     otpClient: OtpClient;
     graphqlClient: GraphQLClient;
-    gadsConfig: GadsFixtureConfig;
+    appiumConfig: AppiumFixtureConfig;
+    appiumDriver: AppiumDriver;
     gadsHub: GadsHubClient;
-    gadsDevice: GadsDevice;
 }
 
 /**
@@ -99,10 +94,9 @@ const configOptionFixtures = {
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
-    mobilewright: [undefined as MobilewrightFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
-    gads: [undefined as GadsFixtureConfig | undefined, { option: true }],
+    appium: [undefined as AppiumFixtureConfig | undefined, { option: true }],
 };
 
 /**
@@ -190,16 +184,16 @@ const otpConfigFixture = {
 };
 
 /**
- * The gadsConfig fixture loads GADS configuration from the project config option
+ * The appiumConfig fixture loads Appium configuration from the project config option
  * or falls back to ConfigLoader.
  */
-const gadsConfigFixture = {
-    gadsConfig: async (
-        { gads }: { gads: GadsFixtureConfig | undefined },
-        use: (config: GadsFixtureConfig) => Promise<void>,
+const appiumConfigFixture = {
+    appiumConfig: async (
+        { appium }: { appium: AppiumFixtureConfig | undefined },
+        use: (config: AppiumFixtureConfig) => Promise<void>,
     ) => {
-        if (gads) {
-            await use(gads);
+        if (appium) {
+            await use(appium);
             return;
         }
 
@@ -208,14 +202,14 @@ const gadsConfigFixture = {
         const loader = new ConfigLoader();
         const frameworkConfig = loader.load();
 
-        if (!frameworkConfig.gads) {
+        if (!frameworkConfig.appium) {
             const { FixtureInitError } = await import('../errors.js');
-            throw new FixtureInitError('gads', 'init', {
-                reason: 'GADS configuration is missing. Provide gads config in environments.json, PW_GADS_* environment variables, or project use block.',
+            throw new FixtureInitError('appium', 'init', {
+                reason: 'Appium configuration is missing. Provide appium config in environments.json, PW_APPIUM_* environment variables, or project use block.',
             });
         }
 
-        await use(frameworkConfig.gads);
+        await use(frameworkConfig.appium);
     },
 };
 
@@ -226,8 +220,7 @@ const gadsConfigFixture = {
  * and Playwright's native fixture system handles dependency resolution:
  * - `redisClient` depends on `redisConfig`
  * - `neo4jClient` depends on `neo4jConfig`
- * - `mobilewrightScreen` depends on `mobilewrightDevice`
- * - `gadsHub` depends on `gadsConfig`; `gadsDevice` depends on `gadsConfig` and `gadsHub`
+ * - `appiumDriver` and `gadsHub` depend on `appiumConfig`
  *
  * Config options are declared with { option: true } so they can be set
  * from the project `use` block in playwright.config.ts.
@@ -247,12 +240,11 @@ const allFixtures = {
     ...mongoDbFixture,
     ...neo4jConfigFixture,
     ...neo4jFixture,
-    ...mobilewrightFixture,
     ...otpConfigFixture,
     ...otpFixture,
     ...graphqlFixture,
-    ...gadsConfigFixture,
-    ...gadsFixture,
+    ...appiumConfigFixture,
+    ...appiumFixture,
 };
 
 /**
@@ -269,14 +261,13 @@ export type { KafkaClient } from './kafka.fixture.js';
 export type { RedisClient } from './redis.fixture.js';
 export type { MongoDbClient } from './mongodb.fixture.js';
 export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } from './neo4j.fixture.js';
-export type { MobilewrightScreen, MobilewrightDevice } from './mobilewright.fixture.js';
 export type { OtpClient } from './otp.fixture.js';
 export type { GraphQLClient } from './graphql.fixture.js';
 export type {
-    GadsDevice,
+    AppiumDriver,
     GadsHubClient,
     GadsDeviceInfo,
     GadsDeviceCriteria,
     GadsGridStatus,
-    GadsLocatorStrategy,
-} from './gads.fixture.js';
+    GadsSessionInfo,
+} from './appium.fixture.js';

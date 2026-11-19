@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/stagehand",
     "version": "1.0.0",
-    "description": "Extensible fixture toolkit for Playwright Test — adds OpenAPI, database, Kafka, Redis, Neo4j, mobile, and OTP fixtures on top of @playwright/test",
+    "description": "Extensible fixture toolkit for Playwright Test — adds OpenAPI, database, Kafka, Redis, Neo4j, Appium (mobile, incl. GADS device farms), and OTP fixtures on top of @playwright/test",
     "type": "module",
     "bin": {
         "stagehand": "dist/src/cli/init.js"
@@ -57,21 +57,20 @@
         "verify": "npm run typecheck && npm run lint:tests && npx playwright test --project=unit-tests --project=property-tests"
     },
     "dependencies": {
-        "@mobilewright/test": "^0.0.70",
         "better-sqlite3": "^13.2.0",
         "dotenv": "^18.0.10",
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
         "ioredis": "^6.0.0",
         "kafkajs": "^2.2.4",
-        "mobilewright": "^0.0.70",
         "mongodb": "^7.9.1",
         "mssql": "^12.7.16",
         "mysql2": "^3.24.6",
         "neo4j-driver": "^6.3.2",
         "openapi-client-axios": "^7.9.1",
         "otplib": "^13.6.0",
-        "pg": "^8.23.1"
+        "pg": "^8.23.1",
+        "webdriverio": "^9.33.1"
     },
     "peerDependencies": {
         "@playwright/test": ">=1.50.0"
@@ -99,6 +98,8 @@
         "kafka",
         "redis",
         "mobile",
+        "appium",
+        "gads",
         "otp",
         "integration",
         "extension",

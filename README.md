@@ -55,10 +55,8 @@ test('api test with OpenAPI client', async ({ openApiClient }) => {
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
-| `mobilewrightDevice` | `MobilewrightDevice` | Mobile device control | [Setup & Usage](docs/mobilewright-fixture.md) |
-| `mobilewrightScreen` | `MobilewrightScreen` | Mobile screen interactions | [Setup & Usage](docs/mobilewright-fixture.md) |
-| `gadsDevice` | `GadsDevice` | Appium session on a real device from a [GADS](https://github.com/shamanec/GADS) farm, released on teardown | [Setup & Usage](docs/gads-fixture.md) |
-| `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/gads-fixture.md) |
+| `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session on any Appium server, grid, cloud farm or [GADS](https://github.com/shamanec/GADS) hub; ended on teardown | [Setup & Usage](docs/appium-fixture.md) |
+| `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/appium-fixture.md#gads-preset) |
 
 All standard Playwright fixtures (`page`, `request`, `context`, `browser`, `browserName`) remain fully available.
 
@@ -240,24 +238,22 @@ test.describe('Two-Factor Authentication', () => {
 });
 ```
 
-### Mobile Testing (Mobilewright)
+### Mobile Testing (Appium)
+
+`appiumDriver` is a WebdriverIO `Browser` on an Appium session — local Appium, a grid, a cloud farm, or a GADS device farm (set `appium.gads`):
 
 ```typescript
 import { test, expect } from '@inluxc/stagehand';
 
 test.describe('Mobile App - Login', () => {
-  test('user can log in', async ({ mobilewrightDevice, mobilewrightScreen }) => {
-    await mobilewrightDevice.openUrl('myapp://login');
+  test('user can log in', async ({ appiumDriver }) => {
+    await appiumDriver.url('myapp://login');
 
-    await mobilewrightScreen.fill(
-      mobilewrightScreen.getByLabel('Email'),
-      'user@example.com'
-    );
-    await mobilewrightScreen.fill(
-      mobilewrightScreen.getByLabel('Password'),
-      'securepass123'
-    );
-    await mobilewrightScreen.tap(mobilewrightScreen.getByText('Sign In'));
+    await appiumDriver.$('~email').setValue('user@example.com');
+    await appiumDriver.$('~password').setValue('securepass123');
+    await appiumDriver.$('~sign-in').click();
+
+    await expect(appiumDriver.$('~welcome').isDisplayed()).resolves.toBe(true);
   });
 });
 ```
@@ -337,9 +333,10 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
 | `PW_NEO4J_USERNAME` / `PW_NEO4J_PASSWORD` | Neo4j credentials |
 | `PW_NEO4J_DATABASE` | Neo4j database (default: server default) |
-| `PW_MOBILE_PLATFORM` | `ios` or `android` |
-| `PW_GADS_HUB_URL` / `PW_GADS_CLIENT_SECRET` | GADS hub URL and client secret |
-| `PW_GADS_PLATFORM` / `PW_GADS_UDID` / `PW_GADS_DEVICE_NAME` | GADS device selection |
+| `PW_APPIUM_SERVER_URL` | Appium server (or GADS hub) URL |
+| `PW_APPIUM_PLATFORM` / `PW_APPIUM_UDID` / `PW_APPIUM_DEVICE_NAME` | Device selection |
+| `PW_APPIUM_CAPABILITIES` | Extra capabilities as a JSON object |
+| `PW_GADS_CLIENT_SECRET` / `PW_GADS_QUEUE_TIMEOUT` | GADS preset: client secret and device queue wait |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |

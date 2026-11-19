@@ -21,35 +21,27 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
-            name: 'mobile-ios',
-            testMatch: '**/examples/mobilewright.spec.ts',
+            name: 'appium-android',
+            testMatch: '**/examples/appium.spec.ts',
+            timeout: 300_000,
             use: {
-                mobilewright: config.mobilewright ?? {
-                    platform: 'ios',
-                    bundleId: '',
-                    deviceName: 'iPhone 15',
-                    appPath: '',
-                },
+                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, gads: undefined, platform: 'android' },
             },
         },
         {
-            name: 'mobile-android',
-            testMatch: '**/examples/mobilewright.spec.ts',
+            name: 'appium-ios',
+            testMatch: '**/examples/appium.spec.ts',
+            timeout: 300_000,
             use: {
-                mobilewright: {
-                    platform: 'android',
-                    bundleId: config.mobilewright?.bundleId ?? '',
-                    deviceName: 'Pixel 8',
-                    appPath: config.mobilewright?.appPath ?? '',
-                },
+                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, gads: undefined, platform: 'ios' },
             },
         },
         {
-            name: 'mobile-gads',
+            name: 'gads',
             testMatch: '**/examples/gads.spec.ts',
             timeout: 300_000,
             use: {
-                gads: config.gads,
+                appium: config.appium,
             },
         },
         {

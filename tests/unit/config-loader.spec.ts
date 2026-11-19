@@ -248,20 +248,20 @@ test.describe('ConfigLoader', () => {
             }
         });
 
-        test('maps PW_MOBILE_PLATFORM to mobilewright.platform', () => {
+        test('maps PW_APPIUM_PLATFORM to appium.platform', () => {
             const dir = createTempDir();
-            const original = process.env['PW_MOBILE_PLATFORM'];
+            const original = process.env['PW_APPIUM_PLATFORM'];
             try {
                 writeEnvironmentsJson(dir, { environments: { local: {} } });
-                process.env['PW_MOBILE_PLATFORM'] = 'android';
+                process.env['PW_APPIUM_PLATFORM'] = 'Android';
 
                 const loader = new ConfigLoader(dir);
                 const config = loader.load('local');
 
-                expect(config.mobilewright?.platform).toBe('android');
+                expect(config.appium?.platform).toBe('android');
             } finally {
-                if (original === undefined) delete process.env['PW_MOBILE_PLATFORM'];
-                else process.env['PW_MOBILE_PLATFORM'] = original;
+                if (original === undefined) delete process.env['PW_APPIUM_PLATFORM'];
+                else process.env['PW_APPIUM_PLATFORM'] = original;
                 cleanup(dir);
             }
         });

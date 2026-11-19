@@ -18,15 +18,14 @@ npm run verify                  # typecheck + lint:tests + unit + property tests
 
 ## Project Overview
 
-A reusable Playwright test framework with an extensible fixture architecture for API, integration, browser, and mobile testing. Tests are organized into Playwright projects, each with its own configuration and fixture set.
+A reusable Playwright test framework with an extensible fixture architecture for API, integration, browser, and mobile (Appium) testing. Tests are organized into Playwright projects, each with its own configuration and fixture set.
 
 ## Tech Stack
 
 - **Runtime:** Node.js 22.12+
 - **Test Framework:** Playwright Test (`@playwright/test ^1.65.1`)
 - **Language:** TypeScript 7+
-- **Mobile Testing:** Mobilewright (`mobilewright ^0.0.70`)
-- **Device Farm:** GADS hub grid over W3C WebDriver (built-in `fetch`, no extra dependency)
+- **Mobile Testing:** Appium via WebdriverIO (`webdriverio ^9.33.1`) — local Appium, grids, cloud farms, and GADS device farms
 - **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.9.1`)
 - **Database:** PostgreSQL (`pg`), MySQL (`mysql2`), MSSQL (`mssql`), SQLite (`better-sqlite3`)
 - **Messaging:** KafkaJS (`kafkajs ^2.2.4`)
@@ -59,8 +58,7 @@ src/
 │   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
 │   ├── redis.fixture.ts        # Redis client fixture
 │   ├── otp.fixture.ts          # OTP (TOTP/HOTP) fixture for 2FA/MFA testing
-│   ├── gads.fixture.ts         # GADS device farm fixture (Appium sessions via the GADS hub grid)
-│   └── mobilewright.fixture.ts # Mobile testing fixture
+│   └── appium.fixture.ts       # Appium fixture (WebdriverIO) with GADS device-farm preset
 ├── secrets/
 │   ├── index.ts                # Secrets module exports
 │   ├── provider.interface.ts   # SecretsProvider interface
@@ -85,8 +83,8 @@ tests/
 │   ├── neo4j.spec.ts
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
-│   ├── gads.spec.ts
-│   └── mobilewright.spec.ts
+│   ├── appium.spec.ts
+│   └── gads.spec.ts
 ├── unit/                       # Framework self-tests (exempt from TestCaseID rules)
 └── properties/                 # Framework property tests, *.prop.ts (exempt from TestCaseID rules)
 ```
@@ -116,8 +114,7 @@ import { test, expect } from '../../src/fixtures';
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | Redis | `*.spec.ts` | `tests/examples/` or custom dir |
-| Mobile | `*.spec.ts` | `tests/examples/` or custom dir |
-| GADS | `*.spec.ts` | `tests/examples/` or custom dir |
+| Appium (incl. GADS) | `*.spec.ts` | `tests/examples/` or custom dir |
 | Browser | `*.spec.ts` | `tests/examples/` or custom dir |
 | Property | `*.prop.ts` | `tests/properties/` |
 
@@ -135,10 +132,8 @@ Request fixtures by name in the test function signature:
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
-| `mobilewrightDevice` | `MobilewrightDevice` | Device control (`openUrl`) |
-| `mobilewrightScreen` | `MobilewrightScreen` | Screen interactions (`tap`, `fill`, `swipe`, `getByText`, etc.) |
-| `gadsDevice` | `GadsDevice` | Appium session on a GADS farm device (`findElement`, `waitForElement`, `click`, `sendKeys`, `getText`, `screenshot`, `execute`, `activateApp`, `command`); device released on teardown |
-| `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing |
+| `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
+| `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing; needs `appium.gads` |
 
 ### Test Structure Pattern
 
@@ -214,13 +209,20 @@ await redisClient.publish('channel', 'msg');
 const msg = await redisClient.subscribe('channel', { timeout: 5000 });
 ```
 
-**Mobilewright:**
+**Appium (WebdriverIO):**
 ```typescript
-await mobilewrightDevice.openUrl('myapp://screen');
-const el = mobilewrightScreen.getByText('Button');
-await mobilewrightScreen.tap(el);
-await mobilewrightScreen.fill(mobilewrightScreen.getByLabel('Email'), 'a@b.com');
-await mobilewrightScreen.swipe('down');
+// appiumDriver is a WebdriverIO Browser; assert with Playwright's expect
+await appiumDriver.url('myapp://login');                                  // deep link
+await appiumDriver.$('~email').setValue('a@b.com');                       // ~ = accessibility id
+await appiumDriver.$('~login').click();
+const title = appiumDriver.$('~welcome-title');
+await title.waitForDisplayed({ timeout: 15_000 });
+expect(await title.getText()).toContain('Welcome');
+await appiumDriver.execute('mobile: activateApp', { bundleId: 'com.example.app', appId: 'com.example.app' });
+await appiumDriver.execute('mobile: swipe', { direction: 'up' });       // any Appium `mobile:` command
+const png = Buffer.from(await appiumDriver.takeScreenshot(), 'base64');
+if (appiumDriver.isIOS) { /* platform branch */ }
+// Other selectors: 'id=...', '//xpath', 'android=new UiSelector()...', '-ios predicate string:...', '-ios class chain:...'
 ```
 
 **MongoDB Client:**
@@ -273,17 +275,12 @@ await neo4jClient.executeInTransaction(async (tx) => {
 await neo4jClient.write('MATCH (n {runId: $runId}) DETACH DELETE n', { runId });
 ```
 
-**GADS (device farm):**
+**GADS (device farm preset):**
 ```typescript
-// gadsDevice is an Appium session on a device the hub allocated (by PW_GADS_PLATFORM / _UDID / _DEVICE_NAME)
-await gadsDevice.activateApp('com.example.app');                 // bundle ID (iOS) or package (Android)
-const email = await gadsDevice.waitForElement('accessibility id', 'email', 15_000);
-await gadsDevice.sendKeys(email, 'user@example.com');
-await gadsDevice.click(await gadsDevice.findElement('accessibility id', 'login'));
-expect(await gadsDevice.getText(await gadsDevice.findElement('id', 'title'))).toContain('Welcome');
-await gadsDevice.execute('mobile: swipe', [{ direction: 'up' }]); // any Appium `mobile:` command
-const png = await gadsDevice.screenshot();                        // Buffer
-await gadsDevice.command('GET', '/orientation');                  // raw WebDriver command
+// Same appiumDriver; config adds `gads` (PW_APPIUM_SERVER_URL=http://hub:10000 + PW_GADS_CLIENT_SECRET).
+// The hub allocates a device by platform / udid / deviceName regex and frees it on teardown.
+import { gadsSessionInfo } from '../../src';
+const { udid, name, provider, controlUrl } = gadsSessionInfo(appiumDriver);
 
 // gadsHub lists devices without reserving one
 const free = (await gadsHub.listDevices({ platform: 'android' })).filter((d) => d.available);
@@ -367,13 +364,14 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_NEO4J_DATABASE` | Neo4j database (optional; server default) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
-| `PW_MOBILE_PLATFORM` | `ios` or `android` |
-| `PW_MOBILE_BUNDLE_ID`, `PW_MOBILE_DEVICE_NAME`, `PW_MOBILE_APP_PATH` | Mobile config |
-| `PW_GADS_HUB_URL` | GADS hub base URL, e.g. `http://gads-hub:10000` |
-| `PW_GADS_CLIENT_SECRET` | GADS client secret (Admin → Client credentials); sent as `gads:clientSecret` |
-| `PW_GADS_PLATFORM`, `PW_GADS_UDID`, `PW_GADS_DEVICE_NAME` | Device selection — platform, exact UDID, or name regex |
-| `PW_GADS_PLATFORM_VERSION`, `PW_GADS_AUTOMATION_NAME` | Optional OS version (`17` or `17.5.1`) and Appium engine |
-| `PW_GADS_QUEUE_TIMEOUT`, `PW_GADS_NEW_COMMAND_TIMEOUT`, `PW_GADS_SESSION_TIMEOUT` | Queue wait (s), idle release (s), session-create timeout (ms) |
+| `PW_APPIUM_SERVER_URL` | Appium server URL (`http://127.0.0.1:4723`), grid/cloud URL, or GADS hub URL |
+| `PW_APPIUM_PLATFORM` | `ios` or `android` (sets `platformName` and default automation engine) |
+| `PW_APPIUM_UDID`, `PW_APPIUM_DEVICE_NAME` | Device selection (GADS: device name is a regex resolved to a UDID) |
+| `PW_APPIUM_PLATFORM_VERSION`, `PW_APPIUM_AUTOMATION_NAME`, `PW_APPIUM_APP` | OS version, Appium engine, app to install |
+| `PW_APPIUM_CAPABILITIES` | Extra capabilities as a JSON object |
+| `PW_APPIUM_NEW_COMMAND_TIMEOUT`, `PW_APPIUM_SESSION_TIMEOUT` | Idle timeout (s), session-create timeout (ms) |
+| `PW_GADS_CLIENT_SECRET` | Enables the GADS preset; client secret from GADS Admin → Client credentials |
+| `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |
@@ -387,9 +385,9 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | Project | testMatch | Fixtures Available |
 |---|---|---|
 | `openapi` | `**/examples/openapi.spec.ts` | `openApiClient` |
-| `mobile-ios` | `**/examples/mobilewright.spec.ts` | `mobilewrightDevice`, `mobilewrightScreen` |
-| `mobile-android` | `**/examples/mobilewright.spec.ts` | `mobilewrightDevice`, `mobilewrightScreen` |
-| `mobile-gads` | `**/examples/gads.spec.ts` | `gadsDevice`, `gadsHub` (5-minute test timeout for device queueing) |
+| `appium-android` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform android) |
+| `appium-ios` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform ios) |
+| `gads` | `**/examples/gads.spec.ts` | `appiumDriver`, `gadsHub` (GADS preset; 5-minute test timeout for device queueing) |
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
@@ -457,7 +455,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `MOB`, `GDS`, `OTP`, `INT`, `PROP`, or a custom short code for new domains.
+- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

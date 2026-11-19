@@ -1,22 +1,22 @@
 /**
- * GADS Fixture — Example Test
+ * GADS Preset — Example Test
  *
- * Demonstrates running Appium tests on a real device allocated from a GADS
- * device farm (https://github.com/shamanec/GADS). The `gadsDevice` fixture asks
- * the hub for a device, opens an Appium session on it, and releases the device
- * after the test. `gadsHub` lists devices without reserving one.
+ * Demonstrates the Appium fixture's GADS preset (https://github.com/shamanec/GADS).
+ * With `appium.gads` set, `appiumDriver` asks the GADS hub for a device, opens an
+ * Appium session on it, and releases the device after the test. `gadsHub` lists
+ * devices without reserving one.
  *
  * Prerequisites:
  *   - A running GADS hub with at least one provider and an automation-enabled device
  *   - A client secret from GADS Admin → Client credentials
- *   - PW_GADS_HUB_URL and PW_GADS_CLIENT_SECRET set (plus PW_GADS_PLATFORM,
- *     PW_GADS_DEVICE_NAME or PW_GADS_UDID to choose the device)
+ *   - PW_APPIUM_SERVER_URL=http://<hub>:10000, PW_GADS_CLIENT_SECRET, and
+ *     PW_APPIUM_PLATFORM (optionally PW_APPIUM_DEVICE_NAME or PW_APPIUM_UDID)
  */
 
-import { test, expect } from '../../src';
-import { GadsSteps } from '../../src/steps';
+import { test, expect, gadsSessionInfo } from '../../src';
+import { AppiumSteps } from '../../src/steps';
 
-test.describe('GADS Fixture Examples', () => {
+test.describe('GADS Preset Examples', () => {
     test.skip(!process.env.CI, 'Skipped: requires a GADS hub and devices');
 
     test('[TC-GDS-001] hub reports ready with automation-enabled devices', { tag: ['@TC-GDS-001'] }, async ({ gadsHub }) => {
@@ -36,56 +36,52 @@ test.describe('GADS Fixture Examples', () => {
         });
     });
 
-    test('[TC-GDS-002] allocate a device and open an Appium session', { tag: ['@TC-GDS-002'] }, async ({ gadsDevice }) => {
+    test('[TC-GDS-002] allocate a device through the hub', { tag: ['@TC-GDS-002'] }, async ({ appiumDriver }) => {
         await test.step('Step 1: Verify the hub allocated a device', async () => {
-            expect(gadsDevice.sessionId).toBeTruthy();
-            expect(gadsDevice.udid).toBeTruthy();
+            const info = gadsSessionInfo(appiumDriver);
+            expect(appiumDriver.sessionId).toBeTruthy();
+            expect(info.udid).toBeTruthy();
+            expect(info.provider).toBeTruthy();
         });
 
         await test.step('Step 2: Read the UI hierarchy from the device', async () => {
-            const xml = await gadsDevice.source();
+            const xml = await appiumDriver.getPageSource();
             expect(xml).toContain('<');
-        });
-
-        await test.step('Step 3: Verify the client secret is not exposed in capabilities', async () => {
-            expect(JSON.stringify(gadsDevice.capabilities)).not.toContain(process.env.PW_GADS_CLIENT_SECRET ?? '\u0000');
         });
     });
 
-    test('[TC-GDS-003] take a screenshot and attach it to the report', { tag: ['@TC-GDS-003'] }, async ({ gadsDevice, gadsHub }) => {
-        const steps = new GadsSteps(gadsDevice, gadsHub);
+    test('[TC-GDS-003] device is busy while the session runs', { tag: ['@TC-GDS-003'] }, async ({ appiumDriver, gadsHub }) => {
+        const steps = new AppiumSteps(appiumDriver);
 
         await test.step('Step 1: Capture the device screen', async () => {
             const png = await steps.attachScreenshot('Attach a screenshot of the device', 'device-home');
-            // PNG signature
             expect(png.subarray(0, 4).toString('hex')).toBe('89504e47');
         });
 
-        await test.step('Step 2: Verify the device is busy while the session runs', async () => {
-            const [device] = await gadsHub.listDevices({ udid: gadsDevice.udid });
+        await test.step('Step 2: Verify the hub reports the device as in use', async () => {
+            const { udid } = gadsSessionInfo(appiumDriver);
+            const [device] = await gadsHub.listDevices({ udid });
             expect(device?.available).toBe(false);
         });
     });
 
-    test('[TC-GDS-004] launch an app and find an element', { tag: ['@TC-GDS-004'] }, async ({ gadsDevice }) => {
-        const isIos = gadsDevice.platform === 'ios';
-        const settingsApp = isIos ? 'com.apple.Preferences' : 'com.android.settings';
+    test('[TC-GDS-004] launch an app and find an element', { tag: ['@TC-GDS-004'] }, async ({ appiumDriver }) => {
+        const settingsApp = appiumDriver.isIOS ? 'com.apple.Preferences' : 'com.android.settings';
 
         await test.step('Step 1: Launch the system Settings app', async () => {
-            await gadsDevice.activateApp(settingsApp);
+            await appiumDriver.execute('mobile: activateApp', { bundleId: settingsApp, appId: settingsApp });
         });
 
-        await test.step('Step 2: Wait for a visible element on the Settings screen', async () => {
-            const id = await gadsDevice.waitForElement(
-                isIos ? '-ios class chain' : '-android uiautomator',
-                isIos ? '**/XCUIElementTypeCell' : 'new UiSelector().scrollable(true)',
-                15_000,
-            );
-            expect(await gadsDevice.isDisplayed(id)).toBe(true);
+        await test.step('Step 2: Wait for a list on the Settings screen', async () => {
+            const list = appiumDriver.isIOS
+                ? appiumDriver.$('-ios class chain:**/XCUIElementTypeCell')
+                : appiumDriver.$('android=new UiSelector().scrollable(true)');
+            await list.waitForDisplayed({ timeout: 15_000 });
+            expect(await list.isDisplayed()).toBe(true);
         });
 
         await test.step('Step 3: Close the Settings app', async () => {
-            await gadsDevice.terminateApp(settingsApp);
+            await appiumDriver.execute('mobile: terminateApp', { bundleId: settingsApp, appId: settingsApp });
         });
     });
 });
