@@ -15,9 +15,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { EnvLoader } from './env-loader';
-import { ConfigurationError } from '../errors';
-import type { FrameworkConfig, EnvironmentsFile } from './schema';
+import { EnvLoader } from './env-loader.js';
+import { ConfigurationError } from '../errors.js';
+import type { FrameworkConfig, EnvironmentsFile } from './schema.js';
 
 export class ConfigLoader {
     private readonly projectRoot: string;

@@ -6,8 +6,8 @@
  * This implementation uses a stub that throws if the SDK is not available.
  */
 
-import type { SecretsProvider } from '../provider.interface';
-import { SecretsError } from '../../errors';
+import type { SecretsProvider } from '../provider.interface.js';
+import { SecretsError } from '../../errors.js';
 
 export interface AzureProviderOptions {
     /** Azure Key Vault URL (e.g., 'https://my-vault.vault.azure.net') */

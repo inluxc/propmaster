@@ -5,7 +5,7 @@
  * Wraps common SQL query/execute patterns for test reuse.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface DatabaseClient {
     query<T = any>(sql: string, params?: any[]): Promise<T[]>;

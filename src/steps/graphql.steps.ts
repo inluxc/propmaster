@@ -5,7 +5,7 @@
  * Wraps common query, mutation, and rawRequest patterns.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface GraphQLClient {
     query<T = any>(query: string, variables?: Record<string, any>, options?: { headers?: Record<string, string> }): Promise<T>;

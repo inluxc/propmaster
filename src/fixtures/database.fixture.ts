@@ -13,8 +13,8 @@
  *   - FixtureOperationError on query failure (includes SQL statement)
  */
 
-import { FixtureInitError, FixtureOperationError } from '../errors';
-import { DatabaseFixtureConfig } from '../config/schema';
+import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import { DatabaseFixtureConfig } from '../config/schema.js';
 
 /**
  * Client interface exposed to tests for database operations.
@@ -411,7 +411,7 @@ export const databaseFixture = {
         let config: DatabaseFixtureConfig | undefined = database;
 
         if (!config) {
-            const { ConfigLoader } = await import('../config/loader');
+            const { ConfigLoader } = await import('../config/loader.js');
             const loader = new ConfigLoader();
             const frameworkConfig = loader.load();
             config = frameworkConfig.database;

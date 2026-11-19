@@ -9,8 +9,8 @@
  */
 
 import { Kafka, Producer, Consumer, EachMessagePayload, logLevel, SASLOptions as KafkaJsSASLOptions } from 'kafkajs';
-import { KafkaFixtureConfig } from '../config/schema';
-import { FixtureInitError, FixtureOperationError } from '../errors';
+import { KafkaFixtureConfig } from '../config/schema.js';
+import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
 /**
  * A single Kafka message with metadata.

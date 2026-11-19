@@ -5,7 +5,7 @@
  * Wraps common produce/consume patterns for test reuse.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface KafkaMessage {
     key: string | null;

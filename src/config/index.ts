@@ -5,6 +5,6 @@
  * and the EnvLoader for convenient single-path imports.
  */
 
-export * from './schema';
-export * from './loader';
-export * from './env-loader';
+export * from './schema.js';
+export * from './loader.js';
+export * from './env-loader.js';

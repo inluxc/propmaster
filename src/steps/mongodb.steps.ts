@@ -5,7 +5,7 @@
  * Wraps common CRUD and aggregation patterns for test reuse.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface MongoDbClient {
     find<T = any>(collection: string, filter: Record<string, any>, options?: { limit?: number; skip?: number; sort?: Record<string, 1 | -1>; projection?: Record<string, 0 | 1> }): Promise<T[]>;

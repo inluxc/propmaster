@@ -5,8 +5,8 @@
  * Wraps common API interactions so spec files stay concise.
  */
 
-import { test, expect } from '../index';
-import type { OpenApiClient } from '../fixtures/openapi.fixture';
+import { test, expect } from '../index.js';
+import type { OpenApiClient } from '../fixtures/openapi.fixture.js';
 
 export class OpenApiSteps {
     constructor(private openApiClient: OpenApiClient) {}

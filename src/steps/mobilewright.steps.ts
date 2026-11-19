@@ -5,7 +5,7 @@
  * Wraps common screen interactions and device control patterns.
  */
 
-import { test, expect } from '../index';
+import { test, expect } from '../index.js';
 
 export interface MobilewrightScreen {
     getByText(text: string): any;

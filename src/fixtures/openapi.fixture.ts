@@ -14,9 +14,9 @@
 
 import { OpenAPIClientAxios } from 'openapi-client-axios';
 import type { AxiosInstance } from 'openapi-client-axios';
-import type { OpenApiFixtureConfig } from '../config/schema';
-import { FixtureInitError } from '../errors';
-import { ConfigLoader } from '../config/loader';
+import type { OpenApiFixtureConfig } from '../config/schema.js';
+import { FixtureInitError } from '../errors.js';
+import { ConfigLoader } from '../config/loader.js';
 
 /**
  * The OpenAPI client object provided to tests.

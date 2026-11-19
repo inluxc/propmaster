@@ -6,9 +6,9 @@
  * are not available.
  */
 
-import type { SecretsProvider } from '../provider.interface';
-import { SecretsError } from '../../errors';
-import { EnvLoader } from '../../config/env-loader';
+import type { SecretsProvider } from '../provider.interface.js';
+import { SecretsError } from '../../errors.js';
+import { EnvLoader } from '../../config/env-loader.js';
 
 export interface EnvFileProviderOptions {
     /** Project root directory where .env files are located. Defaults to process.cwd(). */
