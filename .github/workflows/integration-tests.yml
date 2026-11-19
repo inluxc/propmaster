@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci
       - run: npm run typecheck
+      - name: Check test conventions (TestCaseIDs, tags, steps, imports)
+        run: npm run lint:tests
 
   property-tests:
     needs: [typecheck]

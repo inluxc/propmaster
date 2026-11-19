@@ -1,6 +1,20 @@
 # AI Agent Instructions — Playwright Framework Template
 
-This document provides AI agents with the context needed to create, modify, and maintain tests in this Playwright framework template.
+This document provides AI agents with the context needed to create, modify, and maintain tests in this Playwright framework template. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
+
+## Agent Workflow — Required Checks
+
+These commands give you fast, machine-checkable feedback. Use them instead of checking conventions by hand:
+
+```bash
+npm run next-id -- API          # next free TestCaseID in a category, e.g. TC-API-005
+npm run next-id -- API 3        # three sequential IDs
+npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (specs + SKILLS.md/AGENTS.md samples)
+npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
+npm run verify                  # typecheck + lint:tests + property tests — run before finishing any task
+```
+
+`lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`) and the fix.
 
 ## Project Overview
 
@@ -50,11 +64,18 @@ src/
 │   ├── provider.interface.ts   # SecretsProvider interface
 │   ├── secrets-manager.ts      # SecretsManager orchestrator
 │   └── providers/              # Provider implementations (aws, vault, gitlab, azure, env-file)
+├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
+│                               #   each method wraps its work in test.step() — prefer these in specs
+├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 └── cli/                        # CLI tool for scaffolding
+
+scripts/
+└── check-tests.mjs             # Test convention checker (npm run lint:tests / next-id)
 
 tests/
 ├── examples/                   # Reference test files for each fixture
 │   ├── openapi.spec.ts
+│   ├── browser.spec.ts
 │   ├── database.spec.ts
 │   ├── graphql.spec.ts
 │   ├── kafka.spec.ts
@@ -63,8 +84,8 @@ tests/
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
 │   └── mobilewright.spec.ts
-├── integration/                # Integration/E2E tests
-└── properties/                 # Property-based tests (*.prop.ts)
+├── unit/                       # Framework self-tests (exempt from TestCaseID rules)
+└── properties/                 # Framework property tests, *.prop.ts (exempt from TestCaseID rules)
 ```
 
 ## How to Write Tests
@@ -378,6 +399,8 @@ npx playwright test --project=property-tests      # Property tests
 npm run test:tag -- @smoke                        # By tag
 PW_ENVIRONMENT=dev npx playwright test            # Specific environment
 npm run typecheck                                 # Type checking only
+npm run lint:tests                                # Test conventions (IDs, tags, steps, imports)
+npm run verify                                    # typecheck + lint:tests + property tests
 ```
 
 ## Creating Custom Fixtures
@@ -409,7 +432,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 
 ### Rules
 
-1. **Uniqueness:** Each TestCaseID must be globally unique across ALL spec files in the project. Before assigning an ID, check existing test files to determine the next available number in the category.
+1. **Uniqueness:** Each TestCaseID must be globally unique across ALL spec files in the project. Get IDs from `npm run next-id -- <CATEGORY>`; `npm run lint:tests` rejects duplicates.
 2. **Title format:** `test('[TC-XXX-NNN] descriptive test name', { tag: ['@TC-XXX-NNN'] }, async ...)`
 3. **Tag format:** Use Playwright's `{ tag: ['@TC-XXX-NNN'] }` options object as the second argument to `test()`.
 4. **Sequential numbering:** Numbers increment within each category (e.g., `TC-API-001`, `TC-API-002`, ...).
@@ -510,9 +533,18 @@ test.describe('Browser — Login — Functional', () => {
 
 ### How to Determine the Next ID
 
-1. Search all `*.spec.ts` and `*.prop.ts` files for existing `TC-XXX-` patterns in the target category.
-2. Find the highest number currently in use.
-3. Increment by 1 for the next test.
+Don't grep by hand. Ask the checker, which scans every `*.spec.ts` and `*.prop.ts` file:
+
+```bash
+npm run next-id -- API        # → TC-API-005
+npm run next-id -- BRW 7      # → seven sequential IDs, e.g. for a parameterized viewport test
+node scripts/check-tests.mjs --list-ids   # every ID in use, with file:line
+```
+
+For parameterized tests (generated in a loop), put an ID in each data row and build the title and tag from it:
+``test(`[${c.id}] ...`, { tag: [`@${c.id}`] }, async () => { ... })``.
+
+`next-id` only sees IDs that are still in the code. Never renumber or reuse the ID of a deleted test.
 
 ---
 
@@ -527,3 +559,5 @@ test.describe('Browser — Login — Functional', () => {
 - Property tests use `fast-check` and follow `*.prop.ts` naming
 - **Every test must have a unique TestCaseID** — see "Test Case ID Convention" above
 - **Every test must use `test.step()`** — break the test body into labeled steps for traceability in reports and traces
+- **Assert expected failures explicitly** — for OpenAPI calls expected to return non-2xx, pass `{ validateStatus: () => true }` as the 3rd argument and assert `response.status`. Never use `try { call } catch { expect(...) }`, which passes silently if the call succeeds
+- **Run `npm run verify` before finishing** — it is what CI runs

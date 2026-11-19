@@ -51,7 +51,10 @@
         "release:dry": "npm run build && npm publish --dry-run --access public",
         "test": "npx playwright test",
         "test:tag": "npx playwright test --grep",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "lint:tests": "node scripts/check-tests.mjs",
+        "next-id": "node scripts/check-tests.mjs --next-id",
+        "verify": "npm run typecheck && npm run lint:tests && npx playwright test --project=property-tests"
     },
     "dependencies": {
         "@mobilewright/test": "^0.0.70",
