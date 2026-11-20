@@ -510,7 +510,7 @@ PW_API_KEY=sk-test-12345
 You can use the `SecretsManager` directly in custom fixtures or setup scripts:
 
 ```typescript
-import { SecretsManager, AwsSecretsProvider } from '@inluxc/stagehand';
+import { SecretsManager, AwsSecretsProvider } from '@inluxc/propmaster';
 
 const manager = new SecretsManager();
 
@@ -603,7 +603,7 @@ All secrets errors use the `SecretsError` class with structured context:
 You can implement the `SecretsProvider` interface to add support for any backend:
 
 ```typescript
-import { SecretsProvider } from '@inluxc/stagehand';
+import { SecretsProvider } from '@inluxc/propmaster';
 
 export class MyCustomProvider implements SecretsProvider {
   readonly name = 'my-provider';
@@ -627,7 +627,7 @@ export class MyCustomProvider implements SecretsProvider {
 Register it with the `SecretsManager`:
 
 ```typescript
-import { SecretsManager } from '@inluxc/stagehand';
+import { SecretsManager } from '@inluxc/propmaster';
 import { MyCustomProvider } from './my-custom-provider';
 
 const manager = new SecretsManager();

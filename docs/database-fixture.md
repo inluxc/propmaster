@@ -107,7 +107,7 @@ export default defineConfig({
 ### Querying Data
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('query users', async ({ databaseClient }) => {
   const rows = await databaseClient.query<{ id: number; name: string }>(

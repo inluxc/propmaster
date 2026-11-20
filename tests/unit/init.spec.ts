@@ -1,5 +1,5 @@
 /**
- * Unit tests for `stagehand init` (src/cli/init.ts) and the layout it
+ * Unit tests for `propmaster init` (src/cli/init.ts) and the layout it
  * scaffolds (src/cli/layout.ts), in throwaway folders.
  */
 
@@ -19,7 +19,7 @@ test.describe('init — layout', () => {
     const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8');
 
     test.beforeEach(() => {
-        root = fs.mkdtempSync(path.join(os.tmpdir(), 'stagehand-init-'));
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-init-'));
     });
     test.afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -50,10 +50,10 @@ test.describe('init — layout', () => {
         const pkg = JSON.parse(read('package.json'));
         expect(pkg.scripts['test:api']).toContain('--project=api');
         expect(pkg.scripts['test:e2e']).toContain("--project='e2e-*'");
-        expect(pkg.stagehand.testDirs).toEqual(['tests']);
+        expect(pkg.propmaster.testDirs).toEqual(['tests']);
     });
 
-    test('templates generate no comment-closing globs and their doc samples pass `stagehand check`', () => {
+    test('templates generate no comment-closing globs and their doc samples pass `propmaster check`', () => {
         initProject(root, quiet);
         for (const t of TEST_TYPES) {
             const src = read(`${t.dir}/projects.ts`);
@@ -80,7 +80,7 @@ test.describe('init — layout', () => {
         expect(result.plan?.moves).toEqual([{ from: 'e2e/home.spec.ts', to: 'tests/e2e/home.spec.ts', type: 'e2e', tests: 1 }]);
         const out = lines.join('\n');
         expect(out).toContain('Nothing was moved or overwritten.');
-        expect(out).toContain('npx stagehand organize');
+        expect(out).toContain('npx propmaster organize');
         expect(out).toContain("import { e2eProjects } from './tests/e2e/projects';");
     });
 
@@ -93,7 +93,7 @@ test.describe('init — layout', () => {
 
 test.describe('init — helpers', () => {
     test('existingPlaywrightConfigs finds every config extension', () => {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stagehand-cfg-'));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-cfg-'));
         for (const f of ['playwright.config.mjs', 'playwright.config.ts', 'other.config.ts']) fs.writeFileSync(path.join(dir, f), '');
         expect(existingPlaywrightConfigs(dir)).toEqual(['playwright.config.mjs', 'playwright.config.ts']);
         fs.rmSync(dir, { recursive: true, force: true });

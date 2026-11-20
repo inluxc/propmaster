@@ -1,10 +1,10 @@
 {
-    "name": "@inluxc/stagehand",
+    "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, Redis, OTP and Appium/GADS. Not Browserbase's AI Stagehand.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, Redis, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
-        "stagehand": "dist/src/cli/init.js"
+        "propmaster": "dist/src/cli/init.js"
     },
     "main": "./dist/src/index.js",
     "module": "./dist/src/index.js",
@@ -163,7 +163,7 @@
         "otp",
         "integration",
         "extension",
-        "stagehand",
+        "propmaster",
         "graphql",
         "postgresql",
         "mysql",
@@ -178,11 +178,11 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Inluxc/stagehand.git"
+        "url": "git+https://github.com/Inluxc/propmaster.git"
     },
-    "homepage": "https://inluxc.github.io/stagehand/",
+    "homepage": "https://propmaster.dev/",
     "bugs": {
-        "url": "https://github.com/Inluxc/stagehand/issues"
+        "url": "https://github.com/Inluxc/propmaster/issues"
     },
     "engines": {
         "node": ">=22.12.0"

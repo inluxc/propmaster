@@ -1,6 +1,6 @@
 # Getting Started
 
-Stagehand extends [Playwright Test](https://playwright.dev/) with fixtures for the systems behind your UI: APIs, databases, message brokers, caches, mobile devices and OTP. You keep your Playwright config and tests. Stagehand adds more fixtures to request.
+Propmaster extends [Playwright Test](https://playwright.dev/) with fixtures for the systems behind your UI: APIs, databases, message brokers, caches, mobile devices and OTP. You keep your Playwright config and tests. Propmaster adds more fixtures to request.
 
 ## Requirements
 
@@ -10,10 +10,10 @@ Stagehand extends [Playwright Test](https://playwright.dev/) with fixtures for t
 ## Install
 
 ```bash
-npm install --save-dev @playwright/test @inluxc/stagehand
+npm install --save-dev @playwright/test @inluxc/propmaster
 ```
 
-Stagehand itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use:
+Propmaster itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use:
 
 | Fixture | Install |
 |---|---|
@@ -32,25 +32,25 @@ Stagehand itself has no runtime dependencies. Each fixture's driver is an option
 npm install --save-dev openapi-client-axios pg kafkajs
 ```
 
-A test that requests a fixture whose driver isn't installed fails with a `MissingPackageError` that names the package and the install command. Importing Stagehand never loads a driver; each one loads the first time a test uses its fixture.
+A test that requests a fixture whose driver isn't installed fails with a `MissingPackageError` that names the package and the install command. Importing Propmaster never loads a driver; each one loads the first time a test uses its fixture.
 
 ### Or scaffold a new project
 
-`stagehand init` creates a project with one folder per test type (`tests/api`, `tests/integration`, `tests/e2e`, `tests/mobile`), a Playwright config that runs each type as its own project, an `environments.json`, and `tests/support/` for page objects, fixtures, test data and helpers:
+`propmaster init` creates a project with one folder per test type (`tests/api`, `tests/integration`, `tests/e2e`, `tests/mobile`), a Playwright config that runs each type as its own project, an `environments.json`, and `tests/support/` for page objects, fixtures, test data and helpers:
 
 ```bash
-npx stagehand init my-tests
+npx propmaster init my-tests
 ```
 
-Run it in a project that already has Playwright tests and it adds only what's missing. It moves nothing and reports where your tests belong; `npx stagehand organize` then moves them. See [Project Layout](./project-layout).
+Run it in a project that already has Playwright tests and it adds only what's missing. It moves nothing and reports where your tests belong; `npx propmaster organize` then moves them. See [Project Layout](./project-layout).
 
 ## Your first test
 
-Import `test` and `expect` from Stagehand instead of `@playwright/test`. Then request fixtures by name:
+Import `test` and `expect` from Propmaster instead of `@playwright/test`. Then request fixtures by name:
 
 ```typescript
 // tests/users.spec.ts
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('a new user is stored as active', async ({ openApiClient, databaseClient }) => {
     const { client } = openApiClient;
@@ -83,10 +83,10 @@ For more than a couple of variables, keep them in [`environments.json` or `.env`
 
 ## Playwright fixtures still work
 
-Stagehand's `test` is built on `@playwright/test`, so `page`, `request`, `context` and `browser` are all available, alongside Stagehand fixtures in the same test:
+Propmaster's `test` is built on `@playwright/test`, so `page`, `request`, `context` and `browser` are all available, alongside Propmaster fixtures in the same test:
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('a user created through the API appears in the admin UI', async ({ openApiClient, page }) => {
     const { client } = openApiClient;
@@ -112,7 +112,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `appiumDriver` | Appium session (WebdriverIO) on local Appium, a grid, a cloud farm or GADS | [Appium](../appium-fixture) |
 | `gadsHub` | GADS hub status and device listing | [Appium → GADS](../appium-fixture#gads-preset) |
 
-Need something else? [Write your own fixture](../custom-fixtures) on top of Stagehand's `test`.
+Need something else? [Write your own fixture](../custom-fixtures) on top of Propmaster's `test`.
 
 ## Next steps
 

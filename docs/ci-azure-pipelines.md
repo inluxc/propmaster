@@ -60,7 +60,7 @@ steps:
 
 ## Complete `azure-pipelines.yml`
 
-Jobs have no `dependsOn`, so they run in parallel. The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yours.
+Jobs have no `dependsOn`, so they run in parallel. The `--project` names are the ones in Propmaster's `playwright.config.ts`; use yours.
 
 ```yaml
 trigger:
@@ -212,7 +212,7 @@ Keep real credentials in a variable group (optionally linked to Azure Key Vault)
   condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
   container: node
   variables:
-    - group: stagehand-staging          # holds the secret STG_DB_PASSWORD
+    - group: propmaster-staging          # holds the secret STG_DB_PASSWORD
     - name: PW_ENVIRONMENT
       value: stg
   steps:
@@ -222,7 +222,7 @@ Keep real credentials in a variable group (optionally linked to Azure Key Vault)
         PW_DB_PASSWORD: $(STG_DB_PASSWORD)
 ```
 
-Stagehand's [Azure Key Vault provider](./secrets) can also read secrets directly at test time.
+Propmaster's [Azure Key Vault provider](./secrets) can also read secrets directly at test time.
 
 ## Tips
 

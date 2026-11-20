@@ -75,7 +75,7 @@ Load the merged config once and hand each Playwright project only the fixture se
 
 ```typescript
 import { defineConfig } from '@playwright/test';
-import { ConfigLoader, type ConfigOptions } from '@inluxc/stagehand';
+import { ConfigLoader, type ConfigOptions } from '@inluxc/propmaster';
 
 const config = new ConfigLoader().load();
 

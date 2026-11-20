@@ -1,17 +1,17 @@
 import { defineConfig } from 'vitepress';
 
-const repo = 'https://github.com/inluxc/stagehand';
+const repo = 'https://github.com/inluxc/propmaster';
 
 export default defineConfig({
-    title: 'Stagehand',
-    description: '@inluxc/stagehand: ready-to-use Playwright Test fixtures for APIs, databases, messaging, caches, mobile devices and OTP. Not Browserbase\'s AI Stagehand.',
-    // Served from https://inluxc.github.io/stagehand/
-    base: '/stagehand/',
+    title: 'Propmaster',
+    description: '@inluxc/propmaster: ready-to-use Playwright Test fixtures for APIs, databases, messaging, caches, mobile devices and OTP.',
+    // Served from https://propmaster.dev/ (custom domain on GitHub Pages)
+    base: '/',
     cleanUrls: true,
     lastUpdated: true,
     // Keep repo-only files out of the site.
     srcExclude: ['**/README.md'],
-    head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/stagehand/logo.svg' }]],
+    head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]],
 
     markdown: {
         config(md) {
@@ -41,7 +41,7 @@ export default defineConfig({
             { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
             { text: 'Fixtures', link: '/openapi-fixture', activeMatch: '-fixture' },
             { text: 'CI/CD', link: '/ci', activeMatch: '^/ci' },
-            { text: 'npm', link: 'https://www.npmjs.com/package/@inluxc/stagehand' },
+            { text: 'npm', link: 'https://www.npmjs.com/package/@inluxc/propmaster' },
         ],
         sidebar: [
             {

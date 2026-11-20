@@ -1,6 +1,6 @@
 # Project Layout
 
-`stagehand init` organizes tests **by type**, one folder each. The folder decides which Playwright projects run a test, and so which CI job and which services it needs.
+`propmaster init` organizes tests **by type**, one folder each. The folder decides which Playwright projects run a test, and so which CI job and which services it needs.
 
 ```
 tests/
@@ -37,7 +37,7 @@ There is a single `playwright.config.ts`, so `npx playwright test` runs everythi
 ```typescript
 // playwright.config.ts (generated)
 import { defineConfig } from '@playwright/test';
-import { ConfigLoader, type ConfigOptions } from '@inluxc/stagehand';
+import { ConfigLoader, type ConfigOptions } from '@inluxc/propmaster';
 import { apiProjects } from './tests/api/projects';
 import { integrationProjects } from './tests/integration/projects';
 import { e2eProjects } from './tests/e2e/projects';
@@ -61,7 +61,7 @@ export default defineConfig<ConfigOptions>({
 
 ```typescript
 // tests/mobile/projects.ts (generated)
-import type { FrameworkConfig } from '@inluxc/stagehand';
+import type { FrameworkConfig } from '@inluxc/propmaster';
 
 const PLATFORMS = ['android', 'ios'] as const;
 
@@ -90,7 +90,7 @@ npm run test:mobile         # --project=mobile-android
 
 ## Where a test goes
 
-A test's fixtures decide its type. These are also the rules `stagehand organize` uses:
+A test's fixtures decide its type. These are also the rules `propmaster organize` uses:
 
 | The test (or one of its hooks) asks for | Folder |
 |---|---|
@@ -101,12 +101,12 @@ A test's fixtures decide its type. These are also the rules `stagehand organize`
 
 Keep one type per file, so a file never needs two folders.
 
-## Adding Stagehand to an existing project
+## Adding Propmaster to an existing project
 
 Run `init` in a project that already has Playwright tests and it **moves and overwrites nothing**:
 
 ```bash
-npx stagehand init
+npx propmaster init
 ```
 
 - It creates only the missing folders and files, and doesn't add a second config next to your `playwright.config.*`.
@@ -121,12 +121,12 @@ npx stagehand init
     (0 already in the right folder, 5 to move)
 ```
 
-## Sorting existing tests: `stagehand organize`
+## Sorting existing tests: `propmaster organize`
 
 `organize` moves your tests into the layout. It runs as a **dry run** by default:
 
 ```bash
-npx stagehand organize
+npx propmaster organize
 ```
 
 ```
@@ -154,7 +154,7 @@ npx stagehand organize
 Then apply it:
 
 ```bash
-npx stagehand organize --apply
+npx propmaster organize --apply
 ```
 
 What `--apply` does:

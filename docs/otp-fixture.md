@@ -94,7 +94,7 @@ export default defineConfig({
 ### Generate and Verify TOTP
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('generate and verify TOTP', async ({ otpClient }) => {
   const secret = otpClient.generateSecret();

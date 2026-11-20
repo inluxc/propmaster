@@ -11,7 +11,7 @@ In CircleCI's Docker executor, the first image is where steps run. Every [image 
 
 ## Complete `.circleci/config.yml`
 
-All jobs are in one workflow with no `requires`, so they run in parallel. The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yours.
+All jobs are in one workflow with no `requires`, so they run in parallel. The `--project` names are the ones in Propmaster's `playwright.config.ts`; use yours.
 
 ```yaml
 version: 2.1
@@ -181,7 +181,7 @@ workflows:
   tests:
     jobs:
       - staging-api:
-          context: stagehand-staging        # holds PW_DB_PASSWORD, PW_GRAPHQL_AUTH_TOKEN, ...
+          context: propmaster-staging        # holds PW_DB_PASSWORD, PW_GRAPHQL_AUTH_TOKEN, ...
           filters: { branches: { only: main } }
 ```
 

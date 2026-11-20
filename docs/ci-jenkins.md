@@ -17,7 +17,7 @@ Jenkins has no built-in service containers. With the [Docker Pipeline](https://p
 
 ## Complete `Jenkinsfile`
 
-The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yours.
+The `--project` names are the ones in Propmaster's `playwright.config.ts`; use yours.
 
 ```groovy
 // Needs the Docker Pipeline and JUnit plugins, and agents labelled "docker".
@@ -25,7 +25,7 @@ The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yo
 // Starts a service container on a private network, waits until `ready` succeeds
 // inside it, then runs `body` in node:24 on that network. Tests reach it by `alias`.
 def withService(Map svc, Closure body) {
-    def net = "stagehand-${env.BUILD_TAG}-${svc.alias}".replaceAll(/[^A-Za-z0-9_.-]/, '-')
+    def net = "propmaster-${env.BUILD_TAG}-${svc.alias}".replaceAll(/[^A-Za-z0-9_.-]/, '-')
     sh "docker network create ${net}"
     try {
         docker.image(svc.image).withRun("--network ${net} --network-alias ${svc.alias} ${svc.args ?: ''}") { c ->

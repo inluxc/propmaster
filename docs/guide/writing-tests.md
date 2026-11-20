@@ -1,11 +1,11 @@
 # Writing Tests
 
-Stagehand ships a convention checker that keeps a growing suite traceable. A failure report should point to one test ID and the step that broke. These conventions are optional, but `stagehand init` sets projects up to use them.
+Propmaster ships a convention checker that keeps a growing suite traceable. A failure report should point to one test ID and the step that broke. These conventions are optional, but `propmaster init` sets projects up to use them.
 
 ## The shape of a test
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Users API', () => {
     test('[TC-API-001] create user returns 201', { tag: ['@TC-API-001'] }, async ({ openApiClient }) => {
@@ -33,16 +33,16 @@ The four rules:
 3. **IDs are unique across the whole project** and never reused, even after a test is deleted.
 4. **Every test body is split into `test.step()` calls.** Steps appear in the HTML report, the trace viewer and CI logs, so a failure names the step that broke.
 
-Import `test` from `@inluxc/stagehand` (or your own fixtures file), never from `@playwright/test`. Only Stagehand's `test` has the fixtures registered.
+Import `test` from `@inluxc/propmaster` (or your own fixtures file), never from `@playwright/test`. Only Propmaster's `test` has the fixtures registered.
 
 ## Getting the next ID
 
 Don't search for the highest ID by hand. Ask the checker:
 
 ```bash
-npx stagehand next-id API        # → TC-API-005
-npx stagehand next-id DB 3       # → TC-DB-012, TC-DB-013, TC-DB-014
-npx stagehand check --list-ids   # every ID in use, with file:line
+npx propmaster next-id API        # → TC-API-005
+npx propmaster next-id DB 3       # → TC-DB-012, TC-DB-013, TC-DB-014
+npx propmaster check --list-ids   # every ID in use, with file:line
 ```
 
 For tests generated in a loop, put an ID in each data row:
@@ -65,8 +65,8 @@ for (const c of cases) {
 ## Checking conventions
 
 ```bash
-npx stagehand check           # exits 1 and names the rule and fix for each violation
-npx stagehand check --json    # { ok, violations: [{ file, line, rule, test, message }] }
+npx propmaster check           # exits 1 and names the rule and fix for each violation
+npx propmaster check --json    # { ok, violations: [{ file, line, rule, test, message }] }
 ```
 
 | Rule | What it catches |
@@ -77,11 +77,11 @@ npx stagehand check --json    # { ok, violations: [{ file, line, rule, test, mes
 | `test-step` | A test body with no `test.step()` |
 | `import` | A test file importing `test` from `@playwright/test` |
 
-Run it in CI next to `tsc` so a violation fails the build. To change which folders it scans, add a `stagehand` key to `package.json`:
+Run it in CI next to `tsc` so a violation fails the build. To change which folders it scans, add a `propmaster` key to `package.json`:
 
 ```json
 {
-    "stagehand": {
+    "propmaster": {
         "testDirs": ["tests"],
         "testFileSuffixes": [".spec.ts", ".prop.ts"],
         "exemptDirs": ["tests/unit/", "tests/properties/"],
@@ -111,4 +111,4 @@ Tests run in parallel, so give each run its own data and clean it up:
 
 ## Working with AI agents
 
-The repository's [AGENTS.md](https://github.com/inluxc/stagehand/blob/main/AGENTS.md) and [SKILLS.md](https://github.com/inluxc/stagehand/blob/main/SKILLS.md) teach coding agents these conventions with templates for each fixture. `stagehand init` copies both into new projects, and `stagehand check` also checks the code samples inside them.
+The repository's [AGENTS.md](https://github.com/inluxc/propmaster/blob/main/AGENTS.md) and [SKILLS.md](https://github.com/inluxc/propmaster/blob/main/SKILLS.md) teach coding agents these conventions with templates for each fixture. `propmaster init` copies both into new projects, and `propmaster check` also checks the code samples inside them.

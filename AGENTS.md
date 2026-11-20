@@ -2,8 +2,6 @@
 
 This document provides AI agents with the context needed to create, modify, and maintain tests in this Playwright framework template. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
 
-> **Which Stagehand?** This project is `@inluxc/stagehand`, a Playwright Test fixture library. It is **not** Browserbase's Stagehand (the AI browser-automation framework): never suggest or write `act()`, `extract()`, `observe()`, `stagehand.page` or Browserbase APIs here.
-
 ## Agent Workflow — Required Checks
 
 These commands give you fast, machine-checkable feedback. Use them instead of checking conventions by hand:
@@ -39,7 +37,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
 - **Env Loading:** built-in `.env` parser (`src/config/env-loader.ts`), no dependency
 
-Every driver above is an **optional peer dependency** (and a devDependency here, for the self-tests). Stagehand has no runtime dependencies: importing it loads no driver, and each fixture loads its own on first use through `loadOptional()` in `src/fixtures/optional-package.ts`. A missing driver throws `MissingPackageError` with the install command. A new fixture must load its driver the same way (never a top-level value import) and add it to `peerDependencies`, `peerDependenciesMeta` and `FIXTURE_PACKAGES`.
+Every driver above is an **optional peer dependency** (and a devDependency here, for the self-tests). Propmaster has no runtime dependencies: importing it loads no driver, and each fixture loads its own on first use through `loadOptional()` in `src/fixtures/optional-package.ts`. A missing driver throws `MissingPackageError` with the install command. A new fixture must load its driver the same way (never a top-level value import) and add it to `peerDependencies`, `peerDependenciesMeta` and `FIXTURE_PACKAGES`.
 
 ## Project Structure
 
@@ -71,7 +69,7 @@ src/
 ├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
 │                               #   each method wraps its work in test.step() — prefer these in specs
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
-└── cli/                        # `stagehand` CLI: init (scaffolding), organize (sort tests by type),
+└── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type),
                                 #   check + next-id (test conventions); layout.ts = the scaffolded layout
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
@@ -82,7 +80,7 @@ docs/                           # Fixture guides + VitePress site (published to 
 compose.test.yaml               # Every integration-test service with health checks (local runs, any CI)
 
 scripts/
-└── check-tests.mjs             # Back-compat wrapper; the checker is src/cli/check-tests.ts (`stagehand check` / `next-id`)
+└── check-tests.mjs             # Back-compat wrapper; the checker is src/cli/check-tests.ts (`propmaster check` / `next-id`)
 
 tests/
 ├── examples/                   # Reference test files for each fixture

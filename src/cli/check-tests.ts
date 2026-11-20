@@ -1,5 +1,5 @@
 /**
- * Test convention checker — `stagehand check` / `stagehand next-id`.
+ * Test convention checker — `propmaster check` / `propmaster next-id`.
  *
  * Enforces the conventions taught in AGENTS.md so humans and AI agents get
  * fast, machine-readable feedback instead of relying on prose rules:
@@ -24,11 +24,11 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 /**
- * Checker settings. Read from the `stagehand` key of the project's
+ * Checker settings. Read from the `propmaster` key of the project's
  * `package.json`; every field is optional and falls back to the defaults.
  *
  * ```json
- * "stagehand": {
+ * "propmaster": {
  *   "testDirs": ["tests"],
  *   "testFileSuffixes": [".spec.ts", ".prop.ts"],
  *   "exemptDirs": ["tests/unit/", "tests/properties/"],
@@ -61,17 +61,17 @@ export const DEFAULT_CONFIG: CheckConfig = {
 function stringArray(value: unknown, key: string): string[] | undefined {
     if (value === undefined) return undefined;
     if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
-        throw new Error(`package.json "stagehand.${key}" must be an array of strings.`);
+        throw new Error(`package.json "propmaster.${key}" must be an array of strings.`);
     }
     return value;
 }
 
-/** Merges the `stagehand` key of `<root>/package.json` over the defaults. */
+/** Merges the `propmaster` key of `<root>/package.json` over the defaults. */
 export function loadConfig(root: string): CheckConfig {
     const pkgPath = join(root, 'package.json');
     if (!existsSync(pkgPath)) return { ...DEFAULT_CONFIG };
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { stagehand?: Record<string, unknown> };
-    const raw = pkg.stagehand ?? {};
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { propmaster?: Record<string, unknown> };
+    const raw = pkg.propmaster ?? {};
     const keys = Object.keys(DEFAULT_CONFIG) as (keyof CheckConfig)[];
     const config = { ...DEFAULT_CONFIG };
     for (const key of keys) {
@@ -388,7 +388,7 @@ export function checkSources(sources: SourceInput[]): CheckResult {
                 line: lineOf(src, importMatch.index + importMatch[0].search(/\S/)),
                 rule: 'import',
                 message:
-                    "Import `test`/`expect` from the framework ('@inluxc/stagehand'), not '@playwright/test' — the framework's test object has the fixtures registered. `import type { ... } from '@playwright/test'` is fine.",
+                    "Import `test`/`expect` from the framework ('@inluxc/propmaster'), not '@playwright/test' — the framework's test object has the fixtures registered. `import type { ... } from '@playwright/test'` is fine.",
             });
         }
 
@@ -474,7 +474,7 @@ export function nextIds(category: string, ids: IdEntry[], count = 1): string[] {
 
 // ─── CLI commands ───────────────────────────────────────────────────────────
 
-/** `stagehand check [--json] [--list-ids] [--root <dir>]`. Returns the exit code. */
+/** `propmaster check [--json] [--list-ids] [--root <dir>]`. Returns the exit code. */
 export function runCheck(argv: string[]): number {
     const root = rootFrom(argv);
     const { violations, ids } = collect(root);
@@ -503,12 +503,12 @@ export function runCheck(argv: string[]): number {
     return 1;
 }
 
-/** `stagehand next-id <CATEGORY> [count] [--root <dir>]`. Returns the exit code. */
+/** `propmaster next-id <CATEGORY> [count] [--root <dir>]`. Returns the exit code. */
 export function runNextId(argv: string[]): number {
     const positional = withoutRoot(argv).filter((a) => !a.startsWith('--'));
     const category = (positional[0] ?? '').toUpperCase();
     if (!CATEGORY_RE.test(category)) {
-        console.error('Usage: stagehand next-id <CATEGORY> [count]   (e.g. API, DB, KFK, RDS, MDB, NEO, GQL, BRW, APM, GDS, OTP)');
+        console.error('Usage: propmaster next-id <CATEGORY> [count]   (e.g. API, DB, KFK, RDS, MDB, NEO, GQL, BRW, APM, GDS, OTP)');
         return 2;
     }
     const count = Math.max(1, Math.floor(Number(positional[1])) || 1);

@@ -1,5 +1,5 @@
 /**
- * Unit tests for `stagehand organize` (src/cli/organize.ts): fixture parsing,
+ * Unit tests for `propmaster organize` (src/cli/organize.ts): fixture parsing,
  * classification, destinations, import rewriting, and planning/applying moves
  * in throwaway projects.
  */
@@ -20,7 +20,7 @@ import {
     rewriteImports,
 } from '../../src/cli/organize';
 
-const STAGEHAND = "import { test, expect } from '@inluxc/stagehand';\n";
+const PROPMASTER = "import { test, expect } from '@inluxc/propmaster';\n";
 
 test.describe('organize — fixturesOf', () => {
     test('reads destructured names, aliases, defaults and function syntax', () => {
@@ -73,31 +73,31 @@ test.describe('organize — analyzeSource', () => {
     });
 
     test('accepts @playwright/test, the framework and a local fixtures module', () => {
-        for (const from of ['@playwright/test', '@inluxc/stagehand', '../support/fixtures']) {
+        for (const from of ['@playwright/test', '@inluxc/propmaster', '../support/fixtures']) {
             const a = analyzeSource(`import { expect, test } from '${from}';\ntest('t', async ({ page }) => {});`);
             expect(a).toMatchObject({ playwright: true, type: 'e2e' });
         }
     });
 
     test('hook fixtures count for every test in the file', () => {
-        const src = `${STAGEHAND}test.beforeEach(async ({ redisClient }) => {});\ntest('t', async ({ openApiClient }) => {});`;
+        const src = `${PROPMASTER}test.beforeEach(async ({ redisClient }) => {});\ntest('t', async ({ openApiClient }) => {});`;
         expect(analyzeSource(src).type).toBe('integration');
     });
 
     test('a file mixing types is ambiguous, with counts', () => {
-        const src = `${STAGEHAND}test('a', async ({ page }) => {});\ntest('b', async ({ request }) => {});\ntest('c', async ({ request }) => {});`;
+        const src = `${PROPMASTER}test('a', async ({ page }) => {});\ntest('b', async ({ request }) => {});\ntest('c', async ({ request }) => {});`;
         const a = analyzeSource(src);
         expect(a.type).toBeNull();
         expect(a.reason).toContain('e2e (1), api (2)');
     });
 
     test('reports the first test it cannot place, with its line', () => {
-        const src = `${STAGEHAND}test('ok', async ({ page }) => {});\ntest('opaque', async (fx) => {});`;
+        const src = `${PROPMASTER}test('ok', async ({ page }) => {});\ntest('opaque', async (fx) => {});`;
         expect(analyzeSource(src).reason).toContain('"opaque" (line 3)');
     });
 
     test('a file without test() calls is ambiguous', () => {
-        expect(analyzeSource(`${STAGEHAND}export const x = 1;`)).toMatchObject({ playwright: true, type: null, reason: 'no test() calls found' });
+        expect(analyzeSource(`${PROPMASTER}export const x = 1;`)).toMatchObject({ playwright: true, type: null, reason: 'no test() calls found' });
     });
 });
 
@@ -146,7 +146,7 @@ test.describe('organize — import rewriting', () => {
             "import * as support from '../support';",
             "const lazy = await import('../pages/login.page');",
             "import { x } from '../missing';",
-            "import { test } from '@inluxc/stagehand';",
+            "import { test } from '@inluxc/propmaster';",
         ].join('\n');
         const moves = new Map([['tests/specs/a.spec.ts', 'tests/e2e/deep/a.spec.ts']]);
         const { content, changed } = rewriteImports(src, 'tests/specs/a.spec.ts', 'tests/e2e/deep/a.spec.ts', moves, files);
@@ -157,7 +157,7 @@ test.describe('organize — import rewriting', () => {
         expect(content).toContain("from '../../support';");
         expect(content).toContain("import('../../pages/login.page')");
         expect(content).toContain("from '../missing';"); // unresolvable: untouched
-        expect(content).toContain("from '@inluxc/stagehand';");
+        expect(content).toContain("from '@inluxc/propmaster';");
     });
 
     test('a file that stays is updated when what it imports moves', () => {
@@ -183,13 +183,13 @@ test.describe('organize — plan and apply', () => {
     const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 
     test.beforeEach(() => {
-        root = fs.mkdtempSync(path.join(os.tmpdir(), 'stagehand-organize-'));
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-organize-'));
         write('package.json', '{ "name": "sample" }');
         write('tests/helpers/user.ts', 'export const user = { name: "A" };');
-        write('tests/specs/users.spec.ts', `${STAGEHAND}import { user } from '../helpers/user';\ntest('u', async ({ openApiClient }) => {});`);
-        write('tests/cart.browser.ts', `${STAGEHAND}import { user } from './helpers/user';\ntest('c', async ({ page }) => {});`);
-        write('tests/db/orders.spec.ts', `${STAGEHAND}test('o', async ({ databaseClient }) => { readFileSync(__dirname); });`);
-        write('tests/mixed.spec.ts', `${STAGEHAND}test('a', async ({ page }) => {});\ntest('b', async ({ request }) => {});`);
+        write('tests/specs/users.spec.ts', `${PROPMASTER}import { user } from '../helpers/user';\ntest('u', async ({ openApiClient }) => {});`);
+        write('tests/cart.browser.ts', `${PROPMASTER}import { user } from './helpers/user';\ntest('c', async ({ page }) => {});`);
+        write('tests/db/orders.spec.ts', `${PROPMASTER}test('o', async ({ databaseClient }) => { readFileSync(__dirname); });`);
+        write('tests/mixed.spec.ts', `${PROPMASTER}test('a', async ({ page }) => {});\ntest('b', async ({ request }) => {});`);
         write('tests/unit/math.test.ts', "import { test } from 'vitest'\ntest('m', () => {})");
     });
 
@@ -208,7 +208,7 @@ test.describe('organize — plan and apply', () => {
     });
 
     test('reports a conflict instead of overwriting an existing file', () => {
-        write('tests/api/users.spec.ts', `${STAGEHAND}test('already here', async ({ request }) => {});`);
+        write('tests/api/users.spec.ts', `${PROPMASTER}test('already here', async ({ request }) => {});`);
         const plan = planOrganize(root);
         expect(plan.conflicts).toEqual([
             { file: 'tests/specs/users.spec.ts', to: 'tests/api/users.spec.ts', reason: 'tests/api/users.spec.ts already exists' },

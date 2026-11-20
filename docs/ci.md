@@ -1,8 +1,8 @@
 # Running Integration Tests in CI
 
-Stagehand tests run against real services: a database, a broker or a cache started next to the tests for each run. Every CI system can do this. What changes between them is how services start and which hostname the tests use to reach them.
+Propmaster tests run against real services: a database, a broker or a cache started next to the tests for each run. Every CI system can do this. What changes between them is how services start and which hostname the tests use to reach them.
 
-This page covers **GitHub Actions**, which Stagehand itself uses. Its workflow, [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml), is a working reference.
+This page covers **GitHub Actions**, which Propmaster itself uses. Its workflow, [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml), is a working reference.
 
 ## Pick Your CI System
 
@@ -25,11 +25,11 @@ Whatever the system, the same rules apply:
 - **Cache npm downloads** keyed on `package-lock.json`, and run browser tests in the `mcr.microsoft.com/playwright` image.
 - **Publish JUnit results** with `--reporter=line,junit` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`, so the CI system shows each test.
 
-The examples use the project names from Stagehand's own `playwright.config.ts`. In a project created by `stagehand init`, the [layout](./guide/project-layout) maps to jobs directly: `--project=api` needs no services, `--project=integration` gets the database, broker and cache services, and `--project='e2e-*'` runs in the Playwright image.
+The examples use the project names from Propmaster's own `playwright.config.ts`. In a project created by `propmaster init`, the [layout](./guide/project-layout) maps to jobs directly: `--project=api` needs no services, `--project=integration` gets the database, broker and cache services, and `--project='e2e-*'` runs in the Playwright image.
 
 ---
 
-## What Stagehand's CI Runs
+## What Propmaster's CI Runs
 
 Every job starts at the same time, so a run takes about as long as its slowest job (around 1–1.5 minutes).
 
@@ -298,7 +298,7 @@ To test your real API instead of a mock, run it as a service container (see the 
 
 ### GraphQL against your own API
 
-Stagehand's CI has no GraphQL job because there is no public server to test. In your project, run your API as a service container next to its database:
+Propmaster's CI has no GraphQL job because there is no public server to test. In your project, run your API as a service container next to its database:
 
 ```yaml
 services:
@@ -319,7 +319,7 @@ A private image needs `credentials:` on the service (for GHCR: `username: ${{ gi
 
 ### OTP
 
-The OTP fixture needs no service, so add its project to a job that already runs tests. Stagehand runs it in `property-tests`:
+The OTP fixture needs no service, so add its project to a job that already runs tests. Propmaster runs it in `property-tests`:
 
 ```yaml
 - run: npx playwright test --project=property-tests --project=unit-tests --project=otp
@@ -352,13 +352,13 @@ test-browser:
     - run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit
 ```
 
-When you upgrade `@playwright/test`, update the image tag too. Stagehand's `typecheck` job fails if they drift apart.
+When you upgrade `@playwright/test`, update the image tag too. Propmaster's `typecheck` job fails if they drift apart.
 
 ---
 
 ## Keeping CI Fast
 
-These are already in Stagehand's workflow. Keep them when you copy it:
+These are already in Propmaster's workflow. Keep them when you copy it:
 
 | Practice | How |
 |---|---|

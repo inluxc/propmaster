@@ -104,7 +104,7 @@ export default defineConfig({
 ### Querying Documents
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('find active users', async ({ mongoDbClient }) => {
   const users = await mongoDbClient.find<{ name: string; email: string }>(

@@ -86,9 +86,9 @@ blob-report/
 `,
 
     'package.json': `{
-    "name": "my-stagehand-project",
+    "name": "my-propmaster-project",
     "version": "1.0.0",
-    "description": "Playwright test project powered by @inluxc/stagehand",
+    "description": "Playwright test project powered by @inluxc/propmaster",
     "private": true,
     "type": "module",
     "scripts": {
@@ -99,18 +99,18 @@ blob-report/
         "test:mobile": "npx playwright test --project=mobile-android",
         "test:tag": "npx playwright test --grep",
         "typecheck": "tsc --noEmit",
-        "lint:tests": "stagehand check",
-        "next-id": "stagehand next-id",
+        "lint:tests": "propmaster check",
+        "next-id": "propmaster next-id",
         "verify": "npm run typecheck && npm run lint:tests"
     },
-    "stagehand": {
+    "propmaster": {
         "testDirs": ["tests"],
         "testFileSuffixes": [".spec.ts", ".test.ts"],
         "exemptDirs": [],
         "docFiles": ["AGENTS.md", "SKILLS.md"]
     },
     "dependencies": {
-        "@inluxc/stagehand": "^1.0.0",
+        "@inluxc/propmaster": "^1.0.0",
         "@playwright/test": "^1.65.1"
     },
     "devDependencies": {
@@ -159,9 +159,7 @@ blob-report/
 
     'AGENTS.md': `# AI Agent Instructions
 
-Playwright test project using the [@inluxc/stagehand](https://github.com/Inluxc/stagehand) fixture framework. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
-
-> **Which Stagehand?** \`@inluxc/stagehand\` is a Playwright Test fixture library. It is **not** Browserbase's Stagehand (the AI browser-automation framework): never suggest or write \`act()\`, \`extract()\`, \`observe()\`, \`stagehand.page\` or Browserbase APIs in this project.
+Playwright test project using the [@inluxc/propmaster](https://github.com/Inluxc/propmaster) fixture framework. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
 
 ## Agent Workflow — Required Checks
 
@@ -176,7 +174,7 @@ npm run lint:tests -- --list-ids  # every TestCaseID in use, with file:line
 npm run verify                  # typecheck + lint:tests — run before finishing any task
 \`\`\`
 
-\`lint:tests\` (\`stagehand check\`) exits non-zero on any violation. Each violation names the rule (\`tc-id\`, \`tc-tag\`, \`tc-unique\`, \`test-step\`, \`import\`) and the fix.
+\`lint:tests\` (\`propmaster check\`) exits non-zero on any violation. Each violation names the rule (\`tc-id\`, \`tc-tag\`, \`tc-unique\`, \`test-step\`, \`import\`) and the fix.
 
 ## Structure
 
@@ -197,16 +195,16 @@ tests/
     └── config/      # Test configuration helpers
 \`\`\`
 
-**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, Redis, MongoDB or Neo4j client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx stagehand organize\` to check (it prints where each test belongs).
+**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, Redis, MongoDB or Neo4j client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx propmaster organize\` to check (it prints where each test belongs).
 
 ## Writing Tests
 
 ### Imports
 
-Import \`test\` and \`expect\` from \`@inluxc/stagehand\` — its \`test\` object has every fixture registered:
+Import \`test\` and \`expect\` from \`@inluxc/propmaster\` — its \`test\` object has every fixture registered:
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 \`\`\`
 
 **Never** value-import \`test\`/\`expect\` from \`@playwright/test\` in a test file. Type-only imports (\`import type { Page } from '@playwright/test'\`) are fine.
@@ -218,7 +216,7 @@ Each fixture's driver is an optional dependency. If a test fails with \`MissingP
 Every test has a unique TestCaseID in its title **and** as a tag, and its body is broken into \`test.step()\` blocks:
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('API — Users', () => {
     test('[TC-API-NNN] GET /users returns 200', { tag: ['@TC-API-NNN'] }, async ({ openApiClient }) => {
@@ -251,7 +249,7 @@ test.describe('API — Users', () => {
 Parameterized tests (generated in a loop) put an ID in each data row and build the title and tag from it:
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 const cases = [
     { id: 'TC-BRW-NNN', width: 375 },
@@ -274,10 +272,10 @@ for (const c of cases) {
 
 ## Checker Configuration
 
-\`stagehand check\` reads the \`stagehand\` key in \`package.json\`:
+\`propmaster check\` reads the \`propmaster\` key in \`package.json\`:
 
 \`\`\`json
-"stagehand": {
+"propmaster": {
     "testDirs": ["tests"],
     "testFileSuffixes": [".spec.ts", ".test.ts"],
     "exemptDirs": [],
@@ -314,7 +312,7 @@ Files under \`exemptDirs\` are skipped (their IDs are still reserved for \`next-
 2. Put the ID at the start of the title **and** in the tag:
    \`test('[TC-API-001] does something', { tag: ['@TC-API-001'] }, async ({ ... }) => { ... })\`
 3. Break every test body into \`await test.step('Step N: <verb phrase>', async () => { ... })\` blocks.
-4. Import \`test\` and \`expect\` from \`@inluxc/stagehand\`, never from \`@playwright/test\` (type-only imports are fine).
+4. Import \`test\` and \`expect\` from \`@inluxc/propmaster\`, never from \`@playwright/test\` (type-only imports are fine).
 5. Check your work:
    \`\`\`bash
    npm run lint:tests            # IDs, tags, uniqueness, steps, imports
@@ -329,7 +327,7 @@ Rules: IDs are unique across the project, never reused after a test is deleted, 
 Create a \`.spec.ts\` file in the folder for the test's type: \`tests/api/\` (HTTP/GraphQL clients only), \`tests/integration/\` (database, Kafka, Redis, MongoDB or Neo4j clients), \`tests/e2e/\` (\`page\`) or \`tests/mobile/\` (\`appiumDriver\`, a WebdriverIO \`Browser\`; set \`appium.gads\` to run on a GADS device farm).
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Feature Name', () => {
     test('[TC-API-NNN] should do something', { tag: ['@TC-API-NNN'] }, async ({ openApiClient }) => {
@@ -386,7 +384,7 @@ export class LoginPage {
 \`\`\`
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 import { LoginPage } from '../support/pages/login.page';
 
 test.describe('Browser — Login', () => {
@@ -411,7 +409,7 @@ test.describe('Browser — Login', () => {
 ## Skill 3: Create a Database Test
 
 \`\`\`typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Database — Users', () => {
     test('[TC-DB-NNN] inserted user can be read back', { tag: ['@TC-DB-NNN'] }, async ({ databaseClient }) => {
@@ -445,7 +443,7 @@ Always use parameterized queries (\`$1\`, \`?\`) — never string interpolation.
 Create files in \`tests/support/fixtures/\` with a \`.fixture.ts\` extension.
 
 \`\`\`typescript
-import { test as base } from '@inluxc/stagehand';
+import { test as base } from '@inluxc/propmaster';
 
 export const test = base.extend<{ myFixture: MyType }>({
     myFixture: async ({}, use) => {
@@ -455,23 +453,23 @@ export const test = base.extend<{ myFixture: MyType }>({
     },
 });
 
-export { expect } from '@inluxc/stagehand';
+export { expect } from '@inluxc/propmaster';
 \`\`\`
 
-Specs that need the custom fixture import \`test\`/\`expect\` from this file instead of \`@inluxc/stagehand\`; every other convention still applies.
+Specs that need the custom fixture import \`test\`/\`expect\` from this file instead of \`@inluxc/propmaster\`; every other convention still applies.
 
 ## Skill 5: Sort Existing Tests into the Layout
 
-\`stagehand organize\` moves tests into \`tests/api\`, \`tests/integration\`, \`tests/e2e\` and \`tests/mobile\` by their fixtures. It places most files by rule and leaves the rest for you.
+\`propmaster organize\` moves tests into \`tests/api\`, \`tests/integration\`, \`tests/e2e\` and \`tests/mobile\` by their fixtures. It places most files by rule and leaves the rest for you.
 
 1. Commit or stash your work, then see the plan:
    \`\`\`bash
-   npx stagehand organize            # dry run: what moves where, and why some files stay
-   npx stagehand organize --json     # same, as JSON: { moves, inPlace, ambiguous, conflicts, warnings, edits }
+   npx propmaster organize            # dry run: what moves where, and why some files stay
+   npx propmaster organize --json     # same, as JSON: { moves, inPlace, ambiguous, conflicts, warnings, edits }
    \`\`\`
 2. Apply it. Tracked files move with \`git mv\`, and relative imports are updated in moved files and in files that import them:
    \`\`\`bash
-   npx stagehand organize --apply
+   npx propmaster organize --apply
    \`\`\`
 3. For each entry in \`ambiguous\`, decide by hand:
    - **Mixes test types:** split the file, one file per type, then run \`organize\` again.
@@ -543,10 +541,10 @@ export async function waitFor(
 
     'tests/support/fixtures/index.ts': `/**
  * Custom fixtures for this project.
- * Extend the base stagehand fixtures here.
+ * Extend the base propmaster fixtures here.
  *
  * Example:
- *   import { test as base } from '@inluxc/stagehand';
+ *   import { test as base } from '@inluxc/propmaster';
  *   export const test = base.extend<{ myFixture: MyType }>({ ... });
  */
 export {};
@@ -615,13 +613,13 @@ export const testConfig = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HELP = `
-  @inluxc/stagehand CLI
+  @inluxc/propmaster CLI
 
   Usage:
-    npx stagehand init [directory]
-    npx stagehand organize [--apply] [--force] [--json] [--root <dir>]
-    npx stagehand check [--json] [--list-ids] [--root <dir>]
-    npx stagehand next-id <CATEGORY> [count] [--root <dir>]
+    npx propmaster init [directory]
+    npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
+    npx propmaster check [--json] [--list-ids] [--root <dir>]
+    npx propmaster next-id <CATEGORY> [count] [--root <dir>]
 
   Commands:
     init      Scaffold the project layout: tests/api, tests/integration,
@@ -639,10 +637,10 @@ const HELP = `
               Exits 1 on violations. --json for machine-readable output,
               --list-ids to print every TestCaseID in use.
     next-id   Print the next free TestCaseID(s) for a category, e.g.
-              \`stagehand next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
+              \`propmaster next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
 
-  Configuration (optional, "stagehand" key in package.json):
-    "stagehand": {
+  Configuration (optional, "propmaster" key in package.json):
+    "propmaster": {
       "testDirs": ["tests"],
       "testFileSuffixes": [".spec.ts", ".prop.ts"],
       "exemptDirs": ["tests/unit/", "tests/properties/"],
@@ -755,8 +753,8 @@ function reportExisting({ plan, existingConfigs }: InitResult, log: (line?: stri
         log(`    (${plan.inPlace.length} already in the right folder, ${plan.moves.length} to move)`);
         log();
         log('  Next steps:');
-        log('    1. npx stagehand organize            see what moves where, and why some files stay');
-        log('    2. npx stagehand organize --apply    move them and update imports (commit first)');
+        log('    1. npx propmaster organize            see what moves where, and why some files stay');
+        log('    2. npx propmaster organize --apply    move them and update imports (commit first)');
     } else {
         log('  Next steps:');
     }
@@ -789,15 +787,15 @@ function main(): number {
     const isCurrentDir = targetDir === process.cwd();
 
     console.log('');
-    console.log('  🎭 Stagehand — Initializing project...');
+    console.log('  🎭 Propmaster — Initializing project...');
     console.log(`  📁 Target: ${isCurrentDir ? '.' : path.relative(process.cwd(), targetDir)}`);
     console.log('');
     initProject(targetDir);
     return 0;
 }
 
-// Run only when executed as the `stagehand` bin (or via tsx), not when the
-// `@inluxc/stagehand/cli` export is imported for its checker API.
+// Run only when executed as the `propmaster` bin (or via tsx), not when the
+// `@inluxc/propmaster/cli` export is imported for its checker API.
 function isEntryPoint(): boolean {
     if (!process.argv[1]) return false;
     try {

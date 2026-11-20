@@ -3,13 +3,13 @@
  * Backwards-compatible entry point for the test convention checker.
  *
  * The checker now lives in `src/cli/check-tests.ts` and ships with the package
- * as `stagehand check` / `stagehand next-id`. This wrapper runs it from source
+ * as `propmaster check` / `propmaster next-id`. This wrapper runs it from source
  * (via tsx, a devDependency) so it works in this repo without a build:
  *
- *   node scripts/check-tests.mjs                 # = stagehand check
- *   node scripts/check-tests.mjs --json          # = stagehand check --json
- *   node scripts/check-tests.mjs --list-ids      # = stagehand check --list-ids
- *   node scripts/check-tests.mjs --next-id API 3 # = stagehand next-id API 3
+ *   node scripts/check-tests.mjs                 # = propmaster check
+ *   node scripts/check-tests.mjs --json          # = propmaster check --json
+ *   node scripts/check-tests.mjs --list-ids      # = propmaster check --list-ids
+ *   node scripts/check-tests.mjs --next-id API 3 # = propmaster next-id API 3
  */
 
 import { spawnSync } from 'node:child_process';

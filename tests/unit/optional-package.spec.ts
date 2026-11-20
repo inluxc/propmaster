@@ -43,13 +43,13 @@ test.describe('optional packages — loadOptional', () => {
     });
 
     test('a missing package becomes MissingPackageError with the install command', async () => {
-        const err = await loadOptional('stagehand-no-such-driver/sub', 'fakeClient', ['stagehand-no-such-driver', 'peer-pkg']).catch((e: unknown) => e);
+        const err = await loadOptional('propmaster-no-such-driver/sub', 'fakeClient', ['propmaster-no-such-driver', 'peer-pkg']).catch((e: unknown) => e);
         expect(err).toBeInstanceOf(MissingPackageError);
         if (!(err instanceof MissingPackageError)) return;
         expect(err.fixtureName).toBe('fakeClient');
-        expect(err.packageName).toBe('stagehand-no-such-driver');
-        expect(err.installCommand).toBe('npm install --save-dev stagehand-no-such-driver peer-pkg');
-        expect(err.message).toContain('The "fakeClient" fixture needs the "stagehand-no-such-driver" package');
+        expect(err.packageName).toBe('propmaster-no-such-driver');
+        expect(err.installCommand).toBe('npm install --save-dev propmaster-no-such-driver peer-pkg');
+        expect(err.message).toContain('The "fakeClient" fixture needs the "propmaster-no-such-driver" package');
         expect(err.cause).toBeDefined();
     });
 

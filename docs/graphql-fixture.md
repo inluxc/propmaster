@@ -87,7 +87,7 @@ export default defineConfig({
 ### Executing a Query
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('fetch users', async ({ graphqlClient }) => {
   const data = await graphqlClient.query<{ users: Array<{ id: string; name: string }> }>(`
