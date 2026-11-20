@@ -17,6 +17,14 @@ The `neo4jClient` fixture provides a Neo4j graph database client for running Cyp
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev neo4j-driver
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

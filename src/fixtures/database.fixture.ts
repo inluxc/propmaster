@@ -14,6 +14,7 @@
  */
 
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import { loadOptional } from './optional-package.js';
 import { DatabaseFixtureConfig } from '../config/schema.js';
 
 /**
@@ -32,7 +33,7 @@ const DEFAULT_QUERY_TIMEOUT = 30000;
  * Creates a PostgreSQL database client using the `pg` library.
  */
 async function createPostgresClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
-    const { Pool } = await import('pg');
+    const { Pool } = await loadOptional<typeof import('pg')>('pg', 'databaseClient (postgresql)');
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
     const queryTimeout = config.queryTimeout ?? DEFAULT_QUERY_TIMEOUT;
@@ -102,7 +103,7 @@ async function createPostgresClient(config: DatabaseFixtureConfig): Promise<Data
  * Creates a MySQL database client using the `mysql2` library.
  */
 async function createMysqlClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
-    const mysql = await import('mysql2/promise');
+    const mysql = await loadOptional<typeof import('mysql2/promise')>('mysql2/promise', 'databaseClient (mysql)', ['mysql2']);
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
     const queryTimeout = config.queryTimeout ?? DEFAULT_QUERY_TIMEOUT;
@@ -219,7 +220,8 @@ function normalizePositionalParams(
  * Creates a SQLite database client using the `better-sqlite3` library.
  */
 async function createSqliteClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
-    const BetterSqlite3 = await import('better-sqlite3');
+    // CommonJS `export =` module: a dynamic import exposes it as `default`.
+    const BetterSqlite3 = await loadOptional<{ default: typeof import('better-sqlite3') }>('better-sqlite3', 'databaseClient (sqlite)');
 
     const queryTimeout = config.queryTimeout ?? DEFAULT_QUERY_TIMEOUT;
 
@@ -283,7 +285,7 @@ async function createSqliteClient(config: DatabaseFixtureConfig): Promise<Databa
  * Creates a MSSQL database client using the `mssql` library.
  */
 async function createMssqlClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
-    const mssqlModule = await import('mssql');
+    const mssqlModule = await loadOptional<typeof import('mssql')>('mssql', 'databaseClient (mssql)');
     // Handle ESM/CJS interop — ConnectionPool may be on default export or top-level
     const mssql = ((mssqlModule as unknown as { default?: typeof mssqlModule }).default ?? mssqlModule) as typeof mssqlModule;
 

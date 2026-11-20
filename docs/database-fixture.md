@@ -17,6 +17,17 @@ The `databaseClient` fixture provides a multi-dialect database client supporting
 
 ## Setup
 
+### Install
+
+Install the driver for your database. Each one is an optional peer dependency, so you install only the ones you use:
+
+```bash
+npm install --save-dev pg               # PostgreSQL
+npm install --save-dev mysql2           # MySQL
+npm install --save-dev mssql            # MSSQL
+npm install --save-dev better-sqlite3   # SQLite (a native module)
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

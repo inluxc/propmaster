@@ -16,6 +16,14 @@ The `otpClient` fixture provides TOTP (Time-based One-Time Password) and HOTP (H
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev otplib
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

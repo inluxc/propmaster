@@ -35,7 +35,9 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
 - **OTP/2FA:** otplib (`otplib ^13.6.0`)
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
-- **Env Loading:** dotenv (`dotenv ^18.0.10`)
+- **Env Loading:** built-in `.env` parser (`src/config/env-loader.ts`), no dependency
+
+Every driver above is an **optional peer dependency** (and a devDependency here, for the self-tests). Stagehand has no runtime dependencies: importing it loads no driver, and each fixture loads its own on first use through `loadOptional()` in `src/fixtures/optional-package.ts`. A missing driver throws `MissingPackageError` with the install command. A new fixture must load its driver the same way (never a top-level value import) and add it to `peerDependencies`, `peerDependenciesMeta` and `FIXTURE_PACKAGES`.
 
 ## Project Structure
 
@@ -428,7 +430,7 @@ throw new FixtureInitError('myFixture', 'connect', { host, port, reason: 'Connec
 throw new FixtureOperationError('myFixture', 'query', { operation: 'fetchData', reason: error.message });
 ```
 
-Error hierarchy: `FrameworkError` → `ConfigurationError`, `FixtureInitError`, `FixtureOperationError`, `SecretsError`, `DependencyError`.
+Error hierarchy: `FrameworkError` → `ConfigurationError`, `FixtureInitError`, `FixtureOperationError`, `SecretsError`, `DependencyError`, `MissingPackageError` (a fixture's driver isn't installed).
 
 ## Running Tests
 

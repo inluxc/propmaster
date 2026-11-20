@@ -14,9 +14,25 @@ An extension toolkit for [Playwright Test](https://playwright.dev/) that adds re
 
 ```bash
 # Playwright is a peer dependency — you bring your own version
-npm install @playwright/test
-npm install @inluxc/stagehand
+npm install --save-dev @playwright/test @inluxc/stagehand
+
+# Then the driver for each fixture you use (all optional), e.g.:
+npm install --save-dev openapi-client-axios pg kafkajs
 ```
+
+| Fixture | Install |
+|---|---|
+| `openApiClient` | `openapi-client-axios` |
+| `graphqlClient` | `graphql-request graphql` |
+| `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
+| `mongoDbClient` | `mongodb` |
+| `neo4jClient` | `neo4j-driver` |
+| `kafkaClient` | `kafkajs` |
+| `redisClient` | `ioredis` |
+| `otpClient` | `otplib` |
+| `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
+
+A fixture whose driver is missing fails with a `MissingPackageError` naming the package to install. Stagehand has no runtime dependencies of its own.
 
 ## How It Works
 

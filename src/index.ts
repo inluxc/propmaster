@@ -67,6 +67,7 @@ export {
     FixtureOperationError,
     SecretsError,
     DependencyError,
+    MissingPackageError,
 } from './errors.js';
 
 // Secrets interfaces

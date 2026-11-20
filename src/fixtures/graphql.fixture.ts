@@ -16,8 +16,8 @@
  * @requirements 9.1, 9.2, 9.3
  */
 
-import { GraphQLClient as GQLClient } from 'graphql-request';
-import type { Variables, RequestDocument } from 'graphql-request';
+import type { GraphQLClient as GQLClient, Variables, RequestDocument } from 'graphql-request';
+import { loadOptional } from './optional-package.js';
 import type { GraphQLFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
@@ -114,7 +114,7 @@ const DEFAULT_REQUEST_TIMEOUT = 30_000;
 /**
  * Creates and configures a GraphQL client from the provided config.
  */
-function createGraphQLClient(config: GraphQLFixtureConfig): GQLClient {
+function createGraphQLClient(config: GraphQLFixtureConfig, GraphQLClientClass: typeof GQLClient): GQLClient {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...config.headers,
@@ -124,7 +124,7 @@ function createGraphQLClient(config: GraphQLFixtureConfig): GQLClient {
         headers['Authorization'] = `Bearer ${config.authToken}`;
     }
 
-    const client = new GQLClient(config.endpoint, {
+    const client = new GraphQLClientClass(config.endpoint, {
         headers,
     });
 
@@ -262,10 +262,17 @@ export const graphqlFixture = {
                 });
             }
 
+            // graphql-request (and its peer, graphql) are optional, loaded on first use.
+            const { GraphQLClient: GraphQLClientClass } = await loadOptional<typeof import('graphql-request')>(
+                'graphql-request',
+                'graphqlClient',
+                ['graphql-request', 'graphql'],
+            );
+
             let client: GQLClient;
 
             try {
-                client = createGraphQLClient(graphqlConfig);
+                client = createGraphQLClient(graphqlConfig, GraphQLClientClass);
             } catch (error) {
                 throw new FixtureInitError(
                     'graphqlClient',
