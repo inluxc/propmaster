@@ -101,7 +101,7 @@ export default defineConfig({
 ## Usage
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Pet Store API', () => {
   test('list all pets', async ({ openApiClient }) => {

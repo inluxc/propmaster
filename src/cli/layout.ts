@@ -1,5 +1,5 @@
 /**
- * The test layout `stagehand init` scaffolds and `stagehand organize` moves
+ * The test layout `propmaster init` scaffolds and `propmaster organize` moves
  * existing tests into: one folder per test type, each its own set of
  * Playwright projects, all registered in one root `playwright.config.ts`.
  *
@@ -37,7 +37,7 @@ export function typeInfo(type: TestType): TestTypeInfo {
 // ─── Templates ──────────────────────────────────────────────────────────────
 
 const PROJECT_TEMPLATES: Record<TestType, string> = {
-    api: `import type { FrameworkConfig } from '@inluxc/stagehand';
+    api: `import type { FrameworkConfig } from '@inluxc/propmaster';
 
 /**
  * API tests: REST and GraphQL calls that need no browser, device or backend
@@ -56,11 +56,11 @@ export const apiProjects = (config: FrameworkConfig) => [
 ];
 `,
 
-    integration: `import type { FrameworkConfig } from '@inluxc/stagehand';
+    integration: `import type { FrameworkConfig } from '@inluxc/propmaster';
 
 /**
  * Integration tests: need a database, broker or cache. In CI, run this project
- * in a job with those services (see the Stagehand docs, "Running in CI").
+ * in a job with those services (see the Propmaster docs, "Running in CI").
  * Specs: *.spec.ts files under tests/integration/
  */
 export const integrationProjects = (config: FrameworkConfig) => [
@@ -80,7 +80,7 @@ export const integrationProjects = (config: FrameworkConfig) => [
 `,
 
     e2e: `import { devices } from '@playwright/test';
-import type { FrameworkConfig } from '@inluxc/stagehand';
+import type { FrameworkConfig } from '@inluxc/propmaster';
 
 /**
  * End-to-end browser tests, one project per browser: e2e-chromium,
@@ -105,7 +105,7 @@ export const e2eProjects = (config: FrameworkConfig) =>
     }));
 `,
 
-    mobile: `import type { FrameworkConfig } from '@inluxc/stagehand';
+    mobile: `import type { FrameworkConfig } from '@inluxc/propmaster';
 
 /**
  * Mobile tests on Appium (local server, grid, cloud farm or GADS):
@@ -133,7 +133,7 @@ export function projectsTemplate(type: TestType): string {
 }
 
 export const ROOT_CONFIG_TEMPLATE = `import { defineConfig } from '@playwright/test';
-import { ConfigLoader, type ConfigOptions } from '@inluxc/stagehand';
+import { ConfigLoader, type ConfigOptions } from '@inluxc/propmaster';
 ${TEST_TYPES.map((t) => `import { ${t.exportName} } from './${t.dir}/projects';`).join('\n')}
 
 // Settings from environments.json, .env.{environment} and PW_* variables.
@@ -161,7 +161,7 @@ ${TEST_TYPES.map((t) => `        ...${t.exportName}(config),`).join('\n')}
 export function configSnippet(types: readonly TestType[] = TEST_TYPES.map((t) => t.type)): string {
     const infos = TEST_TYPES.filter((t) => types.includes(t.type));
     return [
-        "import { ConfigLoader } from '@inluxc/stagehand';",
+        "import { ConfigLoader } from '@inluxc/propmaster';",
         ...infos.map((t) => `import { ${t.exportName} } from './${t.dir}/projects';`),
         '',
         'const config = new ConfigLoader().load();',

@@ -88,7 +88,7 @@ Each test holds one device. Keep `workers` at or below the number of devices you
 `appiumDriver` is a standard WebdriverIO `Browser`, so the whole [WebdriverIO API](https://webdriver.io/docs/api) is available:
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('[TC-APM-NNN] log in', { tag: ['@TC-APM-NNN'] }, async ({ appiumDriver }) => {
     await test.step('Step 1: Fill in the login form', async () => {

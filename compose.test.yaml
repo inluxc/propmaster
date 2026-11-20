@@ -1,12 +1,12 @@
-# Services for Stagehand's integration tests, for local runs and for any CI system.
+# Services for Propmaster's integration tests, for local runs and for any CI system.
 #
 #   docker compose -f compose.test.yaml up -d --wait            # everything
 #   docker compose -f compose.test.yaml up -d --wait postgres   # just what you need
 #   docker compose -f compose.test.yaml down -v
 #
 # Ports bind to 127.0.0.1: tests on the host use localhost, tests in a container on the
-# stagehand-test_default network use the service names (see docs/ci-docker-compose.md).
-name: stagehand-test
+# propmaster-test_default network use the service names (see docs/ci-docker-compose.md).
+name: propmaster-test
 
 services:
   postgres:

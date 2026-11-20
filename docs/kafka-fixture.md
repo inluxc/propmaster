@@ -106,7 +106,7 @@ export default defineConfig({
 ### Producing Messages
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('produce a message', async ({ kafkaClient }) => {
   await kafkaClient.produce('user-events', [

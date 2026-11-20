@@ -12,7 +12,7 @@ Bitbucket runs [service containers](https://support.atlassian.com/bitbucket-clou
 
 ## Complete `bitbucket-pipelines.yml`
 
-Steps in a `parallel` block run at the same time. The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yours.
+Steps in a `parallel` block run at the same time. The `--project` names are the ones in Propmaster's `playwright.config.ts`; use yours.
 
 ```yaml
 image: node:24

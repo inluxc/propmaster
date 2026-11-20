@@ -1,23 +1,20 @@
-# Stagehand (`@inluxc/stagehand`)
+# Propmaster (`@inluxc/propmaster`)
 
-> [!NOTE]
-> **Not to be confused with [Browserbase's Stagehand](https://github.com/browserbase/stagehand)**, an AI browser-automation framework. This is **`@inluxc/stagehand`**: Playwright Test fixtures for the services behind your UI (APIs, databases, message brokers, caches, mobile devices and OTP). It has no `act()`, `extract()` or `observe()` APIs and uses no AI model.
+> *In theater, the **prop master** sources every prop, sets it out before the scene, and collects it afterwards, so each actor finds exactly what they need at the moment they need it. The audience never sees them, but without them, the show doesn't happen.*
 
-> *In theater, a **stagehand** is the person who works behind the scenes — setting up props, managing scenery, and making sure everything is in place before the actors perform. They're invisible to the audience, but without them, the show doesn't happen.*
-
-**Stagehand** does the same for your [Playwright](https://playwright.dev/) tests. It sets up the infrastructure fixtures — API clients, databases, message queues, caches, mobile devices, OTP — so your tests can focus on the performance itself.
+**Propmaster** does the same for your [Playwright](https://playwright.dev/) tests. It sets up the infrastructure fixtures — API clients, databases, message queues, caches, mobile devices, OTP — so your tests can focus on the performance itself.
 
 ---
 
-An extension toolkit for [Playwright Test](https://playwright.dev/) that adds ready-to-use fixtures for API, database, messaging, cache, mobile, and OTP testing. You keep your existing Playwright setup — Stagehand just gives you more fixtures to work with.
+An extension toolkit for [Playwright Test](https://playwright.dev/) that adds ready-to-use fixtures for API, database, messaging, cache, mobile, and OTP testing. You keep your existing Playwright setup — Propmaster just gives you more fixtures to work with.
 
-📖 **Documentation:** [inluxc.github.io/stagehand](https://inluxc.github.io/stagehand/)
+📖 **Documentation:** [propmaster.dev](https://propmaster.dev/)
 
 ## Installation
 
 ```bash
 # Playwright is a peer dependency — you bring your own version
-npm install --save-dev @playwright/test @inluxc/stagehand
+npm install --save-dev @playwright/test @inluxc/propmaster
 
 # Then the driver for each fixture you use (all optional), e.g.:
 npm install --save-dev openapi-client-axios pg kafkajs
@@ -36,18 +33,18 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
 | `container: true` on any backend ([Testcontainers](https://inluxc.github.io/stagehand/testcontainers)) | `testcontainers` |
 
-A fixture whose driver is missing fails with a `MissingPackageError` naming the package to install. Stagehand has no runtime dependencies of its own.
+A fixture whose driver is missing fails with a `MissingPackageError` naming the package to install. Propmaster has no runtime dependencies of its own.
 
 ## How It Works
 
-Stagehand exports an extended `test` object built on top of `@playwright/test`. All standard Playwright fixtures (`page`, `request`, `context`, etc.) remain available. The package simply layers additional fixtures on top:
+Propmaster exports an extended `test` object built on top of `@playwright/test`. All standard Playwright fixtures (`page`, `request`, `context`, etc.) remain available. The package simply layers additional fixtures on top:
 
 ```typescript
 // Instead of:
 import { test, expect } from '@playwright/test';
 
 // Use:
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 // You still have access to `page`, `request`, etc.
 test('browser test still works', async ({ page }) => {
@@ -67,7 +64,7 @@ test('api test with OpenAPI client', async ({ openApiClient }) => {
 
 ## Project Layout
 
-`npx stagehand init` scaffolds one folder per test type, each run as its own Playwright project from a single root config:
+`npx propmaster init` scaffolds one folder per test type, each run as its own Playwright project from a single root config:
 
 ```
 tests/
@@ -78,7 +75,7 @@ tests/
 └── support/       # page objects, fixtures, data, helpers
 ```
 
-Already have tests? `init` moves nothing. `npx stagehand organize` shows where each test belongs by the fixtures it uses, and `--apply` moves them with `git mv` and fixes their imports. See [Project Layout](docs/guide/project-layout.md).
+Already have tests? `init` moves nothing. `npx propmaster organize` shows where each test belongs by the fixtures it uses, and `--apply` moves them with `git mv` and fixes their imports. See [Project Layout](docs/guide/project-layout.md).
 
 ---
 
@@ -105,10 +102,10 @@ All standard Playwright fixtures (`page`, `request`, `context`, `browser`, `brow
 
 ## Usage Examples
 
-### Mixing Playwright's `page` with Stagehand fixtures
+### Mixing Playwright's `page` with Propmaster fixtures
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Full-stack test', () => {
   test('create user via API, verify in browser', async ({ openApiClient, page }) => {
@@ -130,7 +127,7 @@ test.describe('Full-stack test', () => {
 ### OpenAPI Client
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Pet Store API', () => {
   test('list all pets', async ({ openApiClient }) => {
@@ -159,7 +156,7 @@ test.describe('Pet Store API', () => {
 ### Database Client
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Database Operations', () => {
   test('query users', async ({ databaseClient }) => {
@@ -186,7 +183,7 @@ test.describe('Database Operations', () => {
 ### Kafka Client
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Kafka Messaging', () => {
   test('produce and consume a message', async ({ kafkaClient }) => {
@@ -211,7 +208,7 @@ test.describe('Kafka Messaging', () => {
 ### Redis Client
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Redis Cache', () => {
   test('set and get a value', async ({ redisClient }) => {
@@ -234,7 +231,7 @@ test.describe('Redis Cache', () => {
 ### Neo4j Client
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Social Graph', () => {
   test('create and traverse a relationship', async ({ neo4jClient }) => {
@@ -256,7 +253,7 @@ test.describe('Social Graph', () => {
 ### OTP Client (2FA/MFA Testing)
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Two-Factor Authentication', () => {
   test('generate and verify TOTP', async ({ otpClient }) => {
@@ -282,7 +279,7 @@ test.describe('Two-Factor Authentication', () => {
 `appiumDriver` is a WebdriverIO `Browser` on an Appium session — local Appium, a grid, a cloud farm, or a GADS device farm (set `appium.gads`):
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Mobile App - Login', () => {
   test('user can log in', async ({ appiumDriver }) => {
@@ -300,7 +297,7 @@ test.describe('Mobile App - Login', () => {
 ### Browser Testing (standard Playwright — unchanged)
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test.describe('Web App', () => {
   test('loads the dashboard', async ({ page }) => {
@@ -314,15 +311,15 @@ test.describe('Web App', () => {
 
 ## Extending Further — Custom Fixtures
 
-You can layer your own fixtures on top of Stagehand the same way you would with `@playwright/test`:
+You can layer your own fixtures on top of Propmaster the same way you would with `@playwright/test`:
 
 ```typescript
 // my-fixtures.ts
-import { test as base } from '@inluxc/stagehand';
+import { test as base } from '@inluxc/propmaster';
 
 export const test = base.extend<{ authToken: string }>({
   authToken: async ({ openApiClient }, use) => {
-    // Use Stagehand's openApiClient to get a token
+    // Use Propmaster's openApiClient to get a token
     const { client } = openApiClient;
     const res = await (client as any).login(null, {
       email: 'test@example.com',
@@ -332,7 +329,7 @@ export const test = base.extend<{ authToken: string }>({
   },
 });
 
-export { expect } from '@inluxc/stagehand';
+export { expect } from '@inluxc/propmaster';
 ```
 
 ```typescript
@@ -403,7 +400,7 @@ export default defineConfig({
 Set `secrets.provider` in `environments.json` to `aws`, `vault`, `openbao`, `azure`, `gitlab` or `env-file`, and map secret keys to config fields with `keyMappings`. Or use the manager directly:
 
 ```typescript
-import { SecretsManager, OpenBaoSecretsProvider } from '@inluxc/stagehand';
+import { SecretsManager, OpenBaoSecretsProvider } from '@inluxc/propmaster';
 
 const manager = new SecretsManager();
 // url/token fall back to PW_OPENBAO_* → BAO_* → VAULT_* env vars

@@ -11,7 +11,7 @@ GitLab runs [service containers](https://docs.gitlab.com/ci/services/) next to e
 
 ## Complete `.gitlab-ci.yml`
 
-All jobs are in one stage, so they run in parallel. The `--project` names are the ones in Stagehand's `playwright.config.ts`; use yours.
+All jobs are in one stage, so they run in parallel. The `--project` names are the ones in Propmaster's `playwright.config.ts`; use yours.
 
 ```yaml
 stages: [test]
@@ -58,7 +58,7 @@ checks:
   artifacts: { when: on_failure, paths: [playwright-report/] }
   script:
     - npm run typecheck        # tsc --noEmit
-    - npm run lint:tests       # stagehand check: test IDs, tags, steps, imports
+    - npm run lint:tests       # propmaster check: test IDs, tags, steps, imports
 
 postgres:
   extends: .playwright
@@ -222,7 +222,7 @@ staging-api:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 ```
 
-For Vault or OpenBao, Stagehand's [secrets providers](./secrets) read `VAULT_ADDR` / `BAO_ADDR` and a token, or log in with a GitLab CI JWT (`id_tokens:` plus the `jwt` auth method).
+For Vault or OpenBao, Propmaster's [secrets providers](./secrets) read `VAULT_ADDR` / `BAO_ADDR` and a token, or log in with a GitLab CI JWT (`id_tokens:` plus the `jwt` auth method).
 
 ## Tips
 

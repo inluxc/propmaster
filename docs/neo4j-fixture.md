@@ -60,7 +60,7 @@ No Neo4j server to connect to? Set `PW_NEO4J_CONTAINER=true` (or `container: tru
 
 ```typescript
 import { defineConfig } from '@playwright/test';
-import type { ConfigOptions } from '@inluxc/stagehand';
+import type { ConfigOptions } from '@inluxc/propmaster';
 
 export default defineConfig<ConfigOptions>({
   projects: [
@@ -100,7 +100,7 @@ docker run -p 7687:7687 -e NEO4J_AUTH=neo4j/testpassword neo4j:5
 ## Usage
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('create and query a relationship', async ({ neo4jClient }) => {
   const counters = await neo4jClient.write(
@@ -139,13 +139,13 @@ Always pass values as parameters (`$name`) rather than interpolating them into t
 
 ## Test Data Isolation
 
-Neo4j has no key prefix equivalent, so tag every node your test creates and clean up by that tag. The example spec gives each node a `StagehandTest` label and a per-run `runId` property, and deletes them in `afterEach`:
+Neo4j has no key prefix equivalent, so tag every node your test creates and clean up by that tag. The example spec gives each node a `PropmasterTest` label and a per-run `runId` property, and deletes them in `afterEach`:
 
 ```typescript
-const RUN_ID = `stagehand-${randomUUID()}`;
+const RUN_ID = `propmaster-${randomUUID()}`;
 
 test.afterEach(async ({ neo4jClient }) => {
-  await neo4jClient.write('MATCH (n:StagehandTest {runId: $runId}) DETACH DELETE n', { runId: RUN_ID });
+  await neo4jClient.write('MATCH (n:PropmasterTest {runId: $runId}) DETACH DELETE n', { runId: RUN_ID });
 });
 ```
 

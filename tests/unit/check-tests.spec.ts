@@ -1,6 +1,6 @@
 /**
- * Unit tests for the test-convention scanner behind `stagehand check` /
- * `stagehand next-id` (src/cli/check-tests.ts).
+ * Unit tests for the test-convention scanner behind `propmaster check` /
+ * `propmaster next-id` (src/cli/check-tests.ts).
  *
  * Sample sources use the fictional `ZZ` category so the IDs this file
  * mentions (which the checker reserves) never collide with real ones.
@@ -24,7 +24,7 @@ const spec = (content: string, file = 'tests/specs/a.spec.ts'): SourceInput => (
 const rules = (sources: SourceInput[]) => checkSources(sources).violations.map((v) => v.rule).sort();
 
 const GOOD = `
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('[TC-ZZ-001] does a thing', { tag: ['@TC-ZZ-001'] }, async () => {
     await test.step('Step 1: Do it', async () => {
@@ -188,7 +188,7 @@ test.describe('check-tests — placeholders', () => {
 });
 
 test.describe('check-tests — @playwright/test imports', () => {
-    const body = GOOD.replace("import { test, expect } from '@inluxc/stagehand';", '');
+    const body = GOOD.replace("import { test, expect } from '@inluxc/propmaster';", '');
 
     test('value imports are rejected in spec files', () => {
         expect(rules([spec(`import { test, expect } from '@playwright/test';\n${body}`)])).toEqual(['import']);
@@ -229,7 +229,7 @@ test.describe('check-tests — project config and files', () => {
     let root: string;
 
     test.beforeEach(() => {
-        root = fs.mkdtempSync(path.join(os.tmpdir(), 'stagehand-check-'));
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-check-'));
     });
 
     test.afterEach(() => {
@@ -241,7 +241,7 @@ test.describe('check-tests — project config and files', () => {
         fs.writeFileSync(path.join(root, rel), content);
     };
 
-    test('defaults apply without package.json or a stagehand key', () => {
+    test('defaults apply without package.json or a propmaster key', () => {
         expect(loadConfig(root)).toEqual(DEFAULT_CONFIG);
         write('package.json', '{"name":"x"}');
         expect(loadConfig(root)).toEqual(DEFAULT_CONFIG);
@@ -251,7 +251,7 @@ test.describe('check-tests — project config and files', () => {
         write(
             'package.json',
             JSON.stringify({
-                stagehand: { testDirs: ['tests/specs'], testFileSuffixes: ['.spec.ts', '.browser.ts'], exemptDirs: ['tests/specs/legacy'], docFiles: ['GUIDE.md'] },
+                propmaster: { testDirs: ['tests/specs'], testFileSuffixes: ['.spec.ts', '.browser.ts'], exemptDirs: ['tests/specs/legacy'], docFiles: ['GUIDE.md'] },
             }),
         );
         write('tests/specs/ok.browser.ts', GOOD);
@@ -272,9 +272,9 @@ test.describe('check-tests — project config and files', () => {
         expect(ids.map((e) => e.id)).toEqual(['TC-ZZ-001']);
     });
 
-    test('rejects a malformed stagehand config', () => {
-        write('package.json', JSON.stringify({ stagehand: { testDirs: 'tests' } }));
-        expect(() => loadConfig(root)).toThrow(/stagehand\.testDirs/);
+    test('rejects a malformed propmaster config', () => {
+        write('package.json', JSON.stringify({ propmaster: { testDirs: 'tests' } }));
+        expect(() => loadConfig(root)).toThrow(/propmaster\.testDirs/);
     });
 
     test('a missing test directory is not an error', () => {

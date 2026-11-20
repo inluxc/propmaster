@@ -97,7 +97,7 @@ export default defineConfig({
 ### Basic Key-Value Operations
 
 ```typescript
-import { test, expect } from '@inluxc/stagehand';
+import { test, expect } from '@inluxc/propmaster';
 
 test('set and get a value', async ({ redisClient }) => {
   await redisClient.set('session:abc', JSON.stringify({ userId: 1 }), 60); // TTL: 60 seconds

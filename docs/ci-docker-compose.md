@@ -1,6 +1,6 @@
 # Docker Compose (Any CI)
 
-[`compose.test.yaml`](../compose.test.yaml) starts every service Stagehand's integration tests use, with health checks. It works anywhere Docker runs: your laptop, a self-hosted runner, TeamCity, Buildkite, Drone, Woodpecker, Travis CI, or a CI system with no service-container feature.
+[`compose.test.yaml`](../compose.test.yaml) starts every service Propmaster's integration tests use, with health checks. It works anywhere Docker runs: your laptop, a self-hosted runner, TeamCity, Buildkite, Drone, Woodpecker, Travis CI, or a CI system with no service-container feature.
 
 ## Start the services
 
@@ -20,7 +20,7 @@ docker compose -f compose.test.yaml down -v
 
 ## Connection settings
 
-Ports are published on `127.0.0.1`. Tests running on the host use `localhost`. Tests running in a container on the `stagehand-test_default` network use the service name instead.
+Ports are published on `127.0.0.1`. Tests running on the host use `localhost`. Tests running in a container on the `propmaster-test_default` network use the service name instead.
 
 | Backend | Service | `PW_*` variables (from the host) | From a container |
 |---|---|---|---|
@@ -57,7 +57,7 @@ When the CI agent has Docker but not Node, run the tests in `node:24` on the Com
 
 ```bash
 docker run --rm \
-  --network stagehand-test_default \
+  --network propmaster-test_default \
   -v "$PWD":/app -w /app \
   -e CI=true \
   -e PW_MONGODB_HOST=mongodb -e PW_MONGODB_DATABASE=testdb \
@@ -75,7 +75,7 @@ Any CI system that can run a shell script and has Docker can use this. It always
 set -euo pipefail
 
 export COMPOSE_FILE=compose.test.yaml
-export COMPOSE_PROJECT_NAME="stagehand-${BUILD_ID:-local}"   # isolate parallel builds
+export COMPOSE_PROJECT_NAME="propmaster-${BUILD_ID:-local}"   # isolate parallel builds
 trap 'docker compose down -v' EXIT
 
 docker compose up -d --wait postgres redis

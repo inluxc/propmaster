@@ -3,7 +3,7 @@
  *
  * Drivers (pg, kafkajs, webdriverio, ...) are optional peer dependencies:
  * a project installs only the ones for the fixtures it uses. Importing
- * `@inluxc/stagehand` loads none of them; each fixture loads its own the
+ * `@inluxc/propmaster` loads none of them; each fixture loads its own the
  * first time a test requests it, and a missing one becomes a
  * MissingPackageError that names the package and the install command.
  */
