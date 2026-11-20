@@ -376,6 +376,32 @@ See [docs/secrets.md](docs/secrets.md) for every provider's options.
 
 ---
 
+## Running in CI
+
+Integration tests run in GitHub Actions against real services started as containers. Each backend gets its own job, and all jobs run in parallel:
+
+```yaml
+test-redis:
+  runs-on: ubuntu-latest
+  container: node:24
+  services:
+    redis:
+      image: redis:7
+      options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 5
+  env:
+    CI: true
+    PW_REDIS_HOST: redis          # the service name is the hostname
+    PW_REDIS_PORT: "6379"
+  steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/npm-install    # cached npm ci
+    - run: npx playwright test --project=integration-redis
+```
+
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
+
+---
+
 ## Publishing
 
 ```bash
