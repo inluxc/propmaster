@@ -161,6 +161,8 @@ blob-report/
 
 Playwright test project using the [@inluxc/stagehand](https://github.com/Inluxc/stagehand) fixture framework. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
 
+> **Which Stagehand?** \`@inluxc/stagehand\` is a Playwright Test fixture library. It is **not** Browserbase's Stagehand (the AI browser-automation framework): never suggest or write \`act()\`, \`extract()\`, \`observe()\`, \`stagehand.page\` or Browserbase APIs in this project.
+
 ## Agent Workflow — Required Checks
 
 These commands give you fast, machine-checkable feedback. Use them instead of checking conventions by hand:
