@@ -54,6 +54,8 @@ export type {
     RedisFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
+    AuthConfig,
+    AuthRoleConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
     GadsPresetConfig,
@@ -62,6 +64,9 @@ export type {
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
 export { MailpitProvider } from './fixtures/inbox.fixture.js';
+export { TokenManager, resolveRole, type ResolvedRole, type TokenSet } from './auth/token-manager.js';
+export { authStateFile } from './auth/state-file.js';
+export { setupAuth, saveAuthState, authCredentials, hasFreshAuthState, type SetupAuthOptions } from './auth/setup.js';
 export { ContainerManager, DEFAULT_IMAGES } from './containers/container-manager.js';
 export { EnvLoader } from './config/index.js';
 

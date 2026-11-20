@@ -2515,6 +2515,57 @@ test('[TC-EML-NNN] password reset link works', { tag: ['@TC-EML-NNN'] }, async (
 
 ---
 
+## Skill 20: Run Tests as a Role (Tokens and Login State)
+
+**When to use:** A test must act as a specific user or client: an admin API call, a viewer who can't delete, a browser test that starts logged in.
+
+**Steps:**
+
+1. Make sure `auth` is configured (`PW_AUTH_ISSUER` or `PW_AUTH_TOKEN_URL`, client, and `auth.roles` in environments.json). Never put passwords or secrets in files: use `PW_AUTH_*` variables or a secrets provider.
+2. Pick the role with `test.use({ authRole: '<role>' })` at the `describe` level.
+3. For API tests, call `openApiClient`/`graphqlClient` as usual: they send the role's token. Use `authRequest` or `authHeaders` for other HTTP calls.
+4. For browser tests, check `tests/e2e/auth.setup.ts` exists (`npx propmaster auth-setup <roles…>`) and lists the role. Then the test needs **no login steps**.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test.describe('Orders — permissions', () => {
+    test.describe('as viewer', () => {
+        test.use({ authRole: 'viewer' });
+
+        test('[TC-API-NNN] viewer cannot delete an order', { tag: ['@TC-API-NNN'] }, async ({ authRequest }) => {
+            await test.step('Step 1: Try to delete as viewer', async () => {
+                const res = await authRequest.delete('/orders/1');
+                expect(res.status()).toBe(403);
+            });
+        });
+    });
+
+    test.describe('as admin', () => {
+        test.use({ authRole: 'admin' });
+
+        test('[TC-BRW-NNN] admin sees the delete button', { tag: ['@TC-BRW-NNN'] }, async ({ page }) => {
+            await test.step('Step 1: Open the order page, already logged in', async () => {
+                await page.goto('/orders/1');
+            });
+            await test.step('Step 2: Verify the admin-only action is shown', async () => {
+                await expect(page.getByRole('button', { name: 'Delete order' })).toBeVisible();
+            });
+        });
+    });
+});
+```
+
+**Key points:**
+- `authRole` picks both the API token and the browser state; without it, the test uses the default role's token and the project's own `storageState`.
+- A header the test sets itself (for example a bad token, to test a 401) is never overwritten.
+- `Error reading storage state from .auth/<role>.json` means the role wasn't logged in by the setup project. Add it to `setupAuth({ roles })`.
+- Login flows that need `otpClient` or `inboxClient` use a hand-written setup test with `authCredentials(role)` and `saveAuthState(context, role)`; see the Auth docs page.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2538,6 +2589,7 @@ test('[TC-EML-NNN] password reset link works', { tag: ['@TC-EML-NNN'] }, async (
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
 | Test a mobile app on a GADS device farm | Skill 17 (GADS) |
 | Test a sign-up, reset or emailed-code flow | Skill 19 (Inbox) |
+| Act as a specific user, or start logged in | Skill 20 (Auth roles) |
 | Run a new backend's tests in CI | Skill 18 (CI) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 

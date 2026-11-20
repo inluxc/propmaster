@@ -33,6 +33,7 @@ blob-report/
 .env.*
 !.env.example
 !.env.*.example
+.auth/
 `,
 
     'playwright.config.ts': ROOT_CONFIG_TEMPLATE,
@@ -618,6 +619,7 @@ const HELP = `
   Usage:
     npx propmaster init [directory]
     npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
+    npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
 
@@ -631,6 +633,8 @@ const HELP = `
               fixtures they use. Dry run by default; --apply moves the files
               (git mv when tracked) and updates relative imports. Files it
               can't place stay where they are and are listed with the reason.
+    auth-setup  Create tests/e2e/auth.setup.ts: logs each role in once and saves
+              its browser state, so tests start logged in (authRole option).
     check     Check test conventions: [TC-XXX-NNN] title prefix, matching
               { tag: ['@TC-XXX-NNN'] }, unique IDs, test.step() bodies, and
               no value imports of @playwright/test in test files.
@@ -771,6 +775,55 @@ function reportExisting({ plan, existingConfigs }: InitResult, log: (line?: stri
     log();
 }
 
+/** The setup file `propmaster auth-setup` writes: one login per role, saved for tests to reuse. */
+export function authSetupTemplate(roles: string[] = []): string {
+    const rolesLine = roles.length ? `    roles: [${roles.map((r) => `'${r}'`).join(', ')}],\n` : '';
+    return `import { expect, setupAuth } from '@inluxc/propmaster';
+
+/**
+ * Logs each role in once and saves its browser state to .auth/<role>.json.
+ * The e2e-setup project runs this before the browser projects; tests then
+ * start logged in with test.use({ authRole: 'admin' }).
+ *
+ * Roles and credentials come from auth.roles in environments.json. Keep
+ * passwords in PW_* variables or a secrets provider, not in the file.
+ */
+setupAuth({
+${rolesLine}    maxAgeMinutes: 30, // reuse a saved login for 30 minutes between runs
+    login: async ({ page }, { username, password }) => {
+        // TODO: replace with your app's login steps.
+        await page.goto('/login');
+        await page.getByLabel('Email').fill(username!);
+        await page.getByLabel('Password').fill(password!);
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        await expect(page).not.toHaveURL(/login/);
+    },
+});
+`;
+}
+
+/** `propmaster auth-setup [role...]`: writes tests/e2e/auth.setup.ts unless it exists. */
+export function runAuthSetup(argv: string[], cwd: string = process.cwd(), log: (line?: string) => void = console.log): number {
+    const roles = argv.filter((a) => !a.startsWith('-'));
+    const file = path.join(cwd, 'tests/e2e/auth.setup.ts');
+    if (fs.existsSync(file)) {
+        log(`  · ${path.relative(cwd, file)} already exists; nothing written.`);
+        return 0;
+    }
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, authSetupTemplate(roles), 'utf-8');
+    log(`  ✓ Created ${path.relative(cwd, file)}`);
+    log('');
+    log('  Next steps:');
+    log('    1. Replace the TODO login steps with your app\'s.');
+    log('    2. Add the roles to environments.json, e.g.');
+    log('         "auth": { "roles": { "admin": { "username": "admin@example.com" }, "viewer": { "username": "viewer@example.com" } } }');
+    log('       and their passwords via PW_* variables or a secrets provider.');
+    log("    3. Make sure tests/e2e/projects.ts has the e2e-setup project (new projects from `propmaster init` do).");
+    log("    4. In a test: test.use({ authRole: 'admin' });");
+    return 0;
+}
+
 function main(): number {
     const args = process.argv.slice(2);
     const command = args[0];
@@ -778,6 +831,7 @@ function main(): number {
     if (command === 'check') return runCheck(args.slice(1));
     if (command === 'next-id') return runNextId(args.slice(1));
     if (command === 'organize') return runOrganize(args.slice(1));
+    if (command === 'auth-setup') return runAuthSetup(args.slice(1));
     if (command !== 'init') {
         console.log(HELP);
         return command === undefined || command === '--help' || command === 'help' ? 0 : 2;

@@ -16,6 +16,9 @@ import { readFile } from 'node:fs/promises';
 import { extname, isAbsolute, resolve } from 'node:path';
 import type { OpenAPIClientAxios, AxiosInstance, Document } from 'openapi-client-axios';
 import { loadOptional } from './optional-package.js';
+import type { AuthConfig } from '../config/schema.js';
+import type { TokenManager } from '../auth/token-manager.js';
+import { authApplies, bearerSource } from '../auth/apply.js';
 import type { OpenApiFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, MissingPackageError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
@@ -140,7 +143,12 @@ export async function resolveSpecDefinition(
 export const openApiFixture = {
     openApiClient: [
         async (
-            { openapi }: { openapi: OpenApiFixtureConfig | undefined },
+            {
+                openapi,
+                authConfig,
+                authRole,
+                authTokens,
+            }: { openapi: OpenApiFixtureConfig | undefined; authConfig: AuthConfig | undefined; authRole: string | undefined; authTokens: TokenManager },
             use: (client: OpenApiClient) => Promise<void>,
         ) => {
             // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -220,6 +228,15 @@ export const openApiFixture = {
                     },
                     error instanceof Error ? error : undefined
                 );
+            }
+
+            // Auth helpers: send the role's bearer token on every request, unless the call sets its own.
+            if (authApplies(authConfig, 'openapi')) {
+                const token = bearerSource(authTokens, authConfig, authRole);
+                client.interceptors.request.use(async (request) => {
+                    if (!request.headers.has('Authorization')) request.headers.set('Authorization', `Bearer ${await token()}`);
+                    return request;
+                });
             }
 
             // Provide the client to the test
