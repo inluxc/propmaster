@@ -131,6 +131,11 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/examples/auth-tokens.spec.ts',
         },
         {
+            name: 'integration-mocks',
+            testMatch: '**/examples/mock-server.spec.ts',
+            use: { mock: config.mock },
+        },
+        {
             name: 'integration-inbox',
             testMatch: '**/examples/inbox.spec.ts',
             use: {

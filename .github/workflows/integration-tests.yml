@@ -413,6 +413,34 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  test-mocks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      wiremock:
+        image: wiremock/wiremock:3.13.2
+        options: >-
+          --health-cmd "curl -fs http://localhost:8080/__admin/health > /dev/null"
+          --health-interval 2s
+          --health-timeout 10s
+          --health-retries 30
+    env:
+      CI: true
+      PW_MOCK_URL: http://wiremock:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Run mock-server (WireMock) tests
+        run: npx playwright test --project=integration-mocks
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-mocks
+          path: playwright-report/
+          retention-days: 7
+
   test-kafka:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -522,7 +550,7 @@ jobs:
       matrix:
         include:
           - db: postgresql
-            projects: --project=api-integration --project=integration-inbox   # every backend at once
+            projects: --project=api-integration --project=integration-inbox --project=integration-mocks   # every backend at once
             password: testpass
           - db: mysql
             projects: --project=integration-database
@@ -543,6 +571,7 @@ jobs:
       PW_NEO4J_CONTAINER: "true"
       PW_KAFKA_CONTAINER: "true"
       PW_INBOX_CONTAINER: "true"
+      PW_MOCK_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

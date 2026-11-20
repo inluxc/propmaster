@@ -29,6 +29,10 @@ export type {
     InboxClient,
     InboxMessage,
     InboxProvider,
+    MockServer,
+    RequestMatch,
+    StubResponse,
+    RecordedRequest,
     GraphQLClient,
     AppiumDriver,
     GadsHubClient,
@@ -56,6 +60,7 @@ export type {
     InboxFixtureConfig,
     AuthConfig,
     AuthRoleConfig,
+    MockServerConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
     GadsPresetConfig,
@@ -64,6 +69,7 @@ export type {
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
 export { MailpitProvider } from './fixtures/inbox.fixture.js';
+export { WireMockAdmin } from './fixtures/mock-server.fixture.js';
 export { TokenManager, resolveRole, type ResolvedRole, type TokenSet } from './auth/token-manager.js';
 export { authStateFile } from './auth/state-file.js';
 export { setupAuth, saveAuthState, authCredentials, hasFreshAuthState, type SetupAuthOptions } from './auth/setup.js';

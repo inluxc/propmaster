@@ -26,13 +26,14 @@ import type {
     Neo4jFixtureConfig,
     RedisFixtureConfig,
     InboxFixtureConfig,
+    MockServerConfig,
 } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'mailpit';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'mailpit' | 'wiremock';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -44,6 +45,7 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     neo4j: 'neo4j:5',
     kafka: 'apache/kafka:latest',
     mailpit: 'axllent/mailpit:latest',
+    wiremock: 'wiremock/wiremock:3.13.2',
 };
 
 /** Throwaway credentials used when the config doesn't set its own. */
@@ -275,6 +277,16 @@ export function mailpitSpec(options: ContainerOptions): ContainerSpec {
     };
 }
 
+/** WireMock: stubs and the admin API on one port. */
+export function wiremockSpec(options: ContainerOptions): ContainerSpec {
+    return {
+        ...baseSpec('wiremock', 'mockServer', options),
+        env: {},
+        port: 8080,
+        healthCheck: 'curl -fs http://localhost:8080/__admin/health > /dev/null',
+    };
+}
+
 /** A free TCP port on this machine. */
 export function freePort(): Promise<number> {
     return new Promise((resolvePort, reject) => {
@@ -381,6 +393,15 @@ export class ContainerManager {
             password: undefined,
             container: false,
         };
+    }
+
+    /** WireMock: `url` (and the admin API) point at the container. */
+    async mock(config: MockServerConfig): Promise<MockServerConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const started = await this.ensure(wiremockSpec(options));
+        const url = `http://${started.host}:${started.port}`;
+        return { ...config, url, adminUrl: url, container: false };
     }
 
     /** Stops every container this worker started (reused ones keep running). */

@@ -277,6 +277,19 @@ export interface AuthConfig {
 }
 
 /**
+ * Configuration for the mock-server fixture: a WireMock server that stands in
+ * for the third-party APIs your application calls.
+ */
+export interface MockServerConfig {
+    /** Base URL the application under test calls, e.g. `http://localhost:8089`. */
+    url: string;
+    /** Admin API URL when it differs from `url` (default: `url`). */
+    adminUrl?: string;
+    /** Start WireMock in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
+}
+
+/**
  * Configuration for the inbox fixture: a test mail server (Mailpit) that
  * catches the email your application sends.
  */
@@ -354,6 +367,8 @@ export interface FrameworkConfig {
     otp?: OtpFixtureConfig;
     /** Auth helpers: OAuth/OIDC tokens and per-role browser login state. */
     auth?: AuthConfig;
+    /** Mock-server (WireMock) fixture configuration. */
+    mock?: MockServerConfig;
     /** Inbox (test mail server) fixture configuration. */
     inbox?: InboxFixtureConfig;
     /** GraphQL client fixture configuration. */

@@ -143,6 +143,7 @@ Request fixtures by name in the test function signature:
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
 | `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
+| `mockServer` | `MockServer` | WireMock: `stub`, `stubSequence`, `requests`, `verify`, `url` — third-party APIs your backend calls |
 | `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient` send it automatically |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing; needs `appium.gads` |
@@ -344,6 +345,18 @@ const hotpValid = await otpClient.verifyHotp(hotpToken, 0, secret);
 const uri = otpClient.generateKeyUri('user@example.com', 'MyApp', secret);
 ```
 
+**Mock Server (third-party APIs via WireMock):**
+```typescript
+// The backend calls mockServer.url instead of the real provider. Match on a test-unique value.
+const orderId = randomUUID();
+await mockServer.stub({ method: 'POST', path: '/v1/charges', body: { orderId } }, { status: 201, json: { id: 'ch_1' } });
+await mockServer.stubSequence({ path: '/v1/rates' }, [{ status: 503 }, { json: { eur: 1 } }]); // retries
+await mockServer.stub({ path: '/v1/slow' }, { json: {}, delayMs: 3000 });                     // or { fault: 'CONNECTION_RESET_BY_PEER' }
+const [call] = await mockServer.verify({ method: 'POST', path: '/v1/charges', body: { orderId } }, { times: 1 });
+await mockServer.verify({ path: '/v1/refunds' }, { times: 0 });   // never called
+// RegExp in pathPattern/query/headers matches anywhere (JS semantics); stubs are removed after the test.
+```
+
 **Auth (tokens and roles):**
 ```typescript
 // Pick a role: the API token's identity AND the saved browser login (.auth/<role>.json)
@@ -414,6 +427,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
 | `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_KAFKA_CONTAINER` | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
 | `PW_DB_CONTAINER_INIT` | Comma-separated SQL files run once in the database container (PostgreSQL, MySQL, MSSQL) |
+| `PW_MOCK_URL`, `PW_MOCK_ADMIN_URL`, `PW_MOCK_CONTAINER` | WireMock base/admin URL for `mockServer`, or start it in a container |
 | `PW_AUTH_ISSUER` / `PW_AUTH_TOKEN_URL` | OAuth/OIDC token endpoint (issuer uses discovery) for the auth helpers |
 | `PW_AUTH_CLIENT_ID`, `PW_AUTH_CLIENT_SECRET`, `PW_AUTH_SCOPE`, `PW_AUTH_AUDIENCE`, `PW_AUTH_GRANT_TYPE`, `PW_AUTH_USERNAME`, `PW_AUTH_PASSWORD`, `PW_AUTH_ROLE`, `PW_AUTH_STATE_DIR` | Auth client, token options, default role credentials and role, browser state folder |
 | `PW_INBOX_URL` | Mailpit API URL (`http://localhost:8025`) for `inboxClient` |
@@ -450,6 +464,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
 | `otp` | `**/examples/otp.spec.ts` | `otpClient` |
 | `integration-inbox` | `**/examples/inbox.spec.ts` | `inboxClient` (needs Mailpit) |
+| `integration-mocks` | `**/examples/mock-server.spec.ts` | `mockServer` (needs WireMock) |
 | `integration-auth` | `**/examples/auth-tokens.spec.ts` | `authToken`, `authRequest` (needs an OAuth server: `PW_AUTH_ISSUER`) |
 | `auth-browser-setup` → `auth-browser` | `**/examples/auth-browser.{setup,spec}.ts` | Browser roles via `setupAuth` + `authRole` (no server: fake app via `page.route`) |
 | `property-tests` | `**/*.prop.ts` | None (uses fast-check) |
@@ -524,7 +539,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules
