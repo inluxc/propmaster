@@ -22,7 +22,8 @@
  *   - WebdriverIO's own errors for commands inside the test
  */
 
-import { remote } from 'webdriverio';
+import type {} from 'webdriverio'; // brings in the global WebdriverIO types
+import { loadOptional } from './optional-package.js';
 import type { AppiumFixtureConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 import { redactCredentials } from '../annotations/truncation.js';
@@ -305,6 +306,8 @@ export async function startAppiumSession(config: AppiumFixtureConfig, hub?: Gads
     const base = new URL(normalizeServerUrl(config.serverUrl, isGads));
     const path = isGads ? `${base.pathname.replace(/\/+$/, '')}/grid` : (base.pathname || '/');
     const timeout = config.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT;
+    // webdriverio is an optional peer dependency, loaded on first use.
+    const { remote } = await loadOptional<typeof import('webdriverio')>('webdriverio', 'appiumDriver');
 
     try {
         return await remote({

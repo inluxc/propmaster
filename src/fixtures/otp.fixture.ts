@@ -8,7 +8,9 @@
  * @requirements 8.1, 8.2, 8.3
  */
 
-import { TOTP, HOTP, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib';
+import { loadOptional } from './optional-package.js';
+
+type Otplib = typeof import('otplib');
 import type { OtpFixtureConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 
@@ -66,7 +68,7 @@ function resolveSecret(secret: string | undefined, defaultSecret: string | undef
 /**
  * Creates an OTP client configured with the provided options.
  */
-function createOtpClient(config: OtpFixtureConfig): OtpClient {
+function createOtpClient(config: OtpFixtureConfig, { TOTP, HOTP, NobleCryptoPlugin, ScureBase32Plugin }: Otplib): OtpClient {
     const crypto = new NobleCryptoPlugin();
     const base32 = new ScureBase32Plugin();
 
@@ -149,7 +151,8 @@ export const otpFixture = {
         { otpConfig }: { otpConfig: OtpFixtureConfig },
         use: (client: OtpClient) => Promise<void>
     ) => {
-        const client = createOtpClient(otpConfig);
+        // otplib is an optional peer dependency, loaded on first use.
+        const client = createOtpClient(otpConfig, await loadOptional<Otplib>('otplib', 'otpClient'));
         await use(client);
     },
 };

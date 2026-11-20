@@ -17,6 +17,14 @@ The `redisClient` fixture provides a Redis client with get, set, del, publish, a
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev ioredis
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

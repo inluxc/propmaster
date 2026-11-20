@@ -16,6 +16,14 @@ The `graphqlClient` fixture provides a typed GraphQL client for querying and mut
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev graphql-request graphql
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

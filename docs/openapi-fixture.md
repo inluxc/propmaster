@@ -16,6 +16,14 @@ The `openApiClient` fixture provides a typed HTTP client generated from your Ope
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev openapi-client-axios
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

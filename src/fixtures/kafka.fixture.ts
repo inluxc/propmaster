@@ -8,7 +8,8 @@
  * Uses kafkajs as the underlying Kafka client library.
  */
 
-import { Kafka, Producer, Consumer, EachMessagePayload, logLevel, SASLOptions as KafkaJsSASLOptions } from 'kafkajs';
+import type { Producer, Consumer, EachMessagePayload, SASLOptions as KafkaJsSASLOptions } from 'kafkajs';
+import { loadOptional } from './optional-package.js';
 import { KafkaFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
@@ -68,6 +69,9 @@ export const kafkaFixture = {
         // Use config from project `use` block if provided, otherwise fall back to env vars
         const config = kafkaConfig ?? getKafkaConfig();
         const disconnectTimeout = config.disconnectTimeout ?? 5000;
+
+        // kafkajs is an optional peer dependency, loaded on first use.
+        const { Kafka, logLevel } = await loadOptional<typeof import('kafkajs')>('kafkajs', 'kafkaClient');
 
         // Create Kafka instance
         const kafka = new Kafka({

@@ -12,8 +12,8 @@
  *   });
  */
 
-import { OpenAPIClientAxios } from 'openapi-client-axios';
-import type { AxiosInstance } from 'openapi-client-axios';
+import type { OpenAPIClientAxios, AxiosInstance } from 'openapi-client-axios';
+import { loadOptional } from './optional-package.js';
 import type { OpenApiFixtureConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
@@ -80,6 +80,12 @@ export const openApiFixture = {
             const specTimeout = openapiConfig.specTimeout ?? DEFAULT_SPEC_TIMEOUT;
             const initTimeout = openapiConfig.initTimeout ?? DEFAULT_INIT_TIMEOUT;
 
+            // openapi-client-axios is an optional peer dependency, loaded on first use.
+            const { OpenAPIClientAxios: OpenAPIClientAxiosClass } = await loadOptional<typeof import('openapi-client-axios')>(
+                'openapi-client-axios',
+                'openApiClient',
+            );
+
             let api: OpenAPIClientAxios;
             let client: AxiosInstance;
 
@@ -100,7 +106,7 @@ export const openApiFixture = {
                     };
                 }
 
-                api = new OpenAPIClientAxios(opts);
+                api = new OpenAPIClientAxiosClass(opts);
 
                 // Initialize with timeout
                 const timeout = createTimeout(initTimeout, 'OpenAPI client initialization');

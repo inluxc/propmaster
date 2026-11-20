@@ -16,6 +16,14 @@ The `kafkaClient` fixture provides Kafka producer and consumer capabilities for 
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev kafkajs
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

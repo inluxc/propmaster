@@ -348,7 +348,7 @@ test-browser:
     - uses: actions/checkout@v4
     - uses: ./.github/actions/npm-install
       with:
-        ignore-scripts: "true"    # the image's Node has no better-sqlite3 prebuild and no compiler
+        ignore-scripts: "true"    # only if the project installs better-sqlite3: this image can't compile it
     - run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit
 ```
 

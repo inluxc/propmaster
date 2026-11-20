@@ -9,7 +9,8 @@
  * @requirements 5.1, 5.2, 5.3, 5.4, 5.5
  */
 
-import { Redis } from 'ioredis';
+import type { Redis } from 'ioredis';
+import { loadOptional } from './optional-package.js';
 import { RedisFixtureConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 
@@ -46,6 +47,8 @@ async function createRedisClient(config: RedisFixtureConfig): Promise<{
     subscriber: Redis | null;
 }> {
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
+    // ioredis is an optional peer dependency, loaded on first use.
+    const { Redis } = await loadOptional<typeof import('ioredis')>('ioredis', 'redisClient');
 
     const client = new Redis({
         host: config.host,
