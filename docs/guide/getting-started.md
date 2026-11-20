@@ -17,7 +17,7 @@ Stagehand itself has no runtime dependencies. Each fixture's driver is an option
 
 | Fixture | Install |
 |---|---|
-| `openApiClient` | `openapi-client-axios` |
+| `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files) |
 | `graphqlClient` | `graphql-request graphql` |
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |

@@ -12,10 +12,12 @@
  *   });
  */
 
-import type { OpenAPIClientAxios, AxiosInstance } from 'openapi-client-axios';
+import { readFile } from 'node:fs/promises';
+import { extname, isAbsolute, resolve } from 'node:path';
+import type { OpenAPIClientAxios, AxiosInstance, Document } from 'openapi-client-axios';
 import { loadOptional } from './optional-package.js';
 import type { OpenApiFixtureConfig } from '../config/schema.js';
-import { FixtureInitError } from '../errors.js';
+import { FixtureInitError, MissingPackageError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
 
 /**
@@ -46,6 +48,87 @@ function createTimeout(ms: number, label: string): { promise: Promise<never>; cl
     });
     const clear = () => clearTimeout(timer!);
     return { promise, clear };
+}
+
+/** Loads js-yaml, an optional peer dependency needed only for YAML spec files. */
+export type YamlLoader = () => Promise<typeof import('js-yaml')>;
+
+const loadJsYaml: YamlLoader = () =>
+    loadOptional<typeof import('js-yaml')>('js-yaml', 'openApiClient (YAML spec)');
+
+/** Parses spec text: YAML for `.yaml`/`.yml` files (loading js-yaml), JSON otherwise. */
+async function parseSpec(raw: string, filePath: string, loadYaml: YamlLoader): Promise<unknown> {
+    const ext = extname(filePath).toLowerCase();
+    if (ext === '.yaml' || ext === '.yml') {
+        const yaml = await loadYaml();
+        return yaml.load(raw, { filename: filePath });
+    }
+    return JSON.parse(raw);
+}
+
+/** True when `specPath` is an http(s) URL that openapi-client-axios should fetch itself. */
+export function isRemoteSpec(specPath: string): boolean {
+    return /^https?:\/\//i.test(specPath.trim());
+}
+
+/**
+ * Resolves `specPath` to the `definition` passed to openapi-client-axios.
+ *
+ * - http(s) URLs are returned unchanged; openapi-client-axios fetches them.
+ * - Anything else is a local file: resolved against `cwd` (the project root)
+ *   when relative, read from disk, and parsed as YAML (`.yaml`/`.yml`, which
+ *   needs js-yaml installed) or JSON (anything else).
+ *
+ * A YAML spec without js-yaml installed throws `MissingPackageError`.
+ * Throws `FixtureInitError('openApiClient', 'init', { specPath, reason })` when
+ * the file is missing, unreadable, or does not parse to an object.
+ */
+export async function resolveSpecDefinition(
+    specPath: string,
+    cwd: string = process.cwd(),
+    loadYaml: YamlLoader = loadJsYaml,
+): Promise<string | Document> {
+    if (isRemoteSpec(specPath)) {
+        return specPath;
+    }
+
+    const filePath = isAbsolute(specPath) ? specPath : resolve(cwd, specPath);
+
+    let raw: string;
+    try {
+        raw = await readFile(filePath, 'utf8');
+    } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        const reason = code === 'ENOENT'
+            ? `OpenAPI spec file not found: ${filePath}`
+            : `Could not read OpenAPI spec file ${filePath}: ${error instanceof Error ? error.message : String(error)}`;
+        throw new FixtureInitError('openApiClient', 'init', { specPath, reason }, error instanceof Error ? error : undefined);
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = await parseSpec(raw, filePath, loadYaml);
+    } catch (error) {
+        if (error instanceof MissingPackageError) throw error;
+        throw new FixtureInitError(
+            'openApiClient',
+            'init',
+            {
+                specPath,
+                reason: `Could not parse OpenAPI spec file ${filePath} as ${/\.ya?ml$/i.test(filePath) ? 'YAML' : 'JSON'}: ${error instanceof Error ? error.message : String(error)}`,
+            },
+            error instanceof Error ? error : undefined,
+        );
+    }
+
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new FixtureInitError('openApiClient', 'init', {
+            specPath,
+            reason: `OpenAPI spec file ${filePath} does not contain an OpenAPI document (expected an object)`,
+        });
+    }
+
+    return parsed as Document;
 }
 
 /**
@@ -86,13 +169,17 @@ export const openApiFixture = {
                 'openApiClient',
             );
 
+            // Local files are read and parsed here; a string definition would be
+            // fetched over HTTP (relative to the API base URL) by openapi-client-axios.
+            const definition = await resolveSpecDefinition(specPath);
+
             let api: OpenAPIClientAxios;
             let client: AxiosInstance;
 
             try {
                 // Build OpenAPIClientAxios options
                 const opts: ConstructorParameters<typeof OpenAPIClientAxios>[0] = {
-                    definition: specPath,
+                    definition,
                     axiosConfigDefaults: {
                         timeout: specTimeout,
                     },

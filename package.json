@@ -64,6 +64,7 @@
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
         "ioredis": "^6.0.0",
+        "js-yaml": "^4.3.2",
         "kafkajs": "^2.2.4",
         "mongodb": "^7.9.1",
         "mssql": "^12.7.16",
@@ -85,6 +86,9 @@
             "optional": true
         },
         "ioredis": {
+            "optional": true
+        },
+        "js-yaml": {
             "optional": true
         },
         "kafkajs": {
@@ -119,6 +123,7 @@
         "@playwright/test": "^1.65.1",
         "@stoplight/prism-cli": "5.16.0",
         "@types/better-sqlite3": "^9.6.0",
+        "@types/js-yaml": "^4.0.9",
         "@types/mssql": "^12.3.0",
         "@types/node": "^22.20.5",
         "@types/pg": "^8.23.1",
@@ -127,6 +132,7 @@
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
         "ioredis": "^6.0.0",
+        "js-yaml": "^4.3.2",
         "kafkajs": "^2.2.4",
         "mongodb": "^7.9.1",
         "mssql": "^12.7.16",

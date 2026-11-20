@@ -16,6 +16,7 @@ import { MissingPackageError } from '../errors.js';
  */
 export const FIXTURE_PACKAGES = {
     openApiClient: ['openapi-client-axios'],
+    'openApiClient (YAML spec)': ['js-yaml'],
     graphqlClient: ['graphql-request', 'graphql'],
     'databaseClient (postgresql)': ['pg'],
     'databaseClient (mysql)': ['mysql2'],
