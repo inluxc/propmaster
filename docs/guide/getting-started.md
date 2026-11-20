@@ -26,6 +26,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `inboxClient` | nothing (uses `fetch`); needs a Mailpit server |
+| `mockServer` | nothing (uses `fetch`); needs a WireMock server |
 | `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
 | `container: true` on any backend ([Testcontainers](../testcontainers)) | `testcontainers` |
 
@@ -112,6 +113,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `redisClient` | Redis keys and pub/sub | [Redis](../redis-fixture) |
 | `otpClient` | TOTP/HOTP codes for 2FA flows | [OTP](../otp-fixture) |
 | `inboxClient` | Emailed codes, verification and reset links (Mailpit) | [Inbox](../inbox-fixture) |
+| `mockServer` | Stubbed third-party APIs your backend calls (WireMock) | [Mock server](../mock-server-fixture) |
 | `authToken` / `authRequest` | OAuth/OIDC tokens per role; `authRole` also starts browser tests logged in | [Auth](../auth) |
 | `appiumDriver` | Appium session (WebdriverIO) on local Appium, a grid, a cloud farm or GADS | [Appium](../appium-fixture) |
 | `gadsHub` | GADS hub status and device listing | [Appium → GADS](../appium-fixture#gads-preset) |

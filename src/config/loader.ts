@@ -384,6 +384,18 @@ export class ConfigLoader {
                 cfg.auth ??= {};
                 cfg.auth.stateDir = val;
             },
+            'PW_MOCK_URL': (cfg, val) => {
+                cfg.mock ??= { url: '' };
+                cfg.mock.url = val;
+            },
+            'PW_MOCK_ADMIN_URL': (cfg, val) => {
+                cfg.mock ??= { url: '' };
+                cfg.mock.adminUrl = val;
+            },
+            'PW_MOCK_CONTAINER': (cfg, val) => {
+                cfg.mock ??= { url: '' };
+                cfg.mock.container = parseContainerEnv(val);
+            },
             'PW_INBOX_URL': (cfg, val) => {
                 if (!cfg.inbox) cfg.inbox = { url: '' };
                 cfg.inbox.url = val;

@@ -20,6 +20,8 @@ export { OtpSteps } from './otp.steps.js';
 export type { OtpClient } from './otp.steps.js';
 export { InboxSteps } from './inbox.steps.js';
 export type { InboxClient, InboxMessage } from './inbox.steps.js';
+export { MockServerSteps } from './mock-server.steps.js';
+export type { MockServer, RecordedRequest } from './mock-server.steps.js';
 export { BrowserSteps } from './browser.steps.js';
 export { AppiumSteps } from './appium.steps.js';
 export type { AppiumDriver } from './appium.steps.js';

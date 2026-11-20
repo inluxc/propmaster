@@ -2566,6 +2566,52 @@ test.describe('Orders — permissions', () => {
 
 ---
 
+## Skill 21: Stub a Third-Party API Your Backend Calls
+
+**When to use:** The flow under test makes the backend call an outside service (payments, email/SMS API, shipping, a partner API) that tests must not hit, or whose failures you need to simulate.
+
+**Steps:**
+
+1. Make sure the app's test environment points that provider's base URL at WireMock (`mockServer.url`; `PW_MOCK_URL` or `PW_MOCK_CONTAINER=true`).
+2. Get IDs with `npm run next-id -- MCK` (or the category of the flow you're testing).
+3. Create a value unique to the test (`randomUUID()`) and use it in the flow, so the stub and `verify` only match this test's calls.
+
+**Template:**
+
+```typescript
+import { randomUUID } from 'node:crypto';
+import { test, expect } from '@inluxc/propmaster';
+
+test('[TC-MCK-NNN] a declined card shows an error and is not retried', { tag: ['@TC-MCK-NNN'] }, async ({ page, mockServer }) => {
+    const orderId = randomUUID();
+
+    await test.step('Step 1: Stub a declined charge for this order', async () => {
+        await mockServer.stub(
+            { method: 'POST', path: '/v1/charges', body: { metadata: { orderId } } },
+            { status: 402, json: { error: { code: 'card_declined' } } },
+        );
+    });
+
+    await test.step('Step 2: Pay in the browser', async () => {
+        await page.goto(`/checkout?order=${orderId}`);
+        await page.getByRole('button', { name: 'Pay' }).click();
+        await expect(page.getByText('Your card was declined')).toBeVisible();
+    });
+
+    await test.step('Step 3: Verify the backend tried exactly once', async () => {
+        await mockServer.verify({ method: 'POST', path: '/v1/charges', body: { metadata: { orderId } } }, { times: 1 });
+    });
+});
+```
+
+**Key points:**
+- `stubSequence` answers in turn (e.g. `[503, 503, 201]`) to test retries; `{ fault: 'CONNECTION_RESET_BY_PEER' }` and `delayMs` test broken and slow providers.
+- `verify(match, { times: 0 })` checks a call never happened. A failed `verify` lists the closest calls that did arrive: read it before changing the test.
+- A `RegExp` in `pathPattern`, `query` or `headers` matches anywhere, as in JavaScript.
+- Stubs are removed after the test; don't clean up by hand. Without a test-unique value to match on, run the clashing tests serially.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2590,6 +2636,7 @@ test.describe('Orders — permissions', () => {
 | Test a mobile app on a GADS device farm | Skill 17 (GADS) |
 | Test a sign-up, reset or emailed-code flow | Skill 19 (Inbox) |
 | Act as a specific user, or start logged in | Skill 20 (Auth roles) |
+| Stub or verify a third-party API the backend calls | Skill 21 (Mock server) |
 | Run a new backend's tests in CI | Skill 18 (CI) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 

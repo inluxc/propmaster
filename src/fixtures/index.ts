@@ -31,6 +31,7 @@ import type {
     OtpFixtureConfig,
     InboxFixtureConfig,
     AuthConfig,
+    MockServerConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
 } from '../config/schema.js';
@@ -42,6 +43,7 @@ import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { inboxFixture, type InboxClient } from './inbox.fixture.js';
+import { mockServerFixture, type MockServer } from './mock-server.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
 import { ContainerManager } from '../containers/container-manager.js';
 import { TokenManager, roleName } from '../auth/token-manager.js';
@@ -64,6 +66,7 @@ export interface ConfigOptions {
     otp: OtpFixtureConfig | undefined;
     inbox: InboxFixtureConfig | undefined;
     auth: AuthConfig | undefined;
+    mock: MockServerConfig | undefined;
     /** Role for this test: picks the API token's identity and the saved browser login state. */
     authRole: string | undefined;
     graphql: GraphQLFixtureConfig | undefined;
@@ -87,6 +90,9 @@ export interface FixtureTypes {
     otpClient: OtpClient;
     inboxConfig: InboxFixtureConfig;
     inboxClient: InboxClient;
+    mockConfig: MockServerConfig;
+    /** WireMock client: stub third-party APIs and verify the calls your backend made. */
+    mockServer: MockServer;
     /** The auth config, or undefined when none is set. */
     authConfig: AuthConfig | undefined;
     /** A valid access token for the test's role (fetched or refreshed as needed). */
@@ -118,6 +124,7 @@ const configOptionFixtures = {
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     inbox: [undefined as InboxFixtureConfig | undefined, { option: true }],
     auth: [undefined as AuthConfig | undefined, { option: true }],
+    mock: [undefined as MockServerConfig | undefined, { option: true }],
     authRole: [undefined as string | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
     appium: [undefined as AppiumFixtureConfig | undefined, { option: true }],
@@ -323,6 +330,28 @@ const authFixtures = {
 };
 
 /**
+ * The mockConfig fixture loads the WireMock configuration from the project
+ * config option or ConfigLoader, and starts WireMock in a container when
+ * `container` is set.
+ */
+const mockConfigFixture = {
+    mockConfig: async (
+        { mock, stagehandContainers }: { mock: MockServerConfig | undefined; stagehandContainers: ContainerManager },
+        use: (config: MockServerConfig) => Promise<void>,
+    ) => {
+        const config = mock ?? (await tryLoadConfig())?.mock;
+        const resolved = config ? await stagehandContainers.mock(config) : undefined;
+        if (!resolved?.url) {
+            const { FixtureInitError } = await import('../errors.js');
+            throw new FixtureInitError('mockServer', 'connect', {
+                reason: 'Mock server configuration is missing. Set PW_MOCK_URL (e.g. http://localhost:8089), PW_MOCK_CONTAINER=true, or mock in environments.json or the project use block.',
+            });
+        }
+        await use(resolved);
+    },
+};
+
+/**
  * The appiumConfig fixture loads Appium configuration from the project config option
  * or falls back to ConfigLoader.
  */
@@ -385,6 +414,8 @@ const allFixtures = {
     ...otpFixture,
     ...inboxConfigFixture,
     ...inboxFixture,
+    ...mockConfigFixture,
+    ...mockServerFixture,
     ...graphqlFixture,
     ...appiumConfigFixture,
     ...appiumFixture,
@@ -404,6 +435,7 @@ export type { OpenApiClient } from './openapi.fixture.js';
 export type { DatabaseClient } from './database.fixture.js';
 export type { KafkaClient } from './kafka.fixture.js';
 export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';
+export type { MockServer, RequestMatch, StubResponse, RecordedRequest, Stub } from './mock-server.fixture.js';
 export type { RedisClient } from './redis.fixture.js';
 export type { MongoDbClient } from './mongodb.fixture.js';
 export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } from './neo4j.fixture.js';

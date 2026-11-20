@@ -47,6 +47,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-neo4j` | `integration-neo4j` | `neo4j:5` | Neo4j fixture |
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-inbox` | `integration-inbox` | `axllent/mailpit:latest` | Inbox fixture (email) |
+| `test-mocks` | `integration-mocks` | `wiremock/wiremock:3.13.2` | Mock-server fixture (third-party APIs) |
 | `test-openapi` | `openapi` | Prism mock server (started in a step) | OpenAPI fixture |
 | `test-browser` | `browser-chromium`, `browser-firefox`, `browser-webkit` | — (runs in the Playwright image) | Browser tests |
 
