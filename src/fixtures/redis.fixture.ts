@@ -13,6 +13,8 @@ import type { Redis } from 'ioredis';
 import { loadOptional } from './optional-package.js';
 import { RedisFixtureConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
+import type { CleanupRegistry, KeepOption } from '../test-data/registry.js';
+import { trackRedis } from '../test-data/tracking.js';
 
 /**
  * Options for the subscribe method.
@@ -27,7 +29,8 @@ export interface SubscribeOptions {
  */
 export interface RedisClient {
     get(key: string): Promise<string | null>;
-    set(key: string, value: string, ttl?: number): Promise<void>;
+    /** Sets a key; when the test ends it is deleted, or its previous value restored, unless `{ keep: true }`. */
+    set(key: string, value: string, ttl?: number, options?: KeepOption): Promise<void>;
     del(key: string): Promise<number>;
     publish(channel: string, message: string): Promise<number>;
     subscribe(channel: string, options?: SubscribeOptions): Promise<string | null>;
@@ -232,13 +235,20 @@ async function flushPrefixedKeys(client: Redis, keyPrefix: string): Promise<void
  */
 export const redisFixture = {
     redisClient: async (
-        { redisConfig }: { redisConfig: RedisFixtureConfig },
+        { redisConfig, dataCleanup }: { redisConfig: RedisFixtureConfig; dataCleanup: CleanupRegistry },
         use: (client: RedisClient) => Promise<void>
     ) => {
         const { client, subscriber } = await createRedisClient(redisConfig);
         const redisClient = buildRedisClient(client, subscriber, redisConfig);
 
-        await use(redisClient);
+        let cleanupError: unknown;
+        try {
+            await use(trackRedis(redisClient, dataCleanup));
+            // Undo the test's sets (every client is still connected here)
+            await dataCleanup.flush();
+        } catch (error) {
+            cleanupError = error;
+        }
 
         // Teardown
         if (redisConfig.keyPrefix) {
@@ -262,5 +272,6 @@ export const redisFixture = {
         } catch {
             client.disconnect();
         }
+        if (cleanupError) throw cleanupError;
     },
 };

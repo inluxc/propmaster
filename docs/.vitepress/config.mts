@@ -66,6 +66,7 @@ export default defineConfig({
                     { text: 'OTP (2FA)', link: '/otp-fixture' },
                     { text: 'Inbox (email)', link: '/inbox-fixture' },
                     { text: 'Mock server (third-party APIs)', link: '/mock-server-fixture' },
+                    { text: 'Test data & cleanup', link: '/test-data' },
                     { text: 'Auth: tokens & roles', link: '/auth' },
                     { text: 'Appium & GADS', link: '/appium-fixture' },
                     { text: 'Custom Fixtures', link: '/custom-fixtures' },

@@ -68,4 +68,25 @@ test.describe('Redis Fixture Examples', () => {
 
         await redis.getExpectNull('Get a key that does not exist', 'non:existent:key');
     });
+
+    test('[TC-RDS-006] keys set in a test are removed or restored after it', { tag: ['@TC-RDS-006'] }, async ({ redisClient, testData }) => {
+        const fresh = testData.unique('session');
+        const existing = testData.unique('feature-flag');
+
+        await test.step('Step 1: Seed a key that exists before the change (kept)', async () => {
+            await redisClient.set(existing, 'off', undefined, { keep: true });
+        });
+
+        await test.step('Step 2: Set a new key and change the existing one', async () => {
+            await redisClient.set(fresh, 'active', 60);
+            await redisClient.set(existing, 'on');
+        });
+
+        await test.step('Step 3: Run the cleanups now and verify the new key is gone and the old value is back', async () => {
+            await testData.flushCleanups();
+            expect(await redisClient.get(fresh)).toBeNull();
+            expect(await redisClient.get(existing)).toBe('off');
+            await redisClient.del(existing);
+        });
+    });
 });

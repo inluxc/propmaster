@@ -139,15 +139,16 @@ Always pass values as parameters (`$name`) rather than interpolating them into t
 
 ## Test Data Isolation
 
-Neo4j has no key prefix equivalent, so tag every node your test creates and clean up by that tag. The example spec gives each node a `PropmasterTest` label and a per-run `runId` property, and deletes them in `afterEach`:
+Neo4j has no key prefix equivalent, so tag every node your test creates with a `runId` property. A write with a `runId` parameter is cleaned up automatically: when the test ends, pass or fail, every node with that `runId` is detach-deleted. Use the test's own run ID:
 
 ```typescript
-const RUN_ID = `propmaster-${randomUUID()}`;
-
-test.afterEach(async ({ neo4jClient }) => {
-  await neo4jClient.write('MATCH (n:PropmasterTest {runId: $runId}) DETACH DELETE n', { runId: RUN_ID });
+test('...', async ({ neo4jClient, testData }) => {
+  await neo4jClient.write('CREATE (:Person {runId: $runId, name: $name})', { runId: testData.runId, name: 'Alice' });
+  // after the test: MATCH (n {runId: $runId}) DETACH DELETE n
 });
 ```
+
+Writes in `executeInTransaction` are tracked once the transaction commits. Pass `{ keep: true }` as the third argument of `write` to leave the nodes in place. A `runId` shared by a whole file is deleted when the first test ends. See [Test Data and Automatic Cleanup](./test-data).
 
 ---
 

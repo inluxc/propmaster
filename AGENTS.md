@@ -68,6 +68,7 @@ src/
 │   └── providers/              # Provider implementations (aws, vault, openbao, gitlab, azure, env-file)
 ├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
 │                               #   each method wraps its work in test.step() — prefer these in specs
+├── test-data/                  # testData fixture: factories, unique values, cleanup registry, per-client tracking
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type),
                                 #   check + next-id (test conventions); layout.ts = the scaffolded layout
@@ -136,13 +137,14 @@ Request fixtures by name in the test function signature:
 |---|---|---|
 | `openApiClient` | `OpenApiClient` | Typed HTTP client from OpenAPI spec (`{ client, api }`) |
 | `graphqlClient` | `GraphQLClient` | GraphQL client with `query`, `mutate`, `rawRequest`, `setAuthToken` |
-| `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)` and `execute(sql, params?)` |
+| `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)`, `execute(sql, params?)` and `insert(table, rows, { key?, keep? })` (rows deleted after the test) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
 | `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
+| `testData` | `TestData` | Factories (`build`, `buildMany`, `define`), unique values (`unique`, `email`, `runId`), custom undo (`cleanup`); inserts through the clients are undone after every test |
 | `mockServer` | `MockServer` | WireMock: `stub`, `stubSequence`, `requests`, `verify`, `url` — third-party APIs your backend calls |
 | `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient` send it automatically |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
@@ -201,10 +203,27 @@ expect(response.status).toBe(200);
 const rows = await databaseClient.query<{ id: number; name: string }>(
     'SELECT id, name FROM users WHERE active = $1', [true]
 );
-// INSERT/UPDATE/DELETE — returns { affectedRows: number }
+// INSERT/UPDATE/DELETE — returns { affectedRows: number }; raw SQL is NOT cleaned up
 const result = await databaseClient.execute(
-    'INSERT INTO users (name) VALUES ($1)', ['Alice']
+    'UPDATE users SET active = $1 WHERE email = $2', [false, 'a@example.test']
 );
+// insert() — rows are deleted again when the test ends (by key, else id, else every column)
+await databaseClient.insert('users', { name: 'Alice', email: testData.email('alice') });
+await databaseClient.insert('countries', seedRows, { keep: true }); // leave in place
+```
+
+**Test Data (factories + automatic cleanup):**
+```typescript
+// Data created through the clients is undone after the test, pass or fail, newest first:
+// databaseClient.insert, mongoDbClient.insertOne/insertMany, redisClient.set (deleted or restored),
+// neo4jClient.write with a `runId` param. Opt out per call with { keep: true }, or per project with use: { autoCleanup: false }.
+import { defineFactory } from '../../src';
+const user = defineFactory('user', (f) => ({ email: f.email('user'), name: `User ${f.seq}`, id: f.unique('usr') }));
+const alice = testData.build(user, { name: 'Alice' });          // unique across workers: user-t3-9f2a1c0b-1@example.test
+const many = testData.buildMany(user, 3, (u, i) => ({ active: i > 0 }));
+await neo4jClient.write('CREATE (:P {runId: $runId})', { runId: testData.runId }); // detach-deleted after the test
+testData.cleanup('delete API project', () => api.deleteProject(id));   // anything else; same LIFO stack
+// f.faker / testData.faker: Faker, when @faker-js/faker is installed
 ```
 
 **Kafka Client:**
@@ -284,8 +303,8 @@ await neo4jClient.executeInTransaction(async (tx) => {
     await tx.run('MATCH (o:Order {id: $id}) CREATE (o)-[:CONTAINS]->(:Item)', { id: 'ORD-1' });
 });
 
-// Cleanup — tag test nodes with a unique run ID and detach-delete them in afterEach
-await neo4jClient.write('MATCH (n {runId: $runId}) DETACH DELETE n', { runId });
+// Cleanup is automatic: writes with a `runId` param are detach-deleted after the test.
+// Use testData.runId (unique per test) as the runId; pass { keep: true } as a 3rd arg to keep the nodes.
 ```
 
 **GADS (device farm preset):**
@@ -665,6 +684,7 @@ For parameterized tests (generated in a loop), put an ID in each data row and bu
 - Use `test.describe()` to group related tests
 - Use `test.skip()` at describe level for tests requiring unavailable infrastructure
 - Use parameterized queries (never string interpolation) for SQL
+- Create test data through the clients (`databaseClient.insert`, `insertOne`, `set`, `write` with `testData.runId`) or register `testData.cleanup()` — don't write `afterEach` cleanup for it; build unique values with `testData.unique()`/`email()` or a factory
 - Prefer `expect()` assertions from Playwright's built-in expect
 - Keep test files focused on a single fixture or feature
 - Use JSDoc comments with `@requirements` tags when applicable

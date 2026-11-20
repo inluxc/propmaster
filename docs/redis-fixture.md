@@ -137,7 +137,7 @@ test('pub/sub messaging', async ({ redisClient }) => {
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `get` | `(key: string) => Promise<string \| null>` | Get a value by key |
-| `set` | `(key: string, value: string, ttl?: number) => Promise<void>` | Set a value with optional TTL in seconds |
+| `set` | `(key: string, value: string, ttl?: number, options?: { keep?: boolean }) => Promise<void>` | Set a value with optional TTL in seconds; undone after the test unless `keep` |
 | `del` | `(key: string) => Promise<number>` | Delete a key, returns number of keys removed |
 | `publish` | `(channel: string, message: string) => Promise<number>` | Publish a message to a channel |
 | `subscribe` | `(channel: string, options?: SubscribeOptions) => Promise<string \| null>` | Subscribe and wait for one message |
@@ -147,6 +147,12 @@ test('pub/sub messaging', async ({ redisClient }) => {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `timeout` | `number` | `5000` | Timeout in ms to wait for a message |
+
+---
+
+## Automatic Cleanup
+
+When the test ends, pass or fail, each key it set is deleted. A key that existed before the test gets its previous value back, without its TTL. Pass `{ keep: true }` to leave a key as set. See [Test Data and Automatic Cleanup](./test-data).
 
 ---
 

@@ -21,6 +21,8 @@ import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { loadOptional } from './optional-package.js';
 import type { ContainerManager } from '../containers/container-manager.js';
 import { MongoDbFixtureConfig } from '../config/schema.js';
+import type { CleanupRegistry, KeepOption } from '../test-data/registry.js';
+import { trackMongo } from '../test-data/tracking.js';
 
 /**
  * Options for find operations.
@@ -96,8 +98,10 @@ export interface DeleteResult {
 export interface MongoDbClient {
     find<T = Record<string, unknown>>(collection: string, filter?: Record<string, unknown>, options?: FindOptions): Promise<T[]>;
     findOne<T = Record<string, unknown>>(collection: string, filter?: Record<string, unknown>): Promise<T | null>;
-    insertOne(collection: string, document: Record<string, unknown>): Promise<InsertOneResult>;
-    insertMany(collection: string, documents: Record<string, unknown>[]): Promise<InsertManyResult>;
+    /** Inserts a document, deleted again when the test ends unless `{ keep: true }`. */
+    insertOne(collection: string, document: Record<string, unknown>, options?: KeepOption): Promise<InsertOneResult>;
+    /** Inserts documents, deleted again when the test ends unless `{ keep: true }`. */
+    insertMany(collection: string, documents: Record<string, unknown>[], options?: KeepOption): Promise<InsertManyResult>;
     updateOne(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<UpdateResult>;
     updateMany(collection: string, filter: Record<string, unknown>, update: Record<string, unknown>): Promise<UpdateResult>;
     deleteOne(collection: string, filter: Record<string, unknown>): Promise<DeleteResult>;
@@ -345,7 +349,7 @@ async function createMongoDbClient(config: MongoDbFixtureConfig): Promise<MongoD
  */
 export const mongoDbFixture = {
     mongoDbClient: async (
-        { mongodb, stagehandContainers }: { mongodb: MongoDbFixtureConfig | undefined; stagehandContainers: ContainerManager },
+        { mongodb, stagehandContainers, dataCleanup }: { mongodb: MongoDbFixtureConfig | undefined; stagehandContainers: ContainerManager; dataCleanup: CleanupRegistry },
         use: (client: MongoDbClient) => Promise<void>,
     ) => {
         // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -371,9 +375,13 @@ export const mongoDbFixture = {
         const client = await createMongoDbClient(config);
 
         // Provide client to the test
-        await use(client);
-
-        // Teardown: close connection
-        await client.close();
+        try {
+            await use(trackMongo(client, dataCleanup));
+            // Undo the test's inserts (every client is still connected here)
+            await dataCleanup.flush();
+        } finally {
+            // Teardown: close connection
+            await client.close();
+        }
     },
 };

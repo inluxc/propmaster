@@ -729,7 +729,7 @@ test.describe('Database — [Feature/Table Name]', () => {
 - `execute()` returns `{ affectedRows: number }`
 - Always use `$1`, `$2`, etc. for parameters — never template literals
 - Empty results return `[]`, not `null`
-- Clean up rows you insert (in a final step or in `test.afterEach`)
+- Insert test rows with `databaseClient.insert()`: they are deleted after the test, pass or fail (see Skill 13). Raw `execute()` inserts need `testData.cleanup()`
 
 ---
 
@@ -2107,44 +2107,73 @@ Never put tokens, secret_ids or JWTs in `environments.json`. See [docs/secrets.m
 
 ## Skill 13: Handle Test Data Setup and Cleanup
 
-**When to use:** Tests that need specific data state before running.
+**When to use:** Tests that need specific data before running. Data created through the clients is removed after each test, pass or fail, so **don't write `afterEach` cleanup for it**.
 
-**Pattern — using `test.beforeEach` / `test.afterEach`:**
+**Steps:**
+
+1. Define a factory for each kind of record (in `tests/factories.ts` when several spec files share it). Build every unique column with `f.unique()` or `f.email()`. These values never collide across parallel workers.
+2. Store records through a tracked call:
+   - `databaseClient.insert(table, rows)`
+   - `mongoDbClient.insertOne` / `insertMany`
+   - `redisClient.set`
+   - `neo4jClient.write` with `{ runId: testData.runId }`
+3. For anything else (an API call, raw SQL, a browser flow), register the undo with `testData.cleanup(label, fn)` right after creating the data.
+4. Only data meant to stay (a seeding setup project) opts out, with `{ keep: true }` or `use: { autoCleanup: false }`.
+
+**Template:**
 
 ```typescript
-import { test, expect } from '../../src';
+import { test, expect, defineFactory } from '../../src';
+
+const order = defineFactory('order', (f) => ({
+    ref: f.unique('ord'),          // ord-t3-9f2a1c0b-1
+    customer_email: f.email('buyer'),
+    status: 'active',
+    total: 4999,
+}));
 
 test.describe('Orders API', () => {
-    let testOrderId: string;
+    test('[TC-API-NNN] fetch order by reference', { tag: ['@TC-API-NNN'] }, async ({ databaseClient, testData, openApiClient }) => {
+        const seeded = testData.build(order, { status: 'shipped' });
 
-    test.beforeEach(async ({ databaseClient }) => {
-        // Seed test data (hooks don't need TestCaseIDs; steps are optional here)
-        testOrderId = `test-order-${Date.now()}`;
-        await databaseClient.execute(
-            'INSERT INTO orders (id, name, status) VALUES ($1, $2, $3)',
-            [testOrderId, 'Setup Order', 'active']
-        );
-    });
-
-    test.afterEach(async ({ databaseClient }) => {
-        // Cleanup test data
-        await databaseClient.execute('DELETE FROM orders WHERE id = $1', [testOrderId]);
-    });
-
-    test('[TC-API-NNN] fetch order by id', { tag: ['@TC-API-NNN'] }, async ({ openApiClient }) => {
-        const { client } = openApiClient;
-
-        const response = await test.step('Step 1: Fetch the seeded order via the API', async () => {
-            return (client as any).getOrder({ id: testOrderId });
+        await test.step('Step 1: Seed the order (deleted again after the test)', async () => {
+            await databaseClient.insert('orders', seeded, { key: 'ref' });
         });
 
-        await test.step('Step 2: Verify the order data matches the seed', async () => {
+        const response = await test.step('Step 2: Fetch the order via the API', async () => {
+            return (openApiClient.client as any).getOrder({ ref: seeded.ref });
+        });
+
+        await test.step('Step 3: Verify the order data matches the seed', async () => {
             expect(response.status).toBe(200);
-            expect(response.data.name).toBe('Setup Order');
+            expect(response.data.status).toBe('shipped');
+        });
+    });
+
+    test('[TC-API-NNN] create an order via the API', { tag: ['@TC-API-NNN'] }, async ({ testData, openApiClient }) => {
+        const { client } = openApiClient as any;
+
+        const created = await test.step('Step 1: Create an order and register its cleanup', async () => {
+            const res = await client.createOrder(null, testData.build(order));
+            testData.cleanup('delete the order', () => client.deleteOrder({ ref: res.data.ref }));
+            return res;
+        });
+
+        await test.step('Step 2: Verify it was created', async () => {
+            expect(created.status).toBe(201);
         });
     });
 });
 ```
+
+**Key points:**
+- Undo actions run newest first, before the clients disconnect. Children inserted after their parents are deleted first.
+- `databaseClient.execute()` (raw SQL) is **not** tracked. Prefer `insert()`, or call `testData.cleanup()`.
+- SQL rows with a generated `id` are deleted by matching every inserted column: include a unique value, or pass `{ key: 'col' }`.
+- Redis keys that existed before the test get their old value back. Neo4j nodes are deleted by the `runId` they were written with.
+- `testData.flushCleanups()` runs the cleanups mid-test, to assert that something was removed.
+- Faker (`f.faker`) needs `@faker-js/faker` installed. Its values aren't unique: use `f.unique()` for keys.
+- Full guide: [docs/test-data.md](docs/test-data.md).
 
 ---
 

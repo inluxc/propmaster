@@ -148,6 +148,21 @@ Always use PostgreSQL-style positional parameters (`$1`, `$2`, ...) regardless o
 
 ---
 
+## Automatic Cleanup
+
+`insert()` writes rows and deletes them again when the test ends, pass or fail. The row is matched on `key`, else `id` when every row has one, else every inserted column. Raw SQL through `execute()` isn't tracked.
+
+```typescript
+const user = testData.build(userFactory);                      // see Test Data
+await databaseClient.insert('users', user);                     // one row, or an array
+await databaseClient.insert('audit_log', rows, { key: 'ref' }); // match the cleanup on one column
+await databaseClient.insert('countries', seed, { keep: true }); // leave it in place
+```
+
+Table and column names must be plain identifiers (optionally schema-qualified). Values are always parameters. See [Test Data and Automatic Cleanup](./test-data).
+
+---
+
 ## Lifecycle
 
 1. **Setup** — Creates a connection pool, verifies connectivity with a ping query

@@ -97,6 +97,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
 | `inboxClient` | `InboxClient` | Reads the email your app sends (Mailpit): codes, verification and reset links | [Setup & Usage](docs/inbox-fixture.md) |
 | `mockServer` | `MockServer` | Stubs the third-party APIs your backend calls (WireMock) and verifies the calls it made | [Setup & Usage](docs/mock-server-fixture.md) |
+| `testData` | `TestData` | Factories with values unique across workers, plus custom cleanups; data inserted through the clients is removed after each test, pass or fail | [Test Data](docs/test-data.md) |
 | `authToken`, `authHeaders`, `authRequest` | `string`, headers, `APIRequestContext` | OAuth/OIDC tokens per role, refreshed before expiry and sent by `openApiClient`/`graphqlClient`; `authRole` also picks a saved browser login | [Tokens & Roles](docs/auth.md) |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session on any Appium server, grid, cloud farm or [GADS](https://github.com/shamanec/GADS) hub; ended on teardown | [Setup & Usage](docs/appium-fixture.md) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/appium-fixture.md#gads-preset) |

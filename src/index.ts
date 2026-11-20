@@ -24,6 +24,7 @@ export type {
     Neo4jClient,
     Neo4jTransaction,
     Neo4jWriteResult,
+    InsertOptions,
     CypherParams,
     OtpClient,
     InboxClient,
@@ -74,6 +75,7 @@ export { TokenManager, resolveRole, type ResolvedRole, type TokenSet } from './a
 export { authStateFile } from './auth/state-file.js';
 export { setupAuth, saveAuthState, authCredentials, hasFreshAuthState, type SetupAuthOptions } from './auth/setup.js';
 export { ContainerManager, DEFAULT_IMAGES } from './containers/container-manager.js';
+export { TestData, defineFactory, CleanupRegistry, type Factory, type FactoryContext, type Overrides, type KeepOption } from './test-data/index.js';
 export { EnvLoader } from './config/index.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)

@@ -26,6 +26,8 @@ type Neo4jModule = typeof import('neo4j-driver');
 let neo4j: Neo4jModule | undefined;
 import type { Neo4jFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import type { CleanupRegistry, KeepOption } from '../test-data/registry.js';
+import { trackNeo4j } from '../test-data/tracking.js';
 
 /** Cypher parameters — always pass values here, never interpolate them into the statement. */
 export type CypherParams = Record<string, unknown>;
@@ -56,8 +58,8 @@ export interface Neo4jTransaction {
 export interface Neo4jClient {
     /** Runs a read query and returns each record as a plain object. */
     run<T = Record<string, unknown>>(cypher: string, params?: CypherParams): Promise<T[]>;
-    /** Runs a write query and returns its update counters. */
-    write(cypher: string, params?: CypherParams): Promise<Neo4jWriteResult>;
+    /** Runs a write query and returns its update counters. With a `runId` parameter, nodes carrying that runId are detach-deleted when the test ends, unless `{ keep: true }`. */
+    write(cypher: string, params?: CypherParams, options?: KeepOption): Promise<Neo4jWriteResult>;
     /** Runs `fn` inside a single write transaction and returns its result. */
     executeInTransaction<R>(fn: (tx: Neo4jTransaction) => Promise<R>): Promise<R>;
     /** Closes the underlying driver. Called automatically on teardown. */
@@ -237,14 +239,16 @@ function buildNeo4jClient(driver: Driver, config: Neo4jFixtureConfig): Neo4jClie
  */
 export const neo4jFixture = {
     neo4jClient: async (
-        { neo4jConfig }: { neo4jConfig: Neo4jFixtureConfig },
+        { neo4jConfig, dataCleanup }: { neo4jConfig: Neo4jFixtureConfig; dataCleanup: CleanupRegistry },
         use: (client: Neo4jClient) => Promise<void>,
     ) => {
         const driver = await createNeo4jDriver(neo4jConfig);
         const neo4jClient = buildNeo4jClient(driver, neo4jConfig);
 
         try {
-            await use(neo4jClient);
+            await use(trackNeo4j(neo4jClient, dataCleanup));
+            // Undo the test's runId-tagged writes (every client is still connected here)
+            await dataCleanup.flush();
         } finally {
             try {
                 await driver.close();
