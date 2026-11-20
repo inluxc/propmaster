@@ -18,6 +18,7 @@
  */
 
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
+import { loadOptional } from './optional-package.js';
 import { MongoDbFixtureConfig } from '../config/schema.js';
 
 /**
@@ -130,7 +131,7 @@ function buildConnectionUri(config: MongoDbFixtureConfig): string {
  * Creates a MongoDB client and verifies connectivity.
  */
 async function createMongoDbClient(config: MongoDbFixtureConfig): Promise<MongoDbClient> {
-    const { MongoClient } = await import('mongodb');
+    const { MongoClient } = await loadOptional<typeof import('mongodb')>('mongodb', 'mongoDbClient');
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
     const uri = buildConnectionUri(config);

@@ -58,9 +58,9 @@
         "docs:dev": "npm --prefix docs ci && npm --prefix docs run dev",
         "docs:build": "npm --prefix docs ci && npm --prefix docs run build"
     },
-    "dependencies": {
+    "peerDependencies": {
+        "@playwright/test": ">=1.50.0",
         "better-sqlite3": "^13.2.0",
-        "dotenv": "^18.0.10",
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
         "ioredis": "^6.0.0",
@@ -75,8 +75,49 @@
         "pg": "^8.23.1",
         "webdriverio": "^9.33.1"
     },
-    "peerDependencies": {
-        "@playwright/test": ">=1.50.0"
+    "peerDependenciesMeta": {
+        "better-sqlite3": {
+            "optional": true
+        },
+        "graphql": {
+            "optional": true
+        },
+        "graphql-request": {
+            "optional": true
+        },
+        "ioredis": {
+            "optional": true
+        },
+        "js-yaml": {
+            "optional": true
+        },
+        "kafkajs": {
+            "optional": true
+        },
+        "mongodb": {
+            "optional": true
+        },
+        "mssql": {
+            "optional": true
+        },
+        "mysql2": {
+            "optional": true
+        },
+        "neo4j-driver": {
+            "optional": true
+        },
+        "openapi-client-axios": {
+            "optional": true
+        },
+        "otplib": {
+            "optional": true
+        },
+        "pg": {
+            "optional": true
+        },
+        "webdriverio": {
+            "optional": true
+        }
     },
     "devDependencies": {
         "@playwright/test": "^1.65.1",
@@ -86,9 +127,23 @@
         "@types/mssql": "^12.3.0",
         "@types/node": "^22.20.5",
         "@types/pg": "^8.23.1",
+        "better-sqlite3": "^13.2.0",
         "fast-check": "^4.10.3",
+        "graphql": "^16.15.0",
+        "graphql-request": "^7.4.0",
+        "ioredis": "^6.0.0",
+        "js-yaml": "^4.3.2",
+        "kafkajs": "^2.2.4",
+        "mongodb": "^7.9.1",
+        "mssql": "^12.7.16",
+        "mysql2": "^3.24.6",
+        "neo4j-driver": "^6.3.2",
+        "openapi-client-axios": "^7.9.1",
+        "otplib": "^13.6.0",
+        "pg": "^8.23.1",
         "tsx": "^4.23.15",
-        "typescript": "^7.0.2"
+        "typescript": "^7.0.2",
+        "webdriverio": "^9.33.1"
     },
     "keywords": [
         "playwright",

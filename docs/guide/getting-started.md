@@ -13,7 +13,26 @@ Stagehand extends [Playwright Test](https://playwright.dev/) with fixtures for t
 npm install --save-dev @playwright/test @inluxc/stagehand
 ```
 
-The database, Kafka, Redis, MongoDB, Neo4j and Appium drivers come with the package. You don't install them separately.
+Stagehand itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use:
+
+| Fixture | Install |
+|---|---|
+| `openApiClient` | `openapi-client-axios` (plus `js-yaml` for a local YAML spec) |
+| `graphqlClient` | `graphql-request graphql` |
+| `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
+| `mongoDbClient` | `mongodb` |
+| `neo4jClient` | `neo4j-driver` |
+| `kafkaClient` | `kafkajs` |
+| `redisClient` | `ioredis` |
+| `otpClient` | `otplib` |
+| `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
+
+```bash
+# e.g. a project testing a REST API backed by PostgreSQL and Kafka
+npm install --save-dev openapi-client-axios pg kafkajs
+```
+
+A test that requests a fixture whose driver isn't installed fails with a `MissingPackageError` that names the package and the install command. Importing Stagehand never loads a driver; each one loads the first time a test uses its fixture.
 
 ### Or scaffold a new project
 

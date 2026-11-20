@@ -13,12 +13,11 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { isAbsolute, resolve } from 'node:path';
-import { OpenAPIClientAxios } from 'openapi-client-axios';
-import type { AxiosInstance, Document } from 'openapi-client-axios';
-import { load as loadYaml } from 'js-yaml';
+import { extname, isAbsolute, resolve } from 'node:path';
+import type { OpenAPIClientAxios, AxiosInstance, Document } from 'openapi-client-axios';
+import { loadOptional } from './optional-package.js';
 import type { OpenApiFixtureConfig } from '../config/schema.js';
-import { FixtureInitError } from '../errors.js';
+import { FixtureInitError, MissingPackageError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
 
 /**
@@ -49,6 +48,22 @@ function createTimeout(ms: number, label: string): { promise: Promise<never>; cl
     });
     const clear = () => clearTimeout(timer!);
     return { promise, clear };
+}
+
+/**
+ * Parses spec text as JSON, or as YAML when it isn't JSON. js-yaml is an
+ * optional peer dependency, loaded only for YAML specs.
+ */
+async function parseSpec(raw: string, filePath: string): Promise<unknown> {
+    if (extname(filePath).toLowerCase() === '.json') {
+        return JSON.parse(raw);
+    }
+    try {
+        return JSON.parse(raw);
+    } catch {
+        const yaml = await loadOptional<typeof import('js-yaml')>('js-yaml', 'openApiClient (YAML spec file)');
+        return yaml.load(raw, { filename: filePath });
+    }
 }
 
 /** True when `specPath` is an http(s) URL that openapi-client-axios should fetch itself. */
@@ -89,9 +104,9 @@ export async function resolveSpecDefinition(
 
     let parsed: unknown;
     try {
-        // JSON is a subset of YAML, so one parser handles .json, .yaml and .yml.
-        parsed = loadYaml(raw, { filename: filePath });
+        parsed = await parseSpec(raw, filePath);
     } catch (error) {
+        if (error instanceof MissingPackageError) throw error;
         throw new FixtureInitError(
             'openApiClient',
             'init',
@@ -145,6 +160,12 @@ export const openApiFixture = {
             const specTimeout = openapiConfig.specTimeout ?? DEFAULT_SPEC_TIMEOUT;
             const initTimeout = openapiConfig.initTimeout ?? DEFAULT_INIT_TIMEOUT;
 
+            // openapi-client-axios is an optional peer dependency, loaded on first use.
+            const { OpenAPIClientAxios: OpenAPIClientAxiosClass } = await loadOptional<typeof import('openapi-client-axios')>(
+                'openapi-client-axios',
+                'openApiClient',
+            );
+
             // Local files are read and parsed here; a string definition would be
             // fetched over HTTP (relative to the API base URL) by openapi-client-axios.
             const definition = await resolveSpecDefinition(specPath);
@@ -169,7 +190,7 @@ export const openApiFixture = {
                     };
                 }
 
-                api = new OpenAPIClientAxios(opts);
+                api = new OpenAPIClientAxiosClass(opts);
 
                 // Initialize with timeout
                 const timeout = createTimeout(initTimeout, 'OpenAPI client initialization');

@@ -16,6 +16,14 @@ The `mongoDbClient` fixture provides a MongoDB client with full CRUD and aggrega
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev mongodb
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

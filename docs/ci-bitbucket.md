@@ -130,7 +130,7 @@ pipelines:
               caches: [npm]
               script:
                 - *junit
-                # This image has no better-sqlite3 prebuild or compiler, and browser tests don't need it.
+                # Skips native builds: only needed if the project installs better-sqlite3 (SQLite), which this image can't compile.
                 - npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
                 - npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit --reporter=line,junit
               artifacts: [playwright-report/**]

@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { runCheck, runNextId } from './check-tests.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
+import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
 
 export * from './check-tests.js';
 export * from './layout.js';
@@ -207,6 +208,8 @@ import { test, expect } from '@inluxc/stagehand';
 \`\`\`
 
 **Never** value-import \`test\`/\`expect\` from \`@playwright/test\` in a test file. Type-only imports (\`import type { Page } from '@playwright/test'\`) are fine.
+
+Each fixture's driver is an optional dependency. If a test fails with \`MissingPackageError\`, run the install command it prints (e.g. \`npm install --save-dev kafkajs\`) and add the package to \`devDependencies\`; don't work around it.
 
 ### Test Structure
 
@@ -715,14 +718,23 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
     } else {
         log('  Next steps:');
         log('    1. npm install');
-        log('    2. npx playwright install');
-        log('    3. Update environments.json with your service URLs');
-        log('    4. Get a TestCaseID: npm run next-id -- API');
-        log('    5. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
-        log('    6. Check conventions: npm run lint:tests');
+        log('    2. Install the driver for each fixture you use, e.g.:');
+        log('         npm install --save-dev openapi-client-axios pg');
+        for (const line of driverTable()) log(`         ${line}`);
+        log('    3. npx playwright install');
+        log('    4. Update environments.json with your service URLs');
+        log('    5. Get a TestCaseID: npm run next-id -- API');
+        log('    6. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
+        log('    7. Check conventions: npm run lint:tests');
         log();
     }
     return result;
+}
+
+/** One line per fixture: the packages it needs. */
+export function driverTable(): string[] {
+    const width = Math.max(...Object.keys(FIXTURE_PACKAGES).map((k) => k.length));
+    return Object.entries(FIXTURE_PACKAGES).map(([fixture, pkgs]) => `${fixture.padEnd(width)}  ${pkgs.join(' ')}`);
 }
 
 function reportExisting({ plan, existingConfigs }: InitResult, log: (line?: string) => void): void {

@@ -16,6 +16,20 @@ The `openApiClient` fixture provides a typed HTTP client generated from your Ope
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev openapi-client-axios
+```
+
+For a local YAML spec file, also install `js-yaml` (JSON files and remote URLs don't need it):
+
+```bash
+npm install --save-dev js-yaml
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |
@@ -27,7 +41,7 @@ The `openApiClient` fixture provides a typed HTTP client generated from your Ope
 
 `specPath` accepts either form:
 
-- **Local file** — `./specs/api.yaml`, `specs/api.json`, or an absolute path. Relative paths resolve against the project root (the directory Playwright runs from, `process.cwd()`). The file is read from disk and parsed as JSON or YAML (`.json`, `.yaml`, `.yml`); no HTTP request is made for it.
+- **Local file** — `./specs/api.yaml`, `specs/api.json`, or an absolute path. Relative paths resolve against the project root (the directory Playwright runs from, `process.cwd()`). The file is read from disk and parsed as JSON or YAML (`.json`, `.yaml`, `.yml`; YAML needs `js-yaml` installed); no HTTP request is made for it.
 - **URL** — anything starting with `http://` or `https://` is fetched when the client initializes, bounded by `initTimeout`.
 
 ```bash

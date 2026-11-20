@@ -13,19 +13,17 @@
  *   - FixtureOperationError when a Cypher statement fails (includes the statement)
  */
 
-import {
-    driver as createDriver,
-    auth,
-    routing,
-    isInt,
-    isNode,
-    isRelationship,
-    isPath,
-    type Driver,
-    type ManagedTransaction,
-    type QueryResult,
-    type RecordShape,
-} from 'neo4j-driver';
+import type { Driver, ManagedTransaction, QueryResult, RecordShape } from 'neo4j-driver';
+import { loadOptional } from './optional-package.js';
+
+type Neo4jModule = typeof import('neo4j-driver');
+
+/**
+ * neo4j-driver is an optional peer dependency, loaded when the first driver is
+ * created. Driver values (Integers, nodes, ...) only exist after that, so
+ * toPlain() can rely on it being set.
+ */
+let neo4j: Neo4jModule | undefined;
 import type { Neo4jFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
@@ -73,7 +71,8 @@ const DEFAULT_CONNECTION_TIMEOUT = 10000;
  * Integers become numbers, nodes/relationships/paths become plain objects.
  */
 export function toPlain(value: unknown): unknown {
-    if (value === null || value === undefined) return value;
+    if (value === null || value === undefined || !neo4j) return value;
+    const { isInt, isNode, isRelationship, isPath } = neo4j;
     if (isInt(value)) return value.toNumber();
     if (Array.isArray(value)) return value.map(toPlain);
     if (isNode(value)) {
@@ -136,6 +135,8 @@ function wrapError(operation: 'run' | 'write' | 'transaction', cypher: string | 
 async function createNeo4jDriver(config: Neo4jFixtureConfig): Promise<Driver> {
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
     let driver: Driver | undefined;
+    neo4j ??= await loadOptional<Neo4jModule>('neo4j-driver', 'neo4jClient');
+    const { driver: createDriver, auth } = neo4j;
 
     try {
         driver = createDriver(config.uri, auth.basic(config.username, config.password), {
@@ -183,7 +184,7 @@ function buildNeo4jClient(driver: Driver, config: Neo4jFixtureConfig): Neo4jClie
             try {
                 const result = await driver.executeQuery(cypher, params ?? {}, {
                     database,
-                    routing: routing.READ,
+                    routing: neo4j!.routing.READ,
                 });
                 return recordsToObjects<T>(result);
             } catch (error) {
@@ -195,7 +196,7 @@ function buildNeo4jClient(driver: Driver, config: Neo4jFixtureConfig): Neo4jClie
             try {
                 const { summary } = await driver.executeQuery(cypher, params ?? {}, {
                     database,
-                    routing: routing.WRITE,
+                    routing: neo4j!.routing.WRITE,
                 });
                 const updates = summary.counters.updates();
                 return {

@@ -12,6 +12,14 @@ The fixture deletes the session after each test, even when the test fails, so th
 
 ## Setup
 
+### Install
+
+The driver is an optional peer dependency. Install it in your project:
+
+```bash
+npm install --save-dev webdriverio
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |

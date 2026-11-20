@@ -10,7 +10,8 @@
  *   ├── FixtureInitError        — fixture setup failures (connection, init, boot, install)
  *   ├── FixtureOperationError   — fixture runtime failures (query, produce, consume)
  *   ├── SecretsError            — secrets fetching/resolution failures
- *   └── DependencyError         — fixture dependency resolution failures
+ *   ├── DependencyError         — fixture dependency resolution failures
+ *   └── MissingPackageError     — a fixture's driver package isn't installed
  */
 
 /**
@@ -125,6 +126,36 @@ export class DependencyError extends FrameworkError {
     ) {
         super(formatDependencyError(fixtureName, missingDependency, cycleParticipants));
         this.name = 'DependencyError';
+    }
+}
+
+/**
+ * Thrown when a fixture is used but the package it needs (its "driver") isn't
+ * installed. Drivers are optional peer dependencies, so a project installs
+ * only the ones for the fixtures it uses.
+ *
+ * Contextual fields:
+ * - `fixtureName`: the fixture that needs the package (e.g. `kafkaClient`)
+ * - `packageName`: the package that couldn't be loaded (e.g. `kafkajs`)
+ * - `installCommand`: the command that fixes it
+ */
+export class MissingPackageError extends FrameworkError {
+    public readonly installCommand: string;
+
+    constructor(
+        public readonly fixtureName: string,
+        public readonly packageName: string,
+        packages: string[] = [packageName],
+        options?: ErrorOptions,
+    ) {
+        const installCommand = `npm install --save-dev ${packages.join(' ')}`;
+        super(
+            `The "${fixtureName}" fixture needs the "${packageName}" package, which isn't installed.\n` +
+                `  Install it with: ${installCommand}`,
+            options,
+        );
+        this.name = 'MissingPackageError';
+        this.installCommand = installCommand;
     }
 }
 

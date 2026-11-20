@@ -188,7 +188,7 @@ jobs:
     steps:
       - template: ci/playwright-steps.yml
         parameters:
-          # This image has no better-sqlite3 prebuild or compiler, and browser tests don't need it.
+          # Skips native builds: only needed if the project installs better-sqlite3 (SQLite), which this image can't compile.
           npmFlags: --ignore-scripts
           projects: --project=browser-chromium --project=browser-firefox --project=browser-webkit
 ```
