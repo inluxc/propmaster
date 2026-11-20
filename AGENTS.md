@@ -69,6 +69,11 @@ src/
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 └── cli/                        # `stagehand` CLI: init (scaffolding), check + next-id (test conventions)
 
+docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
+├── .vitepress/config.mts       # Site nav/sidebar: add new pages here
+├── guide/                      # Getting started, configuration, writing tests
+└── *-fixture.md, ci.md, ...    # One page per fixture/topic
+
 scripts/
 └── check-tests.mjs             # Back-compat wrapper; the checker is src/cli/check-tests.ts (`stagehand check` / `next-id`)
 

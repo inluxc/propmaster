@@ -8,6 +8,8 @@
 
 An extension toolkit for [Playwright Test](https://playwright.dev/) that adds ready-to-use fixtures for API, database, messaging, cache, mobile, and OTP testing. You keep your existing Playwright setup — Stagehand just gives you more fixtures to work with.
 
+📖 **Documentation:** [inluxc.github.io/stagehand](https://inluxc.github.io/stagehand/)
+
 ## Installation
 
 ```bash
