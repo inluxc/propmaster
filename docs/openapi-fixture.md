@@ -23,6 +23,18 @@ The `openApiClient` fixture provides a typed HTTP client generated from your Ope
 | `PW_OPENAPI_SPEC_PATH` | Yes | Path to a local OpenAPI spec file or a remote URL |
 | `PW_OPENAPI_BASE_URL` | No | Override base URL for API calls (takes precedence over spec server URLs) |
 
+### Spec Location: Local File or URL
+
+`specPath` accepts either form:
+
+- **Local file** — `./specs/api.yaml`, `specs/api.json`, or an absolute path. Relative paths resolve against the project root (the directory Playwright runs from, `process.cwd()`). The file is read from disk and parsed as JSON or YAML (`.json`, `.yaml`, `.yml`); no HTTP request is made for it.
+- **URL** — anything starting with `http://` or `https://` is fetched when the client initializes, bounded by `initTimeout`.
+
+```bash
+PW_OPENAPI_SPEC_PATH=./specs/petstore.yaml                       # local file
+PW_OPENAPI_SPEC_PATH=https://petstore.swagger.io/v2/swagger.json  # remote URL
+```
+
 ### Configuration via `environments.json`
 
 ```json
@@ -133,10 +145,12 @@ test('access api metadata', async ({ openApiClient }) => {
 The fixture throws `FixtureInitError` when:
 
 - `specPath` is not configured
-- The spec cannot be loaded (network error, invalid file)
+- A local spec file does not exist, cannot be read, or is not valid JSON/YAML
+- A remote spec cannot be fetched (network error, non-2xx response)
 - Client initialization times out
 
 ```typescript
 // Example error context:
-// FixtureInitError: openApiClient/init — specPath: ./missing.yaml, reason: ENOENT
+// FixtureInitError: openApiClient/init — specPath: ./missing.yaml,
+//   reason: OpenAPI spec file not found: /path/to/project/missing.yaml
 ```
