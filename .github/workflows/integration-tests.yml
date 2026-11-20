@@ -387,6 +387,7 @@ jobs:
 
   test-auth:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container: node:24
     services:
       oauth:
