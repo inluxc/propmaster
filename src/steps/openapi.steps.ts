@@ -6,7 +6,8 @@
  */
 
 import { test, expect } from '../index.js';
-import type { OpenApiClient } from '../fixtures/openapi.fixture.js';
+import type { AxiosResponseLike, OpenApiClient } from '../fixtures/openapi.fixture.js';
+import { assertContract, type ContractResult } from '../openapi/contract.js';
 
 export class OpenApiSteps {
     constructor(private openApiClient: OpenApiClient) {}
@@ -32,6 +33,30 @@ export class OpenApiSteps {
         });
 
         return response;
+    }
+
+    /**
+     * Verifies a response matches the spec: its status is documented, and its
+     * content type and body match the operation's schema. Fails with a
+     * ContractError listing each mismatch (JSON path, expected, actual).
+     * Works whether or not `validateResponses` is on.
+     *
+     * @param operationId the operation to check against; by default the one
+     *   matching the request's method and URL
+     */
+    async verifyMatchesSchema(response: AxiosResponseLike, operationId?: string): Promise<ContractResult> {
+        let result!: ContractResult;
+        const label = operationId ?? `${(response.config?.method ?? 'get').toUpperCase()} ${response.config?.url ?? ''}`.trim();
+
+        await test.step(`Step: Verify the ${label} response matches the OpenAPI spec`, async () => {
+            result = await this.openApiClient.checkResponse(response, operationId);
+            if (result.skipped && !result.operation) {
+                throw new Error(`Can't check the response against the spec: ${result.skipped}`);
+            }
+            assertContract(result);
+        });
+
+        return result;
     }
 
     /**

@@ -10,7 +10,8 @@
  *   - The target API server running and accessible
  *
  * This example uses the Petstore v2 spec (https://petstore.swagger.io/v2/swagger.json)
- * with a Prism mock server in CI.
+ * with a Prism mock server in CI, where PW_OPENAPI_VALIDATE_RESPONSES=true checks
+ * every response against the spec.
  *
  * @requirements 7.3, 1.6
  */
@@ -62,6 +63,21 @@ test.describe('OpenAPI Fixture Examples', () => {
         await test.step('Step 1: Verify expected operation IDs exist', async () => {
             expect(operationIds).toContain('getInventory');
             expect(operationIds).toContain('addPet');
+        });
+    });
+
+    test('[TC-API-005] inventory response matches the OpenAPI contract', { tag: ['@TC-API-005'] }, async ({ openApiClient }) => {
+        const api = new OpenApiSteps(openApiClient);
+        const response = await api.getInventory();
+
+        await api.verifyMatchesSchema(response, 'getInventory');
+
+        await test.step('Step 1: Verify a body that breaks the schema is reported with its JSON path', async () => {
+            const broken = { ...response, data: { available: 'many' } };
+            const result = await openApiClient.checkResponse(broken, 'getInventory');
+            expect(result.violations).toEqual([
+                { path: '$.available', message: 'must be integer', expected: 'integer', actual: 'many' },
+            ]);
         });
     });
 });

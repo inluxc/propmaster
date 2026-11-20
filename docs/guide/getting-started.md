@@ -17,7 +17,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 
 | Fixture | Install |
 |---|---|
-| `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files) |
+| `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files; `ajv` and `ajv-formats` for contract checks) |
 | `graphqlClient` | `graphql-request graphql` |
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |

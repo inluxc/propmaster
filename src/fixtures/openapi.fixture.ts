@@ -20,8 +20,9 @@ import type { AuthConfig } from '../config/schema.js';
 import type { TokenManager } from '../auth/token-manager.js';
 import { authApplies, bearerSource } from '../auth/apply.js';
 import type { OpenApiFixtureConfig } from '../config/schema.js';
-import { FixtureInitError, MissingPackageError } from '../errors.js';
+import { FixtureInitError, MissingPackageError, formatViolation } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
+import { ContractValidator, assertContract, type ContractMode, type ContractResult } from '../openapi/contract.js';
 
 /**
  * The OpenAPI client object provided to tests.
@@ -31,6 +32,76 @@ export interface OpenApiClient {
     client: AxiosInstance;
     /** The underlying OpenAPIClientAxios instance. */
     api: OpenAPIClientAxios;
+    /**
+     * Checks a response (from `client`) against the spec: status, content type
+     * and body schema. Returns the violations instead of throwing, and works
+     * whether or not `validateResponses` is on. Matches the operation by the
+     * request's method and URL, or by `operationId` when given.
+     */
+    checkResponse(response: AxiosResponseLike, operationId?: string): Promise<ContractResult>;
+}
+
+/** The parts of an Axios response a contract check reads. */
+export interface AxiosResponseLike {
+    status: number;
+    headers?: any;
+    data: unknown;
+    config?: { method?: string; url?: string; baseURL?: string };
+}
+
+/**
+ * Per-call opt-out, in the Axios config (the 3rd argument of an operation):
+ * `{ contract: false }` skips both checks for that call, and
+ * `{ contract: { request: false } }` only the request check, for a negative
+ * test that sends an invalid body on purpose (its 400 response is still checked).
+ */
+export type ContractCallOption = false | { request?: boolean; response?: boolean };
+
+function wants(config: { contract?: ContractCallOption } | undefined, kind: 'request' | 'response'): boolean {
+    const option = config?.contract;
+    if (option === false) return false;
+    return option?.[kind] !== false;
+}
+
+/** Minimal TestInfo: where contract results are attached. */
+interface ContractTestInfo {
+    annotations: Array<{ type: string; description?: string }>;
+    attach(name: string, options: { body: string; contentType: string }): Promise<void>;
+}
+
+/**
+ * Records a contract mismatch on the test (an annotation plus a JSON
+ * attachment), then throws a ContractError unless `mode` is 'warn'.
+ */
+async function reportContract(result: ContractResult, mode: ContractMode, testInfo: ContractTestInfo | undefined, cause?: Error): Promise<void> {
+    if (!result.violations.length) return;
+    const op = result.operation;
+    const name = `${result.kind} ${op?.operationId ?? `${op?.method.toUpperCase()} ${op?.path}`}`;
+    if (testInfo) {
+        testInfo.annotations.push({
+            type: mode === 'warn' ? 'contract-warning' : 'contract-violation',
+            description: `${name}: ${result.violations.map(formatViolation).join('; ')}`,
+        });
+        await testInfo.attach(`contract ${name}`, { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
+    }
+    if (mode !== 'warn') assertContract(result, cause);
+}
+
+/** Builds the contract validator once, the first time a check needs it. */
+function lazyContract(api: OpenAPIClientAxios): () => Promise<ContractValidator> {
+    let pending: Promise<ContractValidator> | undefined;
+    return () => (pending ??= ContractValidator.create((api as any).document));
+}
+
+function toResponseInput(response: AxiosResponseLike, operationId?: string) {
+    return {
+        method: response.config?.method ?? 'get',
+        url: response.config?.url ?? '/',
+        status: response.status,
+        headers: response.headers,
+        data: response.data,
+        operationId,
+    };
 }
 
 /** Default timeout for remote spec retrieval (ms). */
@@ -150,6 +221,7 @@ export const openApiFixture = {
                 authTokens,
             }: { openapi: OpenApiFixtureConfig | undefined; authConfig: AuthConfig | undefined; authRole: string | undefined; authTokens: TokenManager },
             use: (client: OpenApiClient) => Promise<void>,
+            testInfo?: ContractTestInfo,
         ) => {
             // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
             let openapiConfig: OpenApiFixtureConfig | undefined = openapi;
@@ -239,8 +311,51 @@ export const openApiFixture = {
                 });
             }
 
+            // Contract checks: requests and responses against the spec (Ajv, loaded on first use).
+            const contract = lazyContract(api);
+            const requestMode = openapiConfig.validateRequests ?? false;
+            const responseMode = openapiConfig.validateResponses ?? false;
+            if (requestMode || responseMode) await contract(); // a missing ajv fails here, not mid-test
+            if (requestMode) {
+                client.interceptors.request.use(async (request) => {
+                    if (!wants(request as { contract?: ContractCallOption }, 'request')) return request;
+                    const result = (await contract()).checkRequest(
+                        {
+                            method: request.method ?? 'get',
+                            url: request.url ?? '/',
+                            contentType: request.headers?.get?.('Content-Type')?.toString() ?? undefined,
+                            data: request.data,
+                        },
+                        request.baseURL,
+                    );
+                    await reportContract(result, requestMode, testInfo);
+                    return request;
+                });
+            }
+            if (responseMode) {
+                const check = async (response: AxiosResponseLike, cause?: Error) => {
+                    if (!wants(response.config as { contract?: ContractCallOption } | undefined, 'response')) return;
+                    const result = (await contract()).checkResponse(toResponseInput(response), response.config?.baseURL);
+                    await reportContract(result, responseMode, testInfo, cause);
+                };
+                client.interceptors.response.use(
+                    async (response) => {
+                        await check(response);
+                        return response;
+                    },
+                    async (error) => {
+                        // Non-2xx responses are checked too: a 404 body is part of the contract.
+                        if (error?.response) await check(error.response, error);
+                        throw error;
+                    },
+                );
+            }
+
+            const checkResponse = async (response: AxiosResponseLike, operationId?: string) =>
+                (await contract()).checkResponse(toResponseInput(response, operationId), response.config?.baseURL ?? client.defaults.baseURL);
+
             // Provide the client to the test
-            await use({ client, api });
+            await use({ client, api, checkResponse });
 
             // Teardown: clear internal references
             (api as any).instance = null;

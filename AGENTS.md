@@ -50,6 +50,8 @@ src/
 │   ├── loader.ts               # ConfigLoader — three-tier config resolution
 │   ├── env-loader.ts           # EnvLoader — .env file loading
 │   └── schema.ts               # TypeScript interfaces for all configs
+├── openapi/
+│   └── contract.ts             # ContractValidator: requests/responses against the OpenAPI spec (Ajv)
 ├── fixtures/
 │   ├── index.ts                # Fixture registry — composes all fixtures via test.extend()
 │   ├── openapi.fixture.ts      # OpenAPI client fixture
@@ -135,7 +137,7 @@ Request fixtures by name in the test function signature:
 
 | Fixture Name | Type | Description |
 |---|---|---|
-| `openApiClient` | `OpenApiClient` | Typed HTTP client from OpenAPI spec (`{ client, api }`) |
+| `openApiClient` | `OpenApiClient` | Typed HTTP client from OpenAPI spec (`{ client, api, checkResponse }`); `validateResponses`/`validateRequests` check calls against the spec |
 | `graphqlClient` | `GraphQLClient` | GraphQL client with `query`, `mutate`, `rawRequest`, `setAuthToken` |
 | `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)`, `execute(sql, params?)` and `insert(table, rows, { key?, keep? })` (rows deleted after the test) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
@@ -195,6 +197,13 @@ test.describe('Feature Name', () => {
 const { client, api } = openApiClient;
 const response = await (client as any).operationId(pathParams, body);
 expect(response.status).toBe(200);
+
+// Contract checks: use: { openapi: { ..., validateResponses: true } } (or PW_OPENAPI_VALIDATE_RESPONSES=true)
+// checks every response's status, content type and body; a mismatch throws ContractError with JSON paths.
+const result = await openApiClient.checkResponse(response);     // explicit: { violations, skipped? }
+await new OpenApiSteps(openApiClient).verifyMatchesSchema(response);
+// Negative test that sends an invalid body on purpose: skip the request check for that call
+await (client as any).createItem(null, { name: 42 }, { validateStatus: () => true, contract: { request: false } });
 ```
 
 **Database Client:**
@@ -422,6 +431,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_ENVIRONMENT` | Active environment (`local`, `dev`, `test`, `stg`, `prod`) |
 | `PW_OPENAPI_SPEC_PATH` | OpenAPI spec path/URL |
 | `PW_OPENAPI_BASE_URL` | API base URL |
+| `PW_OPENAPI_VALIDATE_RESPONSES`, `PW_OPENAPI_VALIDATE_REQUESTS` | `true` or `warn`: contract checks against the spec (needs `ajv`, `ajv-formats`) |
 | `PW_DB_TYPE` | `postgresql`, `mysql`, `mssql`, `sqlite` |
 | `PW_DB_HOST`, `PW_DB_PORT`, `PW_DB_NAME` | Database connection |
 | `PW_DB_USERNAME`, `PW_DB_PASSWORD` | Database credentials |
@@ -503,7 +513,7 @@ throw new FixtureInitError('myFixture', 'connect', { host, port, reason: 'Connec
 throw new FixtureOperationError('myFixture', 'query', { operation: 'fetchData', reason: error.message });
 ```
 
-Error hierarchy: `FrameworkError` → `ConfigurationError`, `FixtureInitError`, `FixtureOperationError`, `SecretsError`, `DependencyError`, `MissingPackageError` (a fixture's driver isn't installed).
+Error hierarchy: `FrameworkError` → `ConfigurationError`, `FixtureInitError`, `FixtureOperationError`, `SecretsError`, `DependencyError`, `MissingPackageError` (a fixture's driver isn't installed), `ContractError` (a request or response doesn't match the OpenAPI spec; `violations` lists each JSON path).
 
 ## Running Tests
 
@@ -691,5 +701,5 @@ For parameterized tests (generated in a loop), put an ID in each data row and bu
 - Property tests use `fast-check` and follow `*.prop.ts` naming
 - **Every test must have a unique TestCaseID** — see "Test Case ID Convention" above
 - **Every test must use `test.step()`** — break the test body into labeled steps for traceability in reports and traces
-- **Assert expected failures explicitly** — for OpenAPI calls expected to return non-2xx, pass `{ validateStatus: () => true }` as the 3rd argument and assert `response.status`. Never use `try { call } catch { expect(...) }`, which passes silently if the call succeeds
+- **Assert expected failures explicitly** — for OpenAPI calls expected to return non-2xx, pass `{ validateStatus: () => true }` as the 3rd argument and assert `response.status` (add `contract: { request: false }` when the test sends an invalid body on purpose). Never use `try { call } catch { expect(...) }`, which passes silently if the call succeeds
 - **Run `npm run verify` before finishing** — it is what CI runs
