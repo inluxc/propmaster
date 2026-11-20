@@ -32,8 +32,9 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `kafkaClient` | `kafkajs` |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
+| `inboxClient` | nothing (uses `fetch`); needs a [Mailpit](https://mailpit.axllent.org/) server |
 | `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
-| `container: true` on any backend ([Testcontainers](https://inluxc.github.io/stagehand/testcontainers)) | `testcontainers` |
+| `container: true` on any backend ([Testcontainers](https://propmaster.dev/testcontainers)) | `testcontainers` |
 
 A fixture whose driver is missing fails with a `MissingPackageError` naming the package to install. Propmaster has no runtime dependencies of its own.
 
@@ -93,6 +94,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
+| `inboxClient` | `InboxClient` | Reads the email your app sends (Mailpit): codes, verification and reset links | [Setup & Usage](docs/inbox-fixture.md) |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session on any Appium server, grid, cloud farm or [GADS](https://github.com/shamanec/GADS) hub; ended on teardown | [Setup & Usage](docs/appium-fixture.md) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/appium-fixture.md#gads-preset) |
 

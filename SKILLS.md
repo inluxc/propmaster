@@ -2470,6 +2470,51 @@ test-<backend>:
 
 ---
 
+## Skill 19: Test an Email Flow (Inbox)
+
+**When to use:** The app sends an email the test must read: sign-up verification, password reset, a magic link or an emailed login code.
+
+**Steps:**
+
+1. Make sure the app under test sends to Mailpit's SMTP port (`localhost:1025` by default, or `inboxClient.smtp`), and that `PW_INBOX_URL` points at Mailpit's API (or set `PW_INBOX_CONTAINER=true`).
+2. Get IDs with `npm run next-id -- EML`.
+3. Use a fresh address per test from `uniqueAddress()`. Never a fixed address: parallel tests would read each other's mail.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test('[TC-EML-NNN] password reset link works', { tag: ['@TC-EML-NNN'] }, async ({ page, inboxClient }) => {
+    const email = inboxClient.uniqueAddress('reset');
+
+    await test.step('Step 1: Request a password reset', async () => {
+        await page.goto('/forgot-password');
+        await page.getByLabel('Email').fill(email);
+        await page.getByRole('button', { name: 'Send reset link' }).click();
+    });
+
+    let link = '';
+    await test.step('Step 2: Read the reset link from the email', async () => {
+        const message = await inboxClient.waitForMessage({ to: email, subject: /reset/i });
+        link = inboxClient.extractLink(message, '/reset');
+    });
+
+    await test.step('Step 3: Open the link and set a new password', async () => {
+        await page.goto(link);
+        await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible();
+    });
+});
+```
+
+**Key points:**
+- `waitForMessage` filters by `to`, `from`, `subject` (substring or RegExp), `since` and `where`, and its timeout error lists the messages that did arrive. Read it before changing the test.
+- `extractCode(message, pattern?)` returns the first capture group (default: a 6-digit number); `extractLink(message, match?)` returns the first link containing `match`.
+- Use `since: new Date()` before triggering a resend, so an older email doesn't match.
+- Mail to `uniqueAddress()` addresses is deleted after the test; no cleanup step needed.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2492,6 +2537,7 @@ test-<backend>:
 | Test across multiple systems | Skill 15 (Multi-Fixture) |
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
 | Test a mobile app on a GADS device farm | Skill 17 (GADS) |
+| Test a sign-up, reset or emailed-code flow | Skill 19 (Inbox) |
 | Run a new backend's tests in CI | Skill 18 (CI) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 

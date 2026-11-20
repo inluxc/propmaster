@@ -347,6 +347,35 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-inbox:
+    runs-on: ubuntu-latest
+    container: node:24
+    services:
+      mailpit:
+        image: axllent/mailpit:latest
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 2s
+          --health-timeout 10s
+          --health-retries 15
+    env:
+      CI: true
+      PW_INBOX_URL: http://mailpit:8025
+      PW_INBOX_SMTP_HOST: mailpit
+      PW_INBOX_SMTP_PORT: "1025"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Run inbox (Mailpit) tests
+        run: npx playwright test --project=integration-inbox
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-inbox
+          path: playwright-report/
+          retention-days: 7
+
   test-kafka:
     runs-on: ubuntu-latest
     container: node:24
@@ -453,7 +482,7 @@ jobs:
       matrix:
         include:
           - db: postgresql
-            projects: --project=api-integration   # every backend at once
+            projects: --project=api-integration --project=integration-inbox   # every backend at once
             password: testpass
           - db: mysql
             projects: --project=integration-database
@@ -473,6 +502,7 @@ jobs:
       PW_MONGODB_CONTAINER: "true"
       PW_NEO4J_CONTAINER: "true"
       PW_KAFKA_CONTAINER: "true"
+      PW_INBOX_CONTAINER: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

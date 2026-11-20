@@ -142,6 +142,7 @@ Request fixtures by name in the test function signature:
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
+| `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing; needs `appium.gads` |
 
@@ -342,6 +343,18 @@ const hotpValid = await otpClient.verifyHotp(hotpToken, 0, secret);
 const uri = otpClient.generateKeyUri('user@example.com', 'MyApp', secret);
 ```
 
+**Inbox Client (email via Mailpit):**
+```typescript
+// A per-test address: parallel tests never share mail, and it's deleted after the test
+const email = inboxClient.uniqueAddress('signup');
+
+// ...the app sends to Mailpit's SMTP port (inboxClient.smtp)...
+const message = await inboxClient.waitForMessage({ to: email, subject: /confirm/i }); // throws with what arrived instead
+const link = inboxClient.extractLink(message, '/verify');   // hrefs + bare URLs, entities decoded
+const code = inboxClient.extractCode(message);               // first 6-digit number; or pass a RegExp
+const newer = await inboxClient.waitForMessage({ to: email, since: new Date(), timeout: 10_000 });
+```
+
 ## Configuration System
 
 ### Three-Tier Precedence (highest → lowest)
@@ -384,6 +397,8 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
 | `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_KAFKA_CONTAINER` | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
 | `PW_DB_CONTAINER_INIT` | Comma-separated SQL files run once in the database container (PostgreSQL, MySQL, MSSQL) |
+| `PW_INBOX_URL` | Mailpit API URL (`http://localhost:8025`) for `inboxClient` |
+| `PW_INBOX_SMTP_HOST`, `PW_INBOX_SMTP_PORT`, `PW_INBOX_DOMAIN`, `PW_INBOX_TIMEOUT`, `PW_INBOX_CONTAINER` | Inbox: where the app sends mail, unique-address domain, default wait, start Mailpit in a container |
 | `PW_OTP_SECRET` | Base32-encoded OTP secret |
 | `PW_OTP_DIGITS` | Token length (default: 6) |
 | `PW_OTP_PERIOD` | TOTP time step in seconds (default: 30) |
@@ -415,6 +430,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
 | `otp` | `**/examples/otp.spec.ts` | `otpClient` |
+| `integration-inbox` | `**/examples/inbox.spec.ts` | `inboxClient` (needs Mailpit) |
 | `property-tests` | `**/*.prop.ts` | None (uses fast-check) |
 | `unit-tests` | `**/unit/**/*.spec.ts` | None (framework self-tests) |
 
@@ -487,7 +503,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

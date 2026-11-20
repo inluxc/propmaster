@@ -29,6 +29,7 @@ import type {
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
     OtpFixtureConfig,
+    InboxFixtureConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
 } from '../config/schema.js';
@@ -39,6 +40,7 @@ import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
+import { inboxFixture, type InboxClient } from './inbox.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
 import { ContainerManager } from '../containers/container-manager.js';
 import { appiumFixture, type AppiumDriver, type GadsHubClient } from './appium.fixture.js';
@@ -56,6 +58,7 @@ export interface ConfigOptions {
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
+    inbox: InboxFixtureConfig | undefined;
     graphql: GraphQLFixtureConfig | undefined;
     appium: AppiumFixtureConfig | undefined;
 }
@@ -75,6 +78,8 @@ export interface FixtureTypes {
     neo4jClient: Neo4jClient;
     otpConfig: OtpFixtureConfig;
     otpClient: OtpClient;
+    inboxConfig: InboxFixtureConfig;
+    inboxClient: InboxClient;
     graphqlClient: GraphQLClient;
     appiumConfig: AppiumFixtureConfig;
     appiumDriver: AppiumDriver;
@@ -96,6 +101,7 @@ const configOptionFixtures = {
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
+    inbox: [undefined as InboxFixtureConfig | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
     appium: [undefined as AppiumFixtureConfig | undefined, { option: true }],
 };
@@ -205,6 +211,32 @@ const otpConfigFixture = {
 };
 
 /**
+ * The inboxConfig fixture loads the test mail server (Mailpit) configuration
+ * from the project config option or ConfigLoader, and starts Mailpit in a
+ * container when `container` is set.
+ */
+const inboxConfigFixture = {
+    inboxConfig: async (
+        { inbox, stagehandContainers }: { inbox: InboxFixtureConfig | undefined; stagehandContainers: ContainerManager },
+        use: (config: InboxFixtureConfig) => Promise<void>,
+    ) => {
+        let config = inbox;
+        if (!config) {
+            const { ConfigLoader } = await import('../config/loader.js');
+            config = new ConfigLoader().load().inbox;
+        }
+        const resolved = config ? await stagehandContainers.inbox(config) : undefined;
+        if (!resolved?.url) {
+            const { FixtureInitError } = await import('../errors.js');
+            throw new FixtureInitError('inbox', 'connect', {
+                reason: 'Inbox configuration is missing. Set PW_INBOX_URL (e.g. http://localhost:8025), PW_INBOX_CONTAINER=true, or inbox in environments.json or the project use block.',
+            });
+        }
+        await use(resolved);
+    },
+};
+
+/**
  * The appiumConfig fixture loads Appium configuration from the project config option
  * or falls back to ConfigLoader.
  */
@@ -264,6 +296,8 @@ const allFixtures = {
     ...neo4jFixture,
     ...otpConfigFixture,
     ...otpFixture,
+    ...inboxConfigFixture,
+    ...inboxFixture,
     ...graphqlFixture,
     ...appiumConfigFixture,
     ...appiumFixture,
@@ -282,6 +316,7 @@ export { expect } from '@playwright/test';
 export type { OpenApiClient } from './openapi.fixture.js';
 export type { DatabaseClient } from './database.fixture.js';
 export type { KafkaClient } from './kafka.fixture.js';
+export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';
 export type { RedisClient } from './redis.fixture.js';
 export type { MongoDbClient } from './mongodb.fixture.js';
 export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } from './neo4j.fixture.js';

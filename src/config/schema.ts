@@ -227,6 +227,31 @@ export interface GraphQLFixtureConfig {
 /**
  * Configuration for the OTP (One-Time Password) fixture.
  */
+/**
+ * Configuration for the inbox fixture: a test mail server (Mailpit) that
+ * catches the email your application sends.
+ */
+export interface InboxFixtureConfig {
+    /** Mailpit web/API URL, e.g. `http://localhost:8025`. */
+    url: string;
+    /** SMTP host your application should send to; exposed as `inboxClient.smtp` (informational). */
+    smtpHost?: string;
+    /** SMTP port your application should send to (Mailpit default: 1025). */
+    smtpPort?: number;
+    /** Domain for `uniqueAddress()` (default: `test.local`). */
+    domain?: string;
+    /** Default `waitForMessage()` timeout in ms (default: 30000). */
+    timeout?: number;
+    /** How often to check for new mail in ms (default: 500). */
+    pollInterval?: number;
+    /** Basic-auth user, when Mailpit's UI/API is protected (`MP_UI_AUTH`). */
+    username?: string;
+    /** Basic-auth password. */
+    password?: string;
+    /** Start Mailpit in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
+}
+
 export interface OtpFixtureConfig {
     /** Base32-encoded secret key for TOTP/HOTP generation. */
     secret?: string;
@@ -278,6 +303,8 @@ export interface FrameworkConfig {
     appium?: AppiumFixtureConfig;
     /** OTP fixture configuration. */
     otp?: OtpFixtureConfig;
+    /** Inbox (test mail server) fixture configuration. */
+    inbox?: InboxFixtureConfig;
     /** GraphQL client fixture configuration. */
     graphql?: GraphQLFixtureConfig;
     /** Secrets provider configuration. */
