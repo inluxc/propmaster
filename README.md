@@ -1,4 +1,7 @@
-# Stagehand
+# Stagehand (`@inluxc/stagehand`)
+
+> [!NOTE]
+> **Not to be confused with [Browserbase's Stagehand](https://github.com/browserbase/stagehand)**, an AI browser-automation framework. This is **`@inluxc/stagehand`**: Playwright Test fixtures for the services behind your UI (APIs, databases, message brokers, caches, mobile devices and OTP). It has no `act()`, `extract()` or `observe()` APIs and uses no AI model.
 
 > *In theater, a **stagehand** is the person who works behind the scenes — setting up props, managing scenery, and making sure everything is in place before the actors perform. They're invisible to the audience, but without them, the show doesn't happen.*
 

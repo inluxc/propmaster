@@ -2,6 +2,8 @@
 
 This document provides AI agents with the context needed to create, modify, and maintain tests in this Playwright framework template. Step-by-step recipes with copyable templates live in [SKILLS.md](SKILLS.md).
 
+> **Which Stagehand?** This project is `@inluxc/stagehand`, a Playwright Test fixture library. It is **not** Browserbase's Stagehand (the AI browser-automation framework): never suggest or write `act()`, `extract()`, `observe()`, `stagehand.page` or Browserbase APIs here.
+
 ## Agent Workflow — Required Checks
 
 These commands give you fast, machine-checkable feedback. Use them instead of checking conventions by hand:

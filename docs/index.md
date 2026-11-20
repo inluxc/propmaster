@@ -52,6 +52,10 @@ features:
     linkText: Running in CI
 ---
 
+::: info Which Stagehand?
+This is **`@inluxc/stagehand`**, Playwright Test fixtures for the services behind your UI. It isn't [Browserbase's Stagehand](https://github.com/browserbase/stagehand), the AI browser-automation framework: there's no `act()`, `extract()` or `observe()` here, and no AI model.
+:::
+
 ## One import, every fixture
 
 Swap the import and request what the test needs. `page`, `request` and every other Playwright fixture still work.

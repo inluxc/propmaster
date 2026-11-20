@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/stagehand",
     "version": "1.0.0",
-    "description": "Extensible fixture toolkit for Playwright Test — adds OpenAPI, database, Kafka, Redis, Neo4j, Appium (mobile, incl. GADS device farms), and OTP fixtures on top of @playwright/test",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, Redis, OTP and Appium/GADS. Not Browserbase's AI Stagehand.",
     "type": "module",
     "bin": {
         "stagehand": "dist/src/cli/init.js"
@@ -163,7 +163,16 @@
         "otp",
         "integration",
         "extension",
-        "stagehand"
+        "stagehand",
+        "graphql",
+        "postgresql",
+        "mysql",
+        "mssql",
+        "sqlite",
+        "integration-testing",
+        "e2e",
+        "test-fixtures",
+        "playwright-fixtures"
     ],
     "author": "Inluxc",
     "license": "MIT",
@@ -171,7 +180,7 @@
         "type": "git",
         "url": "git+https://github.com/Inluxc/stagehand.git"
     },
-    "homepage": "https://github.com/Inluxc/stagehand#readme",
+    "homepage": "https://inluxc.github.io/stagehand/",
     "bugs": {
         "url": "https://github.com/Inluxc/stagehand/issues"
     },

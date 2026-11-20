@@ -4,7 +4,7 @@ const repo = 'https://github.com/inluxc/stagehand';
 
 export default defineConfig({
     title: 'Stagehand',
-    description: 'Ready-to-use Playwright Test fixtures for APIs, databases, messaging, caches, mobile devices and OTP.',
+    description: '@inluxc/stagehand: ready-to-use Playwright Test fixtures for APIs, databases, messaging, caches, mobile devices and OTP. Not Browserbase\'s AI Stagehand.',
     // Served from https://inluxc.github.io/stagehand/
     base: '/stagehand/',
     cleanUrls: true,
