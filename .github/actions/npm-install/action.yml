@@ -9,10 +9,15 @@ runs:
   steps:
     - name: Cache npm downloads
       uses: actions/cache@v4
+      env:
+        # A stalled cache download gives up after 3 minutes and the job installs
+        # from the registry instead (the default waits 10 minutes per segment).
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: "3"
       with:
         path: ~/.npm
         key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
         restore-keys: npm-${{ runner.os }}-
     - name: npm ci
       shell: bash
-      run: npm ci --prefer-offline --no-audit --no-fund ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}
+      # Retry flaky registry requests, and give up on a stalled one after 60 s instead of hanging.
+      run: npm ci --prefer-offline --no-audit --no-fund --fetch-retries=4 --fetch-timeout=60000 --fetch-retry-maxtimeout=60000 ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}
