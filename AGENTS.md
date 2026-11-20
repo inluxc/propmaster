@@ -72,7 +72,9 @@ src/
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here
 ├── guide/                      # Getting started, configuration, writing tests
-└── *-fixture.md, ci.md, ...    # One page per fixture/topic
+└── *-fixture.md, ci*.md, ...   # One page per fixture/topic; ci-<system>.md per CI system
+
+compose.test.yaml               # Every integration-test service with health checks (local runs, any CI)
 
 scripts/
 └── check-tests.mjs             # Back-compat wrapper; the checker is src/cli/check-tests.ts (`stagehand check` / `next-id`)
@@ -453,6 +455,8 @@ npm run verify                                    # typecheck + lint:tests + uni
 - Install with `uses: ./.github/actions/npm-install` (cached `npm ci`).
 - Upload reports with `if: failure()`, and don't add `needs:` between jobs.
 - Browser jobs run in `mcr.microsoft.com/playwright:v<@playwright/test version>-noble`; `typecheck` fails if the tag drifts.
+
+To run integration tests locally, start the services with `docker compose -f compose.test.yaml up -d --wait <service>` and use `localhost` (variables per backend: [docs/ci-docker-compose.md](docs/ci-docker-compose.md)). Pipelines for GitLab, Jenkins, Azure Pipelines, CircleCI and Bitbucket are in `docs/ci-*.md`.
 
 ## Creating Custom Fixtures
 

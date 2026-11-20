@@ -2466,6 +2466,7 @@ test-<backend>:
 - Don't add `needs:`. Jobs run in parallel, so a run takes as long as its slowest job.
 - A fixture that needs no service (like OTP) goes in an existing job instead: add `--project=<name>` to its `playwright test` command.
 - Keep real credentials in GitHub secrets (`${{ secrets.NAME }}`), never in the workflow file.
+- Other CI systems (GitLab, Jenkins, Azure Pipelines, CircleCI, Bitbucket) follow the same pattern: see `docs/ci-<system>.md`. For local runs, `docker compose -f compose.test.yaml up -d --wait <service>`.
 
 ---
 

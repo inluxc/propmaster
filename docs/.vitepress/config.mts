@@ -40,7 +40,7 @@ export default defineConfig({
         nav: [
             { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
             { text: 'Fixtures', link: '/openapi-fixture', activeMatch: '-fixture' },
-            { text: 'CI', link: '/ci' },
+            { text: 'CI/CD', link: '/ci', activeMatch: '^/ci' },
             { text: 'npm', link: 'https://www.npmjs.com/package/@inluxc/stagehand' },
         ],
         sidebar: [
@@ -68,11 +68,20 @@ export default defineConfig({
                 ],
             },
             {
-                text: 'Operations',
+                text: 'CI/CD',
                 items: [
-                    { text: 'Secrets Management', link: '/secrets' },
-                    { text: 'Running in CI', link: '/ci' },
+                    { text: 'Overview & GitHub Actions', link: '/ci' },
+                    { text: 'GitLab CI/CD', link: '/ci-gitlab' },
+                    { text: 'Jenkins', link: '/ci-jenkins' },
+                    { text: 'Azure Pipelines', link: '/ci-azure-pipelines' },
+                    { text: 'CircleCI', link: '/ci-circleci' },
+                    { text: 'Bitbucket Pipelines', link: '/ci-bitbucket' },
+                    { text: 'Docker Compose (any CI)', link: '/ci-docker-compose' },
                 ],
+            },
+            {
+                text: 'Operations',
+                items: [{ text: 'Secrets Management', link: '/secrets' }],
             },
         ],
         socialLinks: [{ icon: 'github', link: repo }],

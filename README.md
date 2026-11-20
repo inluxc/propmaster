@@ -402,6 +402,12 @@ test-redis:
 
 See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
 
+Complete pipelines for other CI systems: [GitLab CI/CD](docs/ci-gitlab.md), [Jenkins](docs/ci-jenkins.md), [Azure Pipelines](docs/ci-azure-pipelines.md), [CircleCI](docs/ci-circleci.md) and [Bitbucket Pipelines](docs/ci-bitbucket.md). For anything else, or to run the same services locally, use [`compose.test.yaml`](compose.test.yaml):
+
+```bash
+docker compose -f compose.test.yaml up -d --wait postgres redis
+```
+
 ---
 
 ## Publishing
