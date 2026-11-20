@@ -2417,6 +2417,58 @@ test.describe('GADS — [App/Flow Name]', () => {
 
 ---
 
+## Skill 18: Run Integration Tests in CI
+
+**When to use:** A new fixture, backend or Playwright project needs a service (database, broker, API) in GitHub Actions.
+
+**Steps:**
+
+1. Make sure the tests have a Playwright project (Skill 12) and pass locally against the service in Docker.
+2. Add a job to `.github/workflows/integration-tests.yml` from the template below. [docs/ci.md](docs/ci.md#examples-by-backend) has the service block for each backend.
+3. Run `actionlint` on the workflow if you have it, then open a PR and check the new job passes.
+
+**Template:**
+
+```yaml
+test-<backend>:
+  runs-on: ubuntu-latest
+  container: node:24
+  services:
+    <backend>:
+      image: <image:tag>
+      options: >-
+        --health-cmd "<command that exits 0 once the service is ready>"
+        --health-interval 5s
+        --health-timeout 30s
+        --health-retries 10
+  env:
+    CI: true
+    PW_<BACKEND>_HOST: <backend>
+  steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/npm-install
+    - name: Validate environment variables
+      run: bash .github/scripts/validate-env.sh PW_<BACKEND>_HOST
+    - name: Run <backend> integration tests
+      run: npx playwright test --project=integration-<backend>
+    - name: Upload HTML report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-report-<backend>
+        path: playwright-report/
+        retention-days: 7
+```
+
+**Key points:**
+- The service name is the hostname because the job runs in a container. `localhost` only works without `container:`.
+- `CI: true` is required: the example specs call `test.skip(!process.env.CI, ...)`.
+- Don't add `needs:`. Jobs run in parallel, so a run takes as long as its slowest job.
+- A fixture that needs no service (like OTP) goes in an existing job instead: add `--project=<name>` to its `playwright test` command.
+- Keep real credentials in GitHub secrets (`${{ secrets.NAME }}`), never in the workflow file.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2439,6 +2491,7 @@ test.describe('GADS — [App/Flow Name]', () => {
 | Test across multiple systems | Skill 15 (Multi-Fixture) |
 | Test 2FA/MFA with OTP tokens | Skill 16 (OTP) |
 | Test a mobile app on a GADS device farm | Skill 17 (GADS) |
+| Run a new backend's tests in CI | Skill 18 (CI) |
 | Test a Neo4j graph | AGENTS.md → "Neo4j Client" quick reference |
 
 **Before finishing any task:** run `npm run verify` (typecheck + `lint:tests` + unit + property tests).

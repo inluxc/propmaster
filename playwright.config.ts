@@ -115,6 +115,13 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            name: 'otp',
+            testMatch: '**/examples/otp.spec.ts',
+            use: {
+                otp: config.otp,
+            },
+        },
+        {
             name: 'property-tests',
             testMatch: '**/*.prop.ts',
             use: {},

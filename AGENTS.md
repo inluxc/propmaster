@@ -402,6 +402,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-redis` | `**/examples/redis.spec.ts` | `redisClient` |
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
+| `otp` | `**/examples/otp.spec.ts` | `otpClient` |
 | `property-tests` | `**/*.prop.ts` | None (uses fast-check) |
 | `unit-tests` | `**/unit/**/*.spec.ts` | None (framework self-tests) |
 
@@ -428,6 +429,7 @@ npm test                                          # All tests
 npx playwright test --project=openapi             # Single project
 npx playwright test --project=api-integration     # Integration tests
 npx playwright test --project=property-tests      # Property tests
+npx playwright test --project=otp                 # OTP fixture (no service needed)
 npx playwright test --project=unit-tests          # Framework unit tests
 npm run test:tag -- @smoke                        # By tag
 PW_ENVIRONMENT=dev npx playwright test            # Specific environment
@@ -435,6 +437,17 @@ npm run typecheck                                 # Type checking only
 npm run lint:tests                                # Test conventions (IDs, tags, steps, imports)
 npm run verify                                    # typecheck + lint:tests + unit + property tests
 ```
+
+### Running in CI
+
+`.github/workflows/integration-tests.yml` runs one job per backend, each with the service as a container and every job in parallel. When you add a fixture or a Playwright project that needs a service, add a matching job. [docs/ci.md](docs/ci.md) has a template for every backend. In short:
+
+- Use `container: node:24` and the service name as the host (`PW_REDIS_HOST: redis`), never `localhost`.
+- Give the service a `--health-cmd` so tests start only once it is ready.
+- Set `CI: true`: the example specs skip themselves without it.
+- Install with `uses: ./.github/actions/npm-install` (cached `npm ci`).
+- Upload reports with `if: failure()`, and don't add `needs:` between jobs.
+- Browser jobs run in `mcr.microsoft.com/playwright:v<@playwright/test version>-noble`; `typecheck` fails if the tag drifts.
 
 ## Creating Custom Fixtures
 
