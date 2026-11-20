@@ -78,6 +78,7 @@ export default defineConfig({
                     { text: 'CircleCI', link: '/ci-circleci' },
                     { text: 'Bitbucket Pipelines', link: '/ci-bitbucket' },
                     { text: 'Docker Compose (any CI)', link: '/ci-docker-compose' },
+                    { text: 'Testcontainers (no CI services)', link: '/testcontainers' },
                 ],
             },
             {

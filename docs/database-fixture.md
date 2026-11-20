@@ -28,6 +28,10 @@ npm install --save-dev mssql            # MSSQL
 npm install --save-dev better-sqlite3   # SQLite (a native module)
 ```
 
+### Run it in a container
+
+No database to connect to? Set `PW_DB_CONTAINER=true` (or `container: true` in config) and the fixture starts one with Testcontainers for the run, then removes it. Needs Docker and `npm install --save-dev testcontainers`. See [Testcontainers](./testcontainers).
+
 ### Environment Variables
 
 | Variable | Required | Description |

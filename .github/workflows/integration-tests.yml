@@ -444,6 +444,51 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  # Same suites with no services: blocks. Each backend starts in a container from
+  # the test run itself (PW_<BACKEND>_CONTAINER=true), as it would on a laptop.
+  test-testcontainers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: postgresql
+            projects: --project=api-integration   # every backend at once
+            password: testpass
+          - db: mysql
+            projects: --project=integration-database
+            password: testpass
+          - db: mssql
+            projects: --project=integration-database
+            password: "TestPass123!"
+    name: test-testcontainers (${{ matrix.db }})
+    env:
+      CI: true
+      PW_DB_TYPE: ${{ matrix.db }}
+      PW_DB_PASSWORD: ${{ matrix.password }}
+      PW_DB_CONTAINER: "true"
+      PW_DB_CONTAINER_INIT: tests/examples/sql/users.${{ matrix.db }}.sql
+      PW_REDIS_CONTAINER: "true"
+      PW_REDIS_KEY_PREFIX: "test:ci-${{ github.run_id }}:"
+      PW_MONGODB_CONTAINER: "true"
+      PW_NEO4J_CONTAINER: "true"
+      PW_KAFKA_CONTAINER: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: ./.github/actions/npm-install
+      - name: Run integration tests against Testcontainers
+        run: npx playwright test ${{ matrix.projects }}
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-testcontainers-${{ matrix.db }}
+          path: playwright-report/
+          retention-days: 7
+
   test-browser:
     runs-on: ubuntu-latest
     # Browsers and their system libraries are preinstalled; keep the tag in step with

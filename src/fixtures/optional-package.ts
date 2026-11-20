@@ -28,6 +28,7 @@ export const FIXTURE_PACKAGES = {
     redisClient: ['ioredis'],
     otpClient: ['otplib'],
     appiumDriver: ['webdriverio'],
+    'any backend with `container: true`': ['testcontainers'],
 } as const satisfies Record<string, readonly string[]>;
 
 const cache = new Map<string, Promise<unknown>>();

@@ -25,6 +25,10 @@ The driver is an optional peer dependency. Install it in your project:
 npm install --save-dev neo4j-driver
 ```
 
+### Run it in a container
+
+No Neo4j server to connect to? Set `PW_NEO4J_CONTAINER=true` (or `container: true` in config) and the fixture starts one with Testcontainers for the run, then removes it. Needs Docker and `npm install --save-dev testcontainers`. See [Testcontainers](./testcontainers).
+
 ### Environment Variables
 
 | Variable | Required | Description |

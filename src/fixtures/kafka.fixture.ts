@@ -10,6 +10,7 @@
 
 import type { Producer, Consumer, EachMessagePayload, SASLOptions as KafkaJsSASLOptions } from 'kafkajs';
 import { loadOptional } from './optional-package.js';
+import { parseContainerEnv, type ContainerManager } from '../containers/container-manager.js';
 import { KafkaFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
@@ -62,12 +63,13 @@ function generateGroupId(testId: string): string {
  */
 export const kafkaFixture = {
     kafkaClient: async (
-        { kafka: kafkaConfig }: { kafka: KafkaFixtureConfig | undefined },
+        { kafka: kafkaConfig, stagehandContainers }: { kafka: KafkaFixtureConfig | undefined; stagehandContainers: ContainerManager },
         use: (client: KafkaClient) => Promise<void>,
         testInfo: { testId: string }
     ) => {
         // Use config from project `use` block if provided, otherwise fall back to env vars
-        const config = kafkaConfig ?? getKafkaConfig();
+        // With `container` set, start (or reuse) this worker's Kafka broker.
+        const config = await stagehandContainers.kafka(kafkaConfig ?? getKafkaConfig());
         const disconnectTimeout = config.disconnectTimeout ?? 5000;
 
         // kafkajs is an optional peer dependency, loaded on first use.
@@ -271,6 +273,7 @@ function getKafkaConfig(): KafkaFixtureConfig {
         disconnectTimeout: process.env.PW_KAFKA_DISCONNECT_TIMEOUT
             ? parseInt(process.env.PW_KAFKA_DISCONNECT_TIMEOUT, 10)
             : 5000,
+        container: process.env.PW_KAFKA_CONTAINER ? parseContainerEnv(process.env.PW_KAFKA_CONTAINER) : undefined,
     };
 
     return config;

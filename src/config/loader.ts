@@ -18,6 +18,7 @@ import * as path from 'node:path';
 import { EnvLoader } from './env-loader.js';
 import { ConfigurationError } from '../errors.js';
 import type { FrameworkConfig, EnvironmentsFile } from './schema.js';
+import { parseContainerEnv } from '../containers/container-manager.js';
 
 export class ConfigLoader {
     private readonly projectRoot: string;
@@ -247,6 +248,26 @@ export class ConfigLoader {
                 if (!cfg.database) cfg.database = { type: 'postgresql', database: '' };
                 cfg.database.trustServerCertificate = val.toLowerCase() === 'true';
             },
+            'PW_DB_CONTAINER': (cfg, val) => {
+                if (!cfg.database) cfg.database = { type: 'postgresql', database: '' };
+                cfg.database.container = parseContainerEnv(val);
+            },
+            'PW_KAFKA_CONTAINER': (cfg, val) => {
+                if (!cfg.kafka) cfg.kafka = { brokers: [] };
+                cfg.kafka.container = parseContainerEnv(val);
+            },
+            'PW_REDIS_CONTAINER': (cfg, val) => {
+                if (!cfg.redis) cfg.redis = { host: '', port: 6379 };
+                cfg.redis.container = parseContainerEnv(val);
+            },
+            'PW_MONGODB_CONTAINER': (cfg, val) => {
+                if (!cfg.mongodb) cfg.mongodb = { database: '' };
+                cfg.mongodb.container = parseContainerEnv(val);
+            },
+            'PW_NEO4J_CONTAINER': (cfg, val) => {
+                if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
+                cfg.neo4j.container = parseContainerEnv(val);
+            },
             'PW_KAFKA_BROKERS': (cfg, val) => {
                 if (!cfg.kafka) cfg.kafka = { brokers: [] };
                 cfg.kafka.brokers = val.split(',').map(b => b.trim());
@@ -384,6 +405,17 @@ export class ConfigLoader {
             if (applier && value !== '') {
                 applier(config, value);
             }
+        }
+
+        // Applied last, so it doesn't depend on the order of the variables:
+        // init scripts only take effect when the database container is on.
+        const initScripts = values['PW_DB_CONTAINER_INIT'];
+        const container = config.database?.container;
+        if (initScripts && container) {
+            config.database!.container = {
+                ...(typeof container === 'object' ? container : {}),
+                initScripts: initScripts.split(',').map((s) => s.trim()).filter(Boolean),
+            };
         }
     }
 }
