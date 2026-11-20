@@ -15,6 +15,7 @@ This page covers **GitHub Actions**, which Stagehand itself uses. Its workflow, 
 | CircleCI | Extra images in the Docker executor | `localhost` | [CircleCI](./ci-circleci) |
 | Bitbucket Pipelines | `definitions.services` | `localhost` | [Bitbucket Pipelines](./ci-bitbucket) |
 | Anything else, or your laptop | `docker compose -f compose.test.yaml up --wait` | `localhost` | [Docker Compose](./ci-docker-compose) |
+| Any system with Docker, no service setup | Started by the test run (`PW_<BACKEND>_CONTAINER=true`) | Set for you | [Testcontainers](./testcontainers) |
 
 Whatever the system, the same rules apply:
 

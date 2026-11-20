@@ -24,6 +24,10 @@ The driver is an optional peer dependency. Install it in your project:
 npm install --save-dev kafkajs
 ```
 
+### Run it in a container
+
+No Kafka broker to connect to? Set `PW_KAFKA_CONTAINER=true` (or `container: true` in config) and the fixture starts one with Testcontainers for the run, then removes it. Needs Docker and `npm install --save-dev testcontainers`. See [Testcontainers](./testcontainers).
+
 ### Environment Variables
 
 | Variable | Required | Description |

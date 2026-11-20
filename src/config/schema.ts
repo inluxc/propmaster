@@ -30,6 +30,32 @@ export interface OpenApiFixtureConfig {
 }
 
 /**
+ * Run a backend in a throwaway Docker container (Testcontainers) instead of
+ * connecting to a host and port. Needs Docker and the optional
+ * `testcontainers` package. The container starts the first time a test in a
+ * worker uses the fixture and stops when the worker exits.
+ */
+export interface ContainerOptions {
+    /** Image to run (default: the same image Stagehand's CI uses for that backend). */
+    image?: string;
+    /**
+     * Keep the container running between test runs and reuse it (Testcontainers
+     * reuse mode; also needs `TESTCONTAINERS_REUSE_ENABLE=true`). Not available for Kafka.
+     */
+    reuse?: boolean;
+    /** Seconds to wait for the container's health check (default: 60, 120 for MSSQL and Neo4j). */
+    startupTimeout?: number;
+    /**
+     * SQL files to run once after the database starts, in order (database fixture:
+     * PostgreSQL, MySQL and MSSQL). Paths are relative to the working directory.
+     */
+    initScripts?: string[];
+}
+
+/** `true` for the defaults, or options. `false`/absent connects to `host`/`port` as usual. */
+export type ContainerSetting = boolean | ContainerOptions;
+
+/**
  * Configuration for the database connection fixture.
  */
 export interface DatabaseFixtureConfig {
@@ -53,6 +79,8 @@ export interface DatabaseFixtureConfig {
     encrypt?: boolean;
     /** Whether to trust the server certificate (MSSQL: useful for local dev). */
     trustServerCertificate?: boolean;
+    /** Start this backend in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
 }
 
 /**
@@ -69,6 +97,8 @@ export interface KafkaFixtureConfig {
     sasl?: SASLOptions;
     /** Timeout in ms for disconnect operations (default: 5000). */
     disconnectTimeout?: number;
+    /** Start this backend in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
 }
 
 /**
@@ -87,6 +117,8 @@ export interface RedisFixtureConfig {
     keyPrefix?: string;
     /** Connection timeout in ms (default: 5000). */
     connectionTimeout?: number;
+    /** Start this backend in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
 }
 
 /**
@@ -103,6 +135,8 @@ export interface Neo4jFixtureConfig {
     database?: string;
     /** Connection timeout in ms (default: 10000). */
     connectionTimeout?: number;
+    /** Start this backend in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
 }
 
 /**
@@ -172,6 +206,8 @@ export interface MongoDbFixtureConfig {
     srv?: boolean;
     /** Connection timeout in ms (default: 10000). */
     connectionTimeout?: number;
+    /** Start this backend in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
 }
 
 /**

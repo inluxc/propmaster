@@ -40,6 +40,7 @@ import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
+import { ContainerManager } from '../containers/container-manager.js';
 import { appiumFixture, type AppiumDriver, type GadsHubClient } from './appium.fixture.js';
 
 /**
@@ -100,16 +101,36 @@ const configOptionFixtures = {
 };
 
 /**
+ * Worker-scoped Testcontainers manager. Cheap until a fixture asks for a
+ * container (`container: true` in its config); it then starts that container
+ * once per worker and stops everything it started when the worker exits.
+ */
+export interface WorkerFixtureTypes {
+    stagehandContainers: ContainerManager;
+}
+
+const containerFixtures = {
+    stagehandContainers: [
+        async ({}, use: (manager: ContainerManager) => Promise<void>) => {
+            const manager = new ContainerManager();
+            await use(manager);
+            await manager.stopAll();
+        },
+        { scope: 'worker' },
+    ],
+};
+
+/**
  * The redisConfig fixture loads Redis configuration from the project config option
  * or falls back to ConfigLoader.
  */
 const redisConfigFixture = {
     redisConfig: async (
-        { redis }: { redis: RedisFixtureConfig | undefined },
+        { redis, stagehandContainers }: { redis: RedisFixtureConfig | undefined; stagehandContainers: ContainerManager },
         use: (config: RedisFixtureConfig) => Promise<void>,
     ) => {
         if (redis) {
-            await use(redis);
+            await use(await stagehandContainers.redis(redis));
             return;
         }
 
@@ -125,7 +146,7 @@ const redisConfigFixture = {
             });
         }
 
-        await use(frameworkConfig.redis);
+        await use(await stagehandContainers.redis(frameworkConfig.redis));
     },
 };
 
@@ -135,11 +156,11 @@ const redisConfigFixture = {
  */
 const neo4jConfigFixture = {
     neo4jConfig: async (
-        { neo4j }: { neo4j: Neo4jFixtureConfig | undefined },
+        { neo4j, stagehandContainers }: { neo4j: Neo4jFixtureConfig | undefined; stagehandContainers: ContainerManager },
         use: (config: Neo4jFixtureConfig) => Promise<void>,
     ) => {
         if (neo4j) {
-            await use(neo4j);
+            await use(await stagehandContainers.neo4j(neo4j));
             return;
         }
 
@@ -155,7 +176,7 @@ const neo4jConfigFixture = {
             });
         }
 
-        await use(frameworkConfig.neo4j);
+        await use(await stagehandContainers.neo4j(frameworkConfig.neo4j));
     },
 };
 
@@ -232,6 +253,7 @@ const appiumConfigFixture = {
  */
 const allFixtures = {
     ...configOptionFixtures,
+    ...containerFixtures,
     ...openApiFixture,
     ...databaseFixture,
     ...kafkaFixture,
@@ -250,7 +272,9 @@ const allFixtures = {
 /**
  * Extended Playwright test object with all framework fixtures composed.
  */
-export const test = base.extend<FixtureTypes & ConfigOptions>(allFixtures as unknown as Fixtures<FixtureTypes & ConfigOptions>);
+export const test = base.extend<FixtureTypes & ConfigOptions, WorkerFixtureTypes>(
+    allFixtures as unknown as Fixtures<FixtureTypes & ConfigOptions, WorkerFixtureTypes>,
+);
 
 export { expect } from '@playwright/test';
 

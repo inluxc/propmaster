@@ -34,6 +34,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
+| `container: true` on any backend ([Testcontainers](https://inluxc.github.io/stagehand/testcontainers)) | `testcontainers` |
 
 A fixture whose driver is missing fails with a `MissingPackageError` naming the package to install. Stagehand has no runtime dependencies of its own.
 
@@ -437,6 +438,12 @@ test-redis:
 ```
 
 See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
+
+No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
+
+```bash
+PW_DB_CONTAINER=true PW_KAFKA_CONTAINER=true npx playwright test --project=integration
+```
 
 Complete pipelines for other CI systems: [GitLab CI/CD](docs/ci-gitlab.md), [Jenkins](docs/ci-jenkins.md), [Azure Pipelines](docs/ci-azure-pipelines.md), [CircleCI](docs/ci-circleci.md) and [Bitbucket Pipelines](docs/ci-bitbucket.md). For anything else, or to run the same services locally, use [`compose.test.yaml`](compose.test.yaml):
 

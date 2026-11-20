@@ -19,6 +19,7 @@
 
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { loadOptional } from './optional-package.js';
+import type { ContainerManager } from '../containers/container-manager.js';
 import { MongoDbFixtureConfig } from '../config/schema.js';
 
 /**
@@ -344,7 +345,7 @@ async function createMongoDbClient(config: MongoDbFixtureConfig): Promise<MongoD
  */
 export const mongoDbFixture = {
     mongoDbClient: async (
-        { mongodb }: { mongodb: MongoDbFixtureConfig | undefined },
+        { mongodb, stagehandContainers }: { mongodb: MongoDbFixtureConfig | undefined; stagehandContainers: ContainerManager },
         use: (client: MongoDbClient) => Promise<void>,
     ) => {
         // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -362,6 +363,9 @@ export const mongoDbFixture = {
                 reason: 'MongoDB configuration is missing. Provide mongodb config in environments.json, environment variables, or project use block.',
             });
         }
+
+        // With `container` set, start (or reuse) this worker's MongoDB container.
+        config = await stagehandContainers.mongodb(config);
 
         // Setup: create client and verify connectivity
         const client = await createMongoDbClient(config);

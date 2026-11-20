@@ -26,6 +26,7 @@ Stagehand itself has no runtime dependencies. Each fixture's driver is an option
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `appiumDriver` | `webdriverio` (`gadsHub` needs nothing extra) |
+| `container: true` on any backend ([Testcontainers](../testcontainers)) | `testcontainers` |
 
 ```bash
 # e.g. a project testing a REST API backed by PostgreSQL and Kafka

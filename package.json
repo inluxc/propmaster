@@ -73,6 +73,7 @@
         "openapi-client-axios": "^7.9.1",
         "otplib": "^13.6.0",
         "pg": "^8.23.1",
+        "testcontainers": "^12.2.1",
         "webdriverio": "^9.33.1"
     },
     "peerDependenciesMeta": {
@@ -115,6 +116,9 @@
         "pg": {
             "optional": true
         },
+        "testcontainers": {
+            "optional": true
+        },
         "webdriverio": {
             "optional": true
         }
@@ -141,6 +145,7 @@
         "openapi-client-axios": "^7.9.1",
         "otplib": "^13.6.0",
         "pg": "^8.23.1",
+        "testcontainers": "12.2.1",
         "tsx": "^4.23.15",
         "typescript": "^7.0.2",
         "webdriverio": "^9.33.1"

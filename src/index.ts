@@ -35,11 +35,14 @@ export type {
     GadsSessionInfo,
     FixtureTypes,
     ConfigOptions,
+    WorkerFixtureTypes,
 } from './fixtures/index.js';
 
 // Configuration types and loaders
 export type {
     FrameworkConfig,
+    ContainerOptions,
+    ContainerSetting,
     OpenApiFixtureConfig,
     DatabaseFixtureConfig,
     MongoDbFixtureConfig,
@@ -54,6 +57,7 @@ export type {
     EnvironmentsFile,
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
+export { ContainerManager, DEFAULT_IMAGES } from './containers/container-manager.js';
 export { EnvLoader } from './config/index.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)

@@ -15,6 +15,7 @@
 
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { loadOptional } from './optional-package.js';
+import type { ContainerManager } from '../containers/container-manager.js';
 import { DatabaseFixtureConfig } from '../config/schema.js';
 
 /**
@@ -406,7 +407,7 @@ async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<Data
  */
 export const databaseFixture = {
     databaseClient: async (
-        { database }: { database: DatabaseFixtureConfig | undefined },
+        { database, stagehandContainers }: { database: DatabaseFixtureConfig | undefined; stagehandContainers: ContainerManager },
         use: (client: DatabaseClient) => Promise<void>,
     ) => {
         // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -424,6 +425,9 @@ export const databaseFixture = {
                 reason: 'Database configuration is missing. Provide database config in environments.json, environment variables, or project use block.',
             });
         }
+
+        // With `container` set, start (or reuse) this worker's database container.
+        config = await stagehandContainers.database(config);
 
         // Setup: create client and verify connectivity
         const client = await createDatabaseClient(config);
