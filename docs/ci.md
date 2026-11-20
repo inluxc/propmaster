@@ -1,6 +1,29 @@
 # Running Integration Tests in CI
 
-This guide shows how to run Stagehand tests against real services in GitHub Actions. Stagehand's own workflow, [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml), follows the same pattern. Copy from it when you set up CI for a project built on Stagehand.
+Stagehand tests run against real services: a database, a broker or a cache started next to the tests for each run. Every CI system can do this. What changes between them is how services start and which hostname the tests use to reach them.
+
+This page covers **GitHub Actions**, which Stagehand itself uses. Its workflow, [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml), is a working reference.
+
+## Pick Your CI System
+
+| CI system | How services run | Host the tests use | Guide |
+|---|---|---|---|
+| GitHub Actions | `services:` next to a container job | Service name (`postgres`) | This page |
+| GitLab CI/CD | `services:` with an `alias` | The alias (`postgres`) | [GitLab CI/CD](./ci-gitlab) |
+| Jenkins | Sidecar containers on a per-build Docker network | The network alias (`postgres`) | [Jenkins](./ci-jenkins) |
+| Azure Pipelines | Service containers next to a container job | Service name (`postgres`) | [Azure Pipelines](./ci-azure-pipelines) |
+| CircleCI | Extra images in the Docker executor | `localhost` | [CircleCI](./ci-circleci) |
+| Bitbucket Pipelines | `definitions.services` | `localhost` | [Bitbucket Pipelines](./ci-bitbucket) |
+| Anything else, or your laptop | `docker compose -f compose.test.yaml up --wait` | `localhost` | [Docker Compose](./ci-docker-compose) |
+
+Whatever the system, the same rules apply:
+
+- **Set `CI=true`.** The example specs call `test.skip(!process.env.CI, ...)` and skip themselves without it.
+- **Wait until the service is ready, not just started.** Use a health check, or a wait loop when the system has none.
+- **Point the fixtures at the service with `PW_*` variables.** They're the same everywhere; only the host changes.
+- **Run one backend per job, in parallel.** A run then takes about as long as its slowest job.
+- **Cache npm downloads** keyed on `package-lock.json`, and run browser tests in the `mcr.microsoft.com/playwright` image.
+- **Publish JUnit results** with `--reporter=line,junit` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`, so the CI system shows each test.
 
 ---
 
@@ -351,25 +374,21 @@ These are already in Stagehand's workflow. Keep them when you copy it:
 
 ## Running the Same Services Locally
 
-Start the container, then run the project with the same variables CI sets (using `localhost`):
+[`compose.test.yaml`](../compose.test.yaml) starts every service with the same images and credentials CI uses, published on `localhost`:
 
 ```bash
-docker run -d --rm --name pg -p 5432:5432 -e POSTGRES_DB=testdb -e POSTGRES_USER=testuser -e POSTGRES_PASSWORD=testpass postgres:15
+docker compose -f compose.test.yaml up -d --wait postgres mongodb
 ```
 
 ```bash
 CI=true PW_DB_TYPE=postgresql PW_DB_HOST=localhost PW_DB_PORT=5432 PW_DB_NAME=testdb PW_DB_USERNAME=testuser PW_DB_PASSWORD=testpass npx playwright test --project=integration-database
 ```
 
-The same works for the other backends:
-
-```bash
-docker run -d --rm --name mongo -p 27017:27017 mongo:7
-```
-
 ```bash
 CI=true PW_MONGODB_HOST=localhost PW_MONGODB_DATABASE=testdb npx playwright test --project=integration-mongodb
 ```
+
+See [Docker Compose](./ci-docker-compose) for the variables for every backend.
 
 ---
 
