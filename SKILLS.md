@@ -130,6 +130,7 @@ test.describe('Feature Name', () => {
 5. Always include both positive (happy path) and negative (error/edge case) scenarios
 6. Include security tests for injection, auth bypass, and input abuse
 7. Replace every `TC-API-NNN` with IDs from `npm run next-id -- API <count>`, then run `npm run lint:tests`
+8. Turn on contract checks for the project (`use: { openapi: { ..., validateResponses: true } }`): every response is then checked against the spec, so the test needn't assert each field's type. For one response, `await new OpenApiSteps(openApiClient).verifyMatchesSchema(response)`
 
 **Template:**
 
@@ -139,12 +140,14 @@ import { test, expect } from '../../src';
 /**
  * Pass as the 3rd argument to any operation so non-2xx responses are
  * returned instead of thrown. Then assert on `response.status` directly.
+ * `contract: { request: false }` lets negative tests send invalid bodies
+ * when `validateRequests` is on; the response is still checked.
  *
  * Do NOT use `try { call } catch (e) { expect(e.response.status)... }`:
  * if the call unexpectedly succeeds, the catch never runs and the test
  * passes without asserting anything.
  */
-const ANY_STATUS = { validateStatus: () => true };
+const ANY_STATUS = { validateStatus: () => true, contract: { request: false } };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // POSITIVE TESTS — Happy path, valid inputs, expected behavior

@@ -24,7 +24,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 
 | Fixture | Install |
 |---|---|
-| `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files) |
+| `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files; `ajv` and `ajv-formats` for contract checks) |
 | `graphqlClient` | `graphql-request graphql` |
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |
@@ -368,6 +368,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_ENVIRONMENT` | Active environment (`local`, `dev`, `test`, `stg`, `prod`) |
 | `PW_OPENAPI_SPEC_PATH` | Path or URL to OpenAPI spec |
 | `PW_OPENAPI_BASE_URL` | API base URL |
+| `PW_OPENAPI_VALIDATE_RESPONSES` / `PW_OPENAPI_VALIDATE_REQUESTS` | `true` or `warn`: check calls against the spec |
 | `PW_DB_TYPE` | `postgresql`, `mysql`, `mssql`, `sqlite` |
 | `PW_DB_HOST` / `PW_DB_PORT` / `PW_DB_NAME` | Database connection |
 | `PW_DB_USERNAME` / `PW_DB_PASSWORD` | Database credentials |

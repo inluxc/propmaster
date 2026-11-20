@@ -473,7 +473,7 @@ export const test = base.extend<FixtureTypes & ConfigOptions, WorkerFixtureTypes
 export { expect } from '@playwright/test';
 
 // Re-export fixture client types for consumer convenience
-export type { OpenApiClient } from './openapi.fixture.js';
+export type { OpenApiClient, AxiosResponseLike, ContractCallOption } from './openapi.fixture.js';
 export type { DatabaseClient } from './database.fixture.js';
 export type { KafkaClient } from './kafka.fixture.js';
 export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';

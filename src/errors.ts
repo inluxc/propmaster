@@ -11,7 +11,8 @@
  *   ├── FixtureOperationError   — fixture runtime failures (query, produce, consume)
  *   ├── SecretsError            — secrets fetching/resolution failures
  *   ├── DependencyError         — fixture dependency resolution failures
- *   └── MissingPackageError     — a fixture's driver package isn't installed
+ *   ├── MissingPackageError     — a fixture's driver package isn't installed
+ *   └── ContractError           — an API request or response doesn't match the OpenAPI spec
  */
 
 /**
@@ -157,6 +158,76 @@ export class MissingPackageError extends FrameworkError {
         this.name = 'MissingPackageError';
         this.installCommand = installCommand;
     }
+}
+
+/** One way a request or response body breaks the OpenAPI spec. */
+export interface ContractViolation {
+    /** JSON path of the offending value: `$` (the body), `$.items[2].price`, ... */
+    path: string;
+    /** What is wrong, e.g. `must be integer`, `is required`. */
+    message: string;
+    /** What the schema expects (a type, the allowed values, a limit), when there is one. */
+    expected?: unknown;
+    /** The value found at `path` (absent for a missing property). */
+    actual?: unknown;
+}
+
+/**
+ * Thrown when a request or response doesn't match the OpenAPI spec
+ * (`openapi.validateResponses` / `validateRequests`, or
+ * `OpenApiSteps.verifyMatchesSchema`).
+ *
+ * Contextual fields:
+ * - `operationId`, `method`, `path`: the operation the message was checked against
+ * - `kind`: `request` or `response`
+ * - `status`, `contentType`: what was checked
+ * - `violations`: each mismatch with its JSON path, expected and actual value
+ */
+export class ContractError extends FrameworkError {
+    constructor(
+        public readonly kind: 'request' | 'response',
+        public readonly operation: { operationId?: string; method: string; path: string },
+        public readonly violations: ContractViolation[],
+        public readonly status?: number,
+        public readonly contentType?: string,
+        options?: ErrorOptions,
+    ) {
+        super(formatContractError(kind, operation, violations, status, contentType), options);
+        this.name = 'ContractError';
+    }
+}
+
+const MAX_LISTED_VIOLATIONS = 20;
+
+function describeValue(value: unknown): string {
+    if (value === undefined) return 'undefined';
+    const json = JSON.stringify(value);
+    return json.length > 80 ? `${json.slice(0, 77)}...` : json;
+}
+
+/** One line per violation: `$.id: must be integer (expected integer, got "abc")`. */
+export function formatViolation(v: ContractViolation): string {
+    const extra: string[] = [];
+    if (v.expected !== undefined) extra.push(`expected ${typeof v.expected === 'string' ? v.expected : describeValue(v.expected)}`);
+    if ('actual' in v) extra.push(`got ${describeValue(v.actual)}`);
+    return `${v.path}: ${v.message}${extra.length ? ` (${extra.join(', ')})` : ''}`;
+}
+
+function formatContractError(
+    kind: 'request' | 'response',
+    operation: { operationId?: string; method: string; path: string },
+    violations: ContractViolation[],
+    status?: number,
+    contentType?: string,
+): string {
+    const where = `${operation.method.toUpperCase()} ${operation.path}`;
+    const name = operation.operationId ? `${operation.operationId} (${where})` : where;
+    const what = kind === 'response'
+        ? `The response from ${name}${status !== undefined ? ` with status ${status}` : ''}${contentType ? ` (${contentType})` : ''}`
+        : `The request body for ${name}${contentType ? ` (${contentType})` : ''}`;
+    const listed = violations.slice(0, MAX_LISTED_VIOLATIONS).map((v) => `  - ${formatViolation(v)}`);
+    if (violations.length > MAX_LISTED_VIOLATIONS) listed.push(`  ... and ${violations.length - MAX_LISTED_VIOLATIONS} more`);
+    return `${what} doesn't match the OpenAPI spec:\n${listed.join('\n')}`;
 }
 
 // --- Formatting helpers ---

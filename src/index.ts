@@ -17,6 +17,8 @@ export { test, expect } from './fixtures/index.js';
 // Fixture client types
 export type {
     OpenApiClient,
+    AxiosResponseLike,
+    ContractCallOption,
     DatabaseClient,
     KafkaClient,
     RedisClient,
@@ -90,7 +92,13 @@ export {
     SecretsError,
     DependencyError,
     MissingPackageError,
+    ContractError,
 } from './errors.js';
+export type { ContractViolation } from './errors.js';
+
+// Contract checks (OpenAPI request/response validation)
+export { ContractValidator, assertContract } from './openapi/contract.js';
+export type { ContractMode, ContractOperation, ContractResult } from './openapi/contract.js';
 
 // Secrets interfaces
 export type { SecretsProvider } from './secrets/index.js';

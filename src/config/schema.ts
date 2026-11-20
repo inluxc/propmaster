@@ -27,6 +27,14 @@ export interface OpenApiFixtureConfig {
     specTimeout?: number;
     /** Timeout in ms for client initialization (default: 30000). */
     initTimeout?: number;
+    /**
+     * Check every response against the spec: its status, content type and
+     * body schema. `true` fails the call on a mismatch, `'warn'` records it
+     * on the test and goes on. Needs `ajv` and `ajv-formats`. Default: off.
+     */
+    validateResponses?: boolean | 'warn';
+    /** Check request bodies against the spec before they're sent (`true` or `'warn'`). Default: off. */
+    validateRequests?: boolean | 'warn';
 }
 
 /**

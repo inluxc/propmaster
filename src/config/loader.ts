@@ -19,6 +19,7 @@ import { EnvLoader } from './env-loader.js';
 import { ConfigurationError } from '../errors.js';
 import type { FrameworkConfig, EnvironmentsFile } from './schema.js';
 import { parseContainerEnv } from '../containers/container-manager.js';
+import { parseContractMode } from '../openapi/contract.js';
 
 export class ConfigLoader {
     private readonly projectRoot: string;
@@ -215,6 +216,14 @@ export class ConfigLoader {
             'PW_OPENAPI_BASE_URL': (cfg, val) => {
                 if (!cfg.openapi) cfg.openapi = { specPath: '' };
                 cfg.openapi.baseUrl = val;
+            },
+            'PW_OPENAPI_VALIDATE_RESPONSES': (cfg, val) => {
+                if (!cfg.openapi) cfg.openapi = { specPath: '' };
+                cfg.openapi.validateResponses = parseContractMode(val) ?? false;
+            },
+            'PW_OPENAPI_VALIDATE_REQUESTS': (cfg, val) => {
+                if (!cfg.openapi) cfg.openapi = { specPath: '' };
+                cfg.openapi.validateRequests = parseContractMode(val) ?? false;
             },
             'PW_DB_TYPE': (cfg, val) => {
                 if (!cfg.database) cfg.database = { type: 'postgresql', database: '' };

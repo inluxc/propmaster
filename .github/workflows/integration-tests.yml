@@ -501,6 +501,9 @@ jobs:
       # A local file, so CI covers the local-path loader (URLs are covered by unit tests).
       PW_OPENAPI_SPEC_PATH: /tmp/petstore-spec.json
       PW_OPENAPI_BASE_URL: http://localhost:4010
+      # Every response is checked against the spec (contract checks).
+      PW_OPENAPI_VALIDATE_RESPONSES: true
+      PW_OPENAPI_VALIDATE_REQUESTS: true
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
