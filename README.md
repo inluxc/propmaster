@@ -45,6 +45,23 @@ test('api test with OpenAPI client', async ({ openApiClient }) => {
 
 ---
 
+## Project Layout
+
+`npx stagehand init` scaffolds one folder per test type, each run as its own Playwright project from a single root config:
+
+```
+tests/
+├── api/           # REST / GraphQL: no browser, device or service   → --project=api
+├── integration/   # needs a database, broker or cache                → --project=integration
+├── e2e/           # browser user journeys                            → --project='e2e-*'
+├── mobile/        # Appium / GADS                                    → --project=mobile-android
+└── support/       # page objects, fixtures, data, helpers
+```
+
+Already have tests? `init` moves nothing. `npx stagehand organize` shows where each test belongs by the fixtures it uses, and `--apply` moves them with `git mv` and fixes their imports. See [Project Layout](docs/guide/project-layout.md).
+
+---
+
 ## Available Fixtures
 
 | Fixture | Type | What it does | Docs |

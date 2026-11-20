@@ -25,6 +25,8 @@ Whatever the system, the same rules apply:
 - **Cache npm downloads** keyed on `package-lock.json`, and run browser tests in the `mcr.microsoft.com/playwright` image.
 - **Publish JUnit results** with `--reporter=line,junit` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`, so the CI system shows each test.
 
+The examples use the project names from Stagehand's own `playwright.config.ts`. In a project created by `stagehand init`, the [layout](./guide/project-layout) maps to jobs directly: `--project=api` needs no services, `--project=integration` gets the database, broker and cache services, and `--project='e2e-*'` runs in the Playwright image.
+
 ---
 
 ## What Stagehand's CI Runs

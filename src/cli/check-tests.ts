@@ -104,7 +104,7 @@ const CATEGORY_RE = new RegExp(`^${CATEGORY}$`);
 const TEST_MODIFIERS = new Set(['only', 'skip', 'fixme', 'fail']);
 
 /** Returns the index just past a string/template/comment starting at `i`, or -1. */
-function skipNonCode(src: string, i: number): number {
+export function skipNonCode(src: string, i: number): number {
     const c = src[i];
     const n = src[i + 1];
     if (c === '/' && n === '/') {
@@ -137,7 +137,7 @@ function skipNonCode(src: string, i: number): number {
 }
 
 /** Given `src[open]` is `(`, `[` or `{`, returns the index of its matching closer. */
-function matchClose(src: string, open: number): number {
+export function matchClose(src: string, open: number): number {
     let depth = 0;
     for (let i = open; i < src.length; ) {
         const skipped = skipNonCode(src, i);
@@ -157,7 +157,7 @@ function matchClose(src: string, open: number): number {
 }
 
 /** Splits the text between parens into top-level comma-separated arguments. */
-function splitArgs(src: string, open: number, close: number): string[] {
+export function splitArgs(src: string, open: number, close: number): string[] {
     const args: string[] = [];
     let start = open + 1;
     for (let i = open + 1; i < close; ) {
@@ -242,7 +242,7 @@ export function findTests(src: string): FoundTest[] {
     return tests;
 }
 
-function lineOf(src: string, index: number): number {
+export function lineOf(src: string, index: number): number {
     let line = 1;
     for (let i = 0; i < index; i++) if (src[i] === '\n') line++;
     return line;
