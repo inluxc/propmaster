@@ -17,7 +17,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { FixtureInitError } from '../../src/errors';
+import { FixtureInitError, MissingPackageError } from '../../src/errors';
 import {
     openApiFixture,
     resolveSpecDefinition,
@@ -252,6 +252,23 @@ test.describe('OpenAPI Fixture', () => {
             const error = await resolveSpecDefinition('./specs/scalar.yaml', dir).catch((e) => e);
             expect(error).toBeInstanceOf(FixtureInitError);
             expect(error.details.reason).toContain('expected an object');
+        });
+
+        test('a JSON spec never loads js-yaml', async () => {
+            const definition = await resolveSpecDefinition('./specs/api.json', dir, () => {
+                throw new Error('js-yaml must not be loaded for a JSON spec');
+            });
+            expect(definition).toEqual(SPEC);
+        });
+
+        test('a YAML spec without js-yaml installed fails with MissingPackageError naming js-yaml', async () => {
+            // Stand-in for loadOptional() when js-yaml isn't installed.
+            const missing = () => Promise.reject(new MissingPackageError('openApiClient (YAML spec)', 'js-yaml'));
+            const error = await resolveSpecDefinition('./specs/api.yaml', dir, missing).catch((e) => e);
+            expect(error).toBeInstanceOf(MissingPackageError);
+            expect(error.packageName).toBe('js-yaml');
+            expect(error.installCommand).toBe('npm install --save-dev js-yaml');
+            expect(error.message).toContain('openApiClient (YAML spec)');
         });
 
         test('returns http(s) URLs unchanged', async () => {

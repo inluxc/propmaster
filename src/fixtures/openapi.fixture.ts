@@ -50,20 +50,20 @@ function createTimeout(ms: number, label: string): { promise: Promise<never>; cl
     return { promise, clear };
 }
 
-/**
- * Parses spec text as JSON, or as YAML when it isn't JSON. js-yaml is an
- * optional peer dependency, loaded only for YAML specs.
- */
-async function parseSpec(raw: string, filePath: string): Promise<unknown> {
-    if (extname(filePath).toLowerCase() === '.json') {
-        return JSON.parse(raw);
-    }
-    try {
-        return JSON.parse(raw);
-    } catch {
-        const yaml = await loadOptional<typeof import('js-yaml')>('js-yaml', 'openApiClient (YAML spec file)');
+/** Loads js-yaml, an optional peer dependency needed only for YAML spec files. */
+export type YamlLoader = () => Promise<typeof import('js-yaml')>;
+
+const loadJsYaml: YamlLoader = () =>
+    loadOptional<typeof import('js-yaml')>('js-yaml', 'openApiClient (YAML spec)');
+
+/** Parses spec text: YAML for `.yaml`/`.yml` files (loading js-yaml), JSON otherwise. */
+async function parseSpec(raw: string, filePath: string, loadYaml: YamlLoader): Promise<unknown> {
+    const ext = extname(filePath).toLowerCase();
+    if (ext === '.yaml' || ext === '.yml') {
+        const yaml = await loadYaml();
         return yaml.load(raw, { filename: filePath });
     }
+    return JSON.parse(raw);
 }
 
 /** True when `specPath` is an http(s) URL that openapi-client-axios should fetch itself. */
@@ -76,14 +76,17 @@ export function isRemoteSpec(specPath: string): boolean {
  *
  * - http(s) URLs are returned unchanged; openapi-client-axios fetches them.
  * - Anything else is a local file: resolved against `cwd` (the project root)
- *   when relative, read from disk, and parsed as JSON or YAML.
+ *   when relative, read from disk, and parsed as YAML (`.yaml`/`.yml`, which
+ *   needs js-yaml installed) or JSON (anything else).
  *
+ * A YAML spec without js-yaml installed throws `MissingPackageError`.
  * Throws `FixtureInitError('openApiClient', 'init', { specPath, reason })` when
  * the file is missing, unreadable, or does not parse to an object.
  */
 export async function resolveSpecDefinition(
     specPath: string,
     cwd: string = process.cwd(),
+    loadYaml: YamlLoader = loadJsYaml,
 ): Promise<string | Document> {
     if (isRemoteSpec(specPath)) {
         return specPath;
@@ -104,7 +107,7 @@ export async function resolveSpecDefinition(
 
     let parsed: unknown;
     try {
-        parsed = await parseSpec(raw, filePath);
+        parsed = await parseSpec(raw, filePath, loadYaml);
     } catch (error) {
         if (error instanceof MissingPackageError) throw error;
         throw new FixtureInitError(
@@ -112,7 +115,7 @@ export async function resolveSpecDefinition(
             'init',
             {
                 specPath,
-                reason: `Could not parse OpenAPI spec file ${filePath} as JSON or YAML: ${error instanceof Error ? error.message : String(error)}`,
+                reason: `Could not parse OpenAPI spec file ${filePath} as ${/\.ya?ml$/i.test(filePath) ? 'YAML' : 'JSON'}: ${error instanceof Error ? error.message : String(error)}`,
             },
             error instanceof Error ? error : undefined,
         );
