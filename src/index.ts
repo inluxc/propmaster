@@ -26,6 +26,9 @@ export type {
     Neo4jWriteResult,
     CypherParams,
     OtpClient,
+    InboxClient,
+    InboxMessage,
+    InboxProvider,
     GraphQLClient,
     AppiumDriver,
     GadsHubClient,
@@ -50,6 +53,7 @@ export type {
     KafkaFixtureConfig,
     RedisFixtureConfig,
     OtpFixtureConfig,
+    InboxFixtureConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
     GadsPresetConfig,
@@ -57,6 +61,7 @@ export type {
     EnvironmentsFile,
 } from './config/index.js';
 export { ConfigLoader } from './config/index.js';
+export { MailpitProvider } from './fixtures/inbox.fixture.js';
 export { ContainerManager, DEFAULT_IMAGES } from './containers/container-manager.js';
 export { EnvLoader } from './config/index.js';
 

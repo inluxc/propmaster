@@ -25,13 +25,14 @@ import type {
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
     RedisFixtureConfig,
+    InboxFixtureConfig,
 } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'mailpit';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -42,6 +43,7 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     mongodb: 'mongo:7',
     neo4j: 'neo4j:5',
     kafka: 'apache/kafka:latest',
+    mailpit: 'axllent/mailpit:latest',
 };
 
 /** Throwaway credentials used when the config doesn't set its own. */
@@ -80,6 +82,8 @@ export interface ContainerSpec {
     port: number;
     /** Host port to bind it to; random when omitted. */
     hostPort?: number;
+    /** More container ports to publish (random host ports), e.g. Mailpit's SMTP port. */
+    extraPorts?: number[];
     /** Shell command that exits 0 once the service is ready. */
     healthCheck: string;
     command?: string[];
@@ -260,6 +264,17 @@ export function kafkaSpec(options: ContainerOptions, host: string, hostPort: num
     };
 }
 
+/** Mailpit: the API/UI on 8025 for the fixture, SMTP on 1025 for the app under test. */
+export function mailpitSpec(options: ContainerOptions): ContainerSpec {
+    return {
+        ...baseSpec('mailpit', 'inboxClient', options),
+        env: {},
+        port: 8025,
+        extraPorts: [1025],
+        healthCheck: '/mailpit readyz',
+    };
+}
+
 /** A free TCP port on this machine. */
 export function freePort(): Promise<number> {
     return new Promise((resolvePort, reject) => {
@@ -280,6 +295,8 @@ interface Started {
     container: StartedTestContainer;
     host: string;
     port: number;
+    /** Host ports of `extraPorts`, by container port. */
+    extra: Record<number, number>;
     reuse: boolean;
 }
 
@@ -350,6 +367,22 @@ export class ContainerManager {
         return { ...config, brokers: [`${started.host}:${started.port}`], ssl: false, sasl: undefined, container: false };
     }
 
+    /** Mailpit: `url` points at its API, `smtpHost`/`smtpPort` at its SMTP server. */
+    async inbox(config: InboxFixtureConfig): Promise<InboxFixtureConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const started = await this.ensure(mailpitSpec(options));
+        return {
+            ...config,
+            url: `http://${started.host}:${started.port}`,
+            smtpHost: started.host,
+            smtpPort: started.extra[1025],
+            username: undefined,
+            password: undefined,
+            container: false,
+        };
+    }
+
     /** Stops every container this worker started (reused ones keep running). */
     async stopAll(): Promise<void> {
         const all = await Promise.allSettled([...this.started.values()]);
@@ -386,7 +419,7 @@ export class ContainerManager {
         const tc = await this.testcontainers(spec.fixture);
         let container = new tc.GenericContainer(spec.image)
             .withEnvironment(spec.env)
-            .withExposedPorts(spec.hostPort ? { container: spec.port, host: spec.hostPort } : spec.port)
+            .withExposedPorts(spec.hostPort ? { container: spec.port, host: spec.hostPort } : spec.port, ...(spec.extraPorts ?? []))
             .withHealthCheck({
                 test: ['CMD-SHELL', spec.healthCheck],
                 interval: 1_000,
@@ -408,7 +441,8 @@ export class ContainerManager {
 
         try {
             const started = await container.start();
-            return { container: started, host: started.getHost(), port: started.getMappedPort(spec.port), reuse: spec.reuse };
+            const extra = Object.fromEntries((spec.extraPorts ?? []).map((p) => [p, started.getMappedPort(p)]));
+            return { container: started, host: started.getHost(), port: started.getMappedPort(spec.port), extra, reuse: spec.reuse };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             const noRuntime = /container runtime|ECONNREFUSED|ENOENT|docker\.sock|Cannot connect to the Docker daemon/i.test(message);

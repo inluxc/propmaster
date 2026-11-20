@@ -64,6 +64,7 @@ export default defineConfig({
                     { text: 'MongoDB', link: '/mongodb-fixture' },
                     { text: 'Neo4j', link: '/neo4j-fixture' },
                     { text: 'OTP (2FA)', link: '/otp-fixture' },
+                    { text: 'Inbox (email)', link: '/inbox-fixture' },
                     { text: 'Appium & GADS', link: '/appium-fixture' },
                     { text: 'Custom Fixtures', link: '/custom-fixtures' },
                 ],

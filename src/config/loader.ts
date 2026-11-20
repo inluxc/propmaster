@@ -336,6 +336,38 @@ export class ConfigLoader {
                 if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
                 cfg.neo4j.database = val;
             },
+            'PW_INBOX_URL': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.url = val;
+            },
+            'PW_INBOX_SMTP_HOST': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.smtpHost = val;
+            },
+            'PW_INBOX_SMTP_PORT': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.smtpPort = parseInt(val, 10);
+            },
+            'PW_INBOX_DOMAIN': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.domain = val;
+            },
+            'PW_INBOX_TIMEOUT': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.timeout = parseInt(val, 10);
+            },
+            'PW_INBOX_USERNAME': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.username = val;
+            },
+            'PW_INBOX_PASSWORD': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.password = val;
+            },
+            'PW_INBOX_CONTAINER': (cfg, val) => {
+                if (!cfg.inbox) cfg.inbox = { url: '' };
+                cfg.inbox.container = parseContainerEnv(val);
+            },
             'PW_APPIUM_SERVER_URL': (cfg, val) => {
                 if (!cfg.appium) cfg.appium = { serverUrl: '' };
                 cfg.appium.serverUrl = val;

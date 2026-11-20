@@ -115,6 +115,13 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            name: 'integration-inbox',
+            testMatch: '**/examples/inbox.spec.ts',
+            use: {
+                inbox: config.inbox,
+            },
+        },
+        {
             name: 'otp',
             testMatch: '**/examples/otp.spec.ts',
             use: {

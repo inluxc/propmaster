@@ -6,7 +6,7 @@ Turn on `container` for a backend and Stagehand starts it in a throwaway Docker 
 PW_DB_CONTAINER=true PW_KAFKA_CONTAINER=true npx playwright test --project=integration
 ```
 
-Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j and Kafka.** SQLite needs no server.
+Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka and Mailpit** (the [inbox](./inbox-fixture) mail server). SQLite needs no server.
 
 ## Setup
 
@@ -25,6 +25,7 @@ Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j and Kafka.** SQLite
     PW_MONGODB_CONTAINER=true     # mongoDbClient
     PW_NEO4J_CONTAINER=true       # neo4jClient
     PW_KAFKA_CONTAINER=true       # kafkaClient
+    PW_INBOX_CONTAINER=true       # inboxClient (Mailpit; inboxClient.smtp has its SMTP host and port)
     ```
 
     A value other than `true`/`false` is used as the image, e.g. `PW_DB_CONTAINER=postgres:16-alpine`.
@@ -73,6 +74,7 @@ With 4 workers, a backend runs in 4 containers, one per worker, so tests in diff
 | MongoDB | `mongo:7` | A root user when the config sets `username`; otherwise no auth |
 | Neo4j | `neo4j:5` | `neo4j` with the config's password (8+ characters), or `testpassword` |
 | Kafka | `apache/kafka:latest` | Single KRaft broker, no auth |
+| Mailpit | `axllent/mailpit:latest` | No auth; SMTP on a second mapped port, exposed as `inboxClient.smtp` |
 
 ### Schema and seed data
 

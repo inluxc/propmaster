@@ -92,3 +92,11 @@ services:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
       interval: 5s
       retries: 30
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]   # API/UI, SMTP
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      retries: 15
