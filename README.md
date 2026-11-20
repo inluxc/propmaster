@@ -1,3 +1,5 @@
+<p align="center"><img src="https://propmaster.dev/logo.svg" alt="Propmaster logo" width="96"></p>
+
 # Propmaster (`@inluxc/propmaster`)
 
 > *In theater, the **prop master** sources every prop, sets it out before the scene, and collects it afterwards, so each actor finds exactly what they need at the moment they need it. The audience never sees them, but without them, the show doesn't happen.*
