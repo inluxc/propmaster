@@ -54,6 +54,8 @@ features:
 
 ::: info Which Stagehand?
 This is **`@inluxc/stagehand`**, Playwright Test fixtures for the services behind your UI. It isn't [Browserbase's Stagehand](https://github.com/browserbase/stagehand), the AI browser-automation framework: there's no `act()`, `extract()` or `observe()` here, and no AI model.
+
+Spend tokens on generating tests, not on running them. An AI agent can write these tests once; after that they're plain Playwright code that runs on every commit with no model calls, which saves a lot of money.
 :::
 
 ## One import, every fixture
