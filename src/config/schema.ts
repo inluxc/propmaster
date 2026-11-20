@@ -227,6 +227,55 @@ export interface GraphQLFixtureConfig {
 /**
  * Configuration for the OTP (One-Time Password) fixture.
  */
+/** Credentials and options for one role (a test user or client identity). */
+export interface AuthRoleConfig {
+    /** Login name: used by the password grant and by browser login steps. */
+    username?: string;
+    password?: string;
+    /** Per-role OAuth client, when roles use different clients. */
+    clientId?: string;
+    clientSecret?: string;
+    /** Per-role scopes (space-separated), overriding the top-level `scope`. */
+    scope?: string;
+    /** Anything else your login steps need: an OTP secret, a tenant, an email address. */
+    extra?: Record<string, string>;
+}
+
+/**
+ * Auth helpers: OAuth 2.0 / OIDC access tokens for API and GraphQL calls, and
+ * per-role browser login state. Keep secrets out of files: set them with
+ * PW_AUTH_* variables or map them from a secrets provider (`keyMappings`).
+ */
+export interface AuthConfig {
+    /** OIDC issuer URL; the token endpoint is read from `<issuer>/.well-known/openid-configuration`. */
+    issuer?: string;
+    /** Token endpoint, when there's no discovery document (overrides `issuer`). */
+    tokenUrl?: string;
+    clientId?: string;
+    clientSecret?: string;
+    /** How the client authenticates: HTTP Basic (default) or form fields. */
+    clientAuth?: 'basic' | 'post';
+    /** Default: `password` for roles with a username, otherwise `client_credentials`. */
+    grantType?: 'client_credentials' | 'password';
+    /** Space-separated scopes. */
+    scope?: string;
+    /** `audience` parameter some providers (Auth0, ...) need. */
+    audience?: string;
+    /** Get a new token this many seconds before the current one expires (default: 60). */
+    refreshBeforeExpiry?: number;
+    /** Role used when a test doesn't pick one (default: `default`). */
+    defaultRole?: string;
+    /** Named identities: `test.use({ authRole: 'admin' })` picks one. */
+    roles?: Record<string, AuthRoleConfig>;
+    /** Credentials for the default role, when `roles` isn't used. */
+    username?: string;
+    password?: string;
+    /** Clients that get `Authorization: Bearer <token>` automatically (default: both). */
+    applyTo?: ('openapi' | 'graphql')[];
+    /** Folder for saved browser login state (default: `.auth`). */
+    stateDir?: string;
+}
+
 /**
  * Configuration for the inbox fixture: a test mail server (Mailpit) that
  * catches the email your application sends.
@@ -303,6 +352,8 @@ export interface FrameworkConfig {
     appium?: AppiumFixtureConfig;
     /** OTP fixture configuration. */
     otp?: OtpFixtureConfig;
+    /** Auth helpers: OAuth/OIDC tokens and per-role browser login state. */
+    auth?: AuthConfig;
     /** Inbox (test mail server) fixture configuration. */
     inbox?: InboxFixtureConfig;
     /** GraphQL client fixture configuration. */

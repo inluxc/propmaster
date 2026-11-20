@@ -30,6 +30,7 @@ import type {
     Neo4jFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
+    AuthConfig,
     GraphQLFixtureConfig,
     AppiumFixtureConfig,
 } from '../config/schema.js';
@@ -43,6 +44,9 @@ import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { inboxFixture, type InboxClient } from './inbox.fixture.js';
 import { graphqlFixture, type GraphQLClient } from './graphql.fixture.js';
 import { ContainerManager } from '../containers/container-manager.js';
+import { TokenManager, roleName } from '../auth/token-manager.js';
+import { authStateFile } from '../auth/state-file.js';
+import type { APIRequestContext } from '@playwright/test';
 import { appiumFixture, type AppiumDriver, type GadsHubClient } from './appium.fixture.js';
 
 /**
@@ -59,6 +63,9 @@ export interface ConfigOptions {
     neo4j: Neo4jFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
     inbox: InboxFixtureConfig | undefined;
+    auth: AuthConfig | undefined;
+    /** Role for this test: picks the API token's identity and the saved browser login state. */
+    authRole: string | undefined;
     graphql: GraphQLFixtureConfig | undefined;
     appium: AppiumFixtureConfig | undefined;
 }
@@ -80,6 +87,14 @@ export interface FixtureTypes {
     otpClient: OtpClient;
     inboxConfig: InboxFixtureConfig;
     inboxClient: InboxClient;
+    /** The auth config, or undefined when none is set. */
+    authConfig: AuthConfig | undefined;
+    /** A valid access token for the test's role (fetched or refreshed as needed). */
+    authToken: string;
+    /** `{ Authorization: 'Bearer <token>' }` for the test's role. */
+    authHeaders: Record<string, string>;
+    /** An APIRequestContext that sends the role's bearer token, with the OpenAPI base URL (or baseURL). */
+    authRequest: APIRequestContext;
     graphqlClient: GraphQLClient;
     appiumConfig: AppiumFixtureConfig;
     appiumDriver: AppiumDriver;
@@ -102,6 +117,8 @@ const configOptionFixtures = {
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     inbox: [undefined as InboxFixtureConfig | undefined, { option: true }],
+    auth: [undefined as AuthConfig | undefined, { option: true }],
+    authRole: [undefined as string | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
     appium: [undefined as AppiumFixtureConfig | undefined, { option: true }],
 };
@@ -113,6 +130,8 @@ const configOptionFixtures = {
  */
 export interface WorkerFixtureTypes {
     stagehandContainers: ContainerManager;
+    /** OAuth/OIDC tokens, cached per role for the worker. */
+    authTokens: TokenManager;
 }
 
 const containerFixtures = {
@@ -121,6 +140,12 @@ const containerFixtures = {
             const manager = new ContainerManager();
             await use(manager);
             await manager.stopAll();
+        },
+        { scope: 'worker' },
+    ],
+    authTokens: [
+        async ({}, use: (manager: TokenManager) => Promise<void>) => {
+            await use(new TokenManager());
         },
         { scope: 'worker' },
     ],
@@ -236,6 +261,67 @@ const inboxConfigFixture = {
     },
 };
 
+/** Loads config, or returns undefined when there's none to load (no environments.json). */
+async function tryLoadConfig() {
+    const { ConfigLoader } = await import('../config/loader.js');
+    try {
+        return new ConfigLoader().load();
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Auth fixtures. `authConfig` resolves the auth section (project option or
+ * ConfigLoader); `authToken`/`authHeaders`/`authRequest` give the test's role a
+ * bearer token; `storageState` is overridden so `authRole` also picks that
+ * role's saved browser login state.
+ */
+const authFixtures = {
+    authConfig: async ({ auth }: { auth: AuthConfig | undefined }, use: (config: AuthConfig | undefined) => Promise<void>) => {
+        await use(auth ?? (await tryLoadConfig())?.auth);
+    },
+    authToken: async (
+        { authConfig, authRole, authTokens }: { authConfig: AuthConfig | undefined; authRole: string | undefined; authTokens: TokenManager },
+        use: (token: string) => Promise<void>,
+    ) => {
+        if (!authConfig) {
+            const { FixtureInitError } = await import('../errors.js');
+            throw new FixtureInitError('auth', 'init', {
+                reason: 'Auth configuration is missing. Set PW_AUTH_TOKEN_URL or PW_AUTH_ISSUER plus credentials, or auth in environments.json or the project use block.',
+            });
+        }
+        await use(await authTokens.getToken(authConfig, authRole));
+    },
+    authHeaders: async ({ authToken }: { authToken: string }, use: (headers: Record<string, string>) => Promise<void>) => {
+        await use({ Authorization: `Bearer ${authToken}` });
+    },
+    authRequest: async (
+        { playwright, authHeaders, openapi, baseURL }: { playwright: { request: { newContext: (o: object) => Promise<APIRequestContext> } }; authHeaders: Record<string, string>; openapi: OpenApiFixtureConfig | undefined; baseURL: string | undefined },
+        use: (request: APIRequestContext) => Promise<void>,
+    ) => {
+        const base = openapi?.baseUrl ?? (await tryLoadConfig())?.openapi?.baseUrl ?? baseURL;
+        const request = await playwright.request.newContext({ baseURL: base, extraHTTPHeaders: authHeaders });
+        await use(request);
+        await request.dispose();
+    },
+    storageState: async (
+        { authRole, auth, storageState }: { authRole: string | undefined; auth: AuthConfig | undefined; storageState: unknown },
+        use: (state: unknown) => Promise<void>,
+    ) => {
+        if (authRole === undefined) {
+            await use(storageState);
+            return;
+        }
+        const config = auth ?? (await tryLoadConfig())?.auth ?? {};
+        // Always the role's file, even before it exists: API-only tests with a role
+        // never open a browser, and Playwright resolves storageState for every test.
+        // A browser test whose role wasn't logged in fails when its context is
+        // created ("Error reading storage state from .auth/<role>.json").
+        await use(authStateFile(roleName(config, authRole), config.stateDir));
+    },
+};
+
 /**
  * The appiumConfig fixture loads Appium configuration from the project config option
  * or falls back to ConfigLoader.
@@ -286,6 +372,7 @@ const appiumConfigFixture = {
 const allFixtures = {
     ...configOptionFixtures,
     ...containerFixtures,
+    ...authFixtures,
     ...openApiFixture,
     ...databaseFixture,
     ...kafkaFixture,

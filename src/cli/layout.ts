@@ -87,13 +87,24 @@ import type { FrameworkConfig } from '@inluxc/propmaster';
  * e2e-firefox and e2e-webkit. Run them all with --project='e2e-*'.
  * API and database fixtures stay available for setting up test data.
  * Specs: *.spec.ts files under tests/e2e/
+ *
+ * e2e-setup runs *.setup.ts files first, e.g. auth.setup.ts, which logs each
+ * role in once (\`npx propmaster auth-setup\` creates it). Tests then start
+ * logged in with test.use({ authRole: 'admin' }).
  */
 const BROWSERS = ['Desktop Chrome', 'Desktop Firefox', 'Desktop Safari'] as const;
 
-export const e2eProjects = (config: FrameworkConfig) =>
-    BROWSERS.map((device) => ({
+export const e2eProjects = (config: FrameworkConfig) => [
+    {
+        name: 'e2e-setup',
+        testDir: './tests/e2e',
+        testMatch: /.*\\.setup\\.ts/,
+        use: { baseURL: process.env.BASE_URL ?? config.openapi?.baseUrl, auth: config.auth },
+    },
+    ...BROWSERS.map((device) => ({
         name: \`e2e-\${devices[device].defaultBrowserType}\`,
         testDir: './tests/e2e',
+        dependencies: ['e2e-setup'],
         use: {
             ...devices[device],
             baseURL: process.env.BASE_URL ?? config.openapi?.baseUrl,
@@ -101,8 +112,10 @@ export const e2eProjects = (config: FrameworkConfig) =>
             graphql: config.graphql,
             database: config.database,
             otp: config.otp,
+            auth: config.auth,
         },
-    }));
+    })),
+];
 `,
 
     mobile: `import type { FrameworkConfig } from '@inluxc/propmaster';

@@ -77,6 +77,8 @@ export const mobileProjects = (config: FrameworkConfig) =>
     }));
 ```
 
+The e2e folder also gets an `e2e-setup` project that runs `*.setup.ts` files first, such as the per-role login from `npx propmaster auth-setup`; the browser projects depend on it. See [Auth: tokens and roles](../auth).
+
 Settings that differ by type, such as timeouts, retries, browsers and the number of workers, live in that type's `projects.ts`. Each project gets only the fixture settings it needs. To add a type, create a folder with a `projects.ts` and add one import and one spread to the root config.
 
 The generated `package.json` has a script per type:

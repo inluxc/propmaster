@@ -336,6 +336,54 @@ export class ConfigLoader {
                 if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
                 cfg.neo4j.database = val;
             },
+            'PW_AUTH_ISSUER': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.issuer = val;
+            },
+            'PW_AUTH_TOKEN_URL': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.tokenUrl = val;
+            },
+            'PW_AUTH_CLIENT_ID': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.clientId = val;
+            },
+            'PW_AUTH_CLIENT_SECRET': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.clientSecret = val;
+            },
+            'PW_AUTH_CLIENT_AUTH': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.clientAuth = val as 'basic' | 'post';
+            },
+            'PW_AUTH_GRANT_TYPE': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.grantType = val as 'client_credentials' | 'password';
+            },
+            'PW_AUTH_SCOPE': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.scope = val;
+            },
+            'PW_AUTH_AUDIENCE': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.audience = val;
+            },
+            'PW_AUTH_USERNAME': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.username = val;
+            },
+            'PW_AUTH_PASSWORD': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.password = val;
+            },
+            'PW_AUTH_ROLE': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.defaultRole = val;
+            },
+            'PW_AUTH_STATE_DIR': (cfg, val) => {
+                cfg.auth ??= {};
+                cfg.auth.stateDir = val;
+            },
             'PW_INBOX_URL': (cfg, val) => {
                 if (!cfg.inbox) cfg.inbox = { url: '' };
                 cfg.inbox.url = val;

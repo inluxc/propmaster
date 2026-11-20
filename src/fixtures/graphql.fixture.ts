@@ -18,6 +18,9 @@
 
 import type { GraphQLClient as GQLClient, Variables, RequestDocument } from 'graphql-request';
 import { loadOptional } from './optional-package.js';
+import type { AuthConfig } from '../config/schema.js';
+import type { TokenManager } from '../auth/token-manager.js';
+import { authApplies, bearerSource, withBearer } from '../auth/apply.js';
 import type { GraphQLFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { ConfigLoader } from '../config/loader.js';
@@ -114,7 +117,7 @@ const DEFAULT_REQUEST_TIMEOUT = 30_000;
 /**
  * Creates and configures a GraphQL client from the provided config.
  */
-function createGraphQLClient(config: GraphQLFixtureConfig, GraphQLClientClass: typeof GQLClient): GQLClient {
+function createGraphQLClient(config: GraphQLFixtureConfig, GraphQLClientClass: typeof GQLClient, bearer?: () => Promise<string>): GQLClient {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...config.headers,
@@ -126,6 +129,8 @@ function createGraphQLClient(config: GraphQLFixtureConfig, GraphQLClientClass: t
 
     const client = new GraphQLClientClass(config.endpoint, {
         headers,
+        // Auth helpers: add the role's bearer token per request, unless a header is already set.
+        ...(bearer ? { requestMiddleware: async (request) => ({ ...request, headers: await withBearer(request.headers, bearer) }) } : {}),
     });
 
     return client;
@@ -244,7 +249,12 @@ function buildGraphQLClient(client: GQLClient, requestTimeout: number): GraphQLC
 export const graphqlFixture = {
     graphqlClient: [
         async (
-            { graphql }: { graphql: GraphQLFixtureConfig | undefined },
+            {
+                graphql,
+                authConfig,
+                authRole,
+                authTokens,
+            }: { graphql: GraphQLFixtureConfig | undefined; authConfig: AuthConfig | undefined; authRole: string | undefined; authTokens: TokenManager },
             use: (client: GraphQLClient) => Promise<void>,
         ) => {
             // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -272,7 +282,8 @@ export const graphqlFixture = {
             let client: GQLClient;
 
             try {
-                client = createGraphQLClient(graphqlConfig, GraphQLClientClass);
+                const bearer = authApplies(authConfig, 'graphql') ? bearerSource(authTokens, authConfig, authRole) : undefined;
+                client = createGraphQLClient(graphqlConfig, GraphQLClientClass, bearer);
             } catch (error) {
                 throw new FixtureInitError(
                     'graphqlClient',

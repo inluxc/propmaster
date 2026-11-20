@@ -95,6 +95,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
 | `inboxClient` | `InboxClient` | Reads the email your app sends (Mailpit): codes, verification and reset links | [Setup & Usage](docs/inbox-fixture.md) |
+| `authToken`, `authHeaders`, `authRequest` | `string`, headers, `APIRequestContext` | OAuth/OIDC tokens per role, refreshed before expiry and sent by `openApiClient`/`graphqlClient`; `authRole` also picks a saved browser login | [Tokens & Roles](docs/auth.md) |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session on any Appium server, grid, cloud farm or [GADS](https://github.com/shamanec/GADS) hub; ended on teardown | [Setup & Usage](docs/appium-fixture.md) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing | [Setup & Usage](docs/appium-fixture.md#gads-preset) |
 

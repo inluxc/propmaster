@@ -376,6 +376,33 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  test-auth:
+    runs-on: ubuntu-latest
+    container: node:24
+    services:
+      oauth:
+        image: ghcr.io/navikt/mock-oauth2-server:6.1.4
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8080/default/.well-known/openid-configuration > /dev/null || exit 1"
+          --health-interval 2s
+          --health-timeout 10s
+          --health-retries 30
+    env:
+      CI: true
+      PW_AUTH_ISSUER: http://oauth:8080/default
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Run OAuth token tests
+        run: npx playwright test --project=integration-auth
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-auth
+          path: playwright-report/
+          retention-days: 7
+
   test-kafka:
     runs-on: ubuntu-latest
     container: node:24
@@ -535,7 +562,7 @@ jobs:
         with:
           ignore-scripts: "true"
       - name: Run browser tests
-        run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit
+        run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit --project=auth-browser
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4

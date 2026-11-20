@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { EXAMPLE_AUTH } from './tests/examples/support/auth-users';
 import { ConfigLoader } from './src/config/loader';
 import type { ConfigOptions } from './src/fixtures';
 
@@ -113,6 +114,21 @@ export default defineConfig<ConfigOptions>({
             use: {
                 neo4j: config.neo4j,
             },
+        },
+        {
+            name: 'auth-browser-setup',
+            testMatch: '**/examples/auth-browser.setup.ts',
+            use: { ...devices['Desktop Chrome'], auth: EXAMPLE_AUTH },
+        },
+        {
+            name: 'auth-browser',
+            testMatch: '**/examples/auth-browser.spec.ts',
+            dependencies: ['auth-browser-setup'],
+            use: { ...devices['Desktop Chrome'], auth: EXAMPLE_AUTH },
+        },
+        {
+            name: 'integration-auth',
+            testMatch: '**/examples/auth-tokens.spec.ts',
         },
         {
             name: 'integration-inbox',

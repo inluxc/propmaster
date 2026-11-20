@@ -112,6 +112,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `redisClient` | Redis keys and pub/sub | [Redis](../redis-fixture) |
 | `otpClient` | TOTP/HOTP codes for 2FA flows | [OTP](../otp-fixture) |
 | `inboxClient` | Emailed codes, verification and reset links (Mailpit) | [Inbox](../inbox-fixture) |
+| `authToken` / `authRequest` | OAuth/OIDC tokens per role; `authRole` also starts browser tests logged in | [Auth](../auth) |
 | `appiumDriver` | Appium session (WebdriverIO) on local Appium, a grid, a cloud farm or GADS | [Appium](../appium-fixture) |
 | `gadsHub` | GADS hub status and device listing | [Appium → GADS](../appium-fixture#gads-preset) |
 

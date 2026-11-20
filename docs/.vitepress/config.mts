@@ -65,6 +65,7 @@ export default defineConfig({
                     { text: 'Neo4j', link: '/neo4j-fixture' },
                     { text: 'OTP (2FA)', link: '/otp-fixture' },
                     { text: 'Inbox (email)', link: '/inbox-fixture' },
+                    { text: 'Auth: tokens & roles', link: '/auth' },
                     { text: 'Appium & GADS', link: '/appium-fixture' },
                     { text: 'Custom Fixtures', link: '/custom-fixtures' },
                 ],
