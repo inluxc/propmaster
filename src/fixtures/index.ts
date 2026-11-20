@@ -50,6 +50,9 @@ import { TokenManager, roleName } from '../auth/token-manager.js';
 import { authStateFile } from '../auth/state-file.js';
 import type { APIRequestContext } from '@playwright/test';
 import { appiumFixture, type AppiumDriver, type GadsHubClient } from './appium.fixture.js';
+import { CleanupRegistry } from '../test-data/registry.js';
+import { TestData, newRunId, type FakerLike } from '../test-data/factory.js';
+import { loadOptional } from './optional-package.js';
 
 /**
  * Configuration options that can be passed via project `use` block.
@@ -71,6 +74,11 @@ export interface ConfigOptions {
     authRole: string | undefined;
     graphql: GraphQLFixtureConfig | undefined;
     appium: AppiumFixtureConfig | undefined;
+    /**
+     * Undo the data a test creates through the clients (default: true). Set it
+     * to false for a project that seeds data meant to stay, e.g. a setup project.
+     */
+    autoCleanup: boolean;
 }
 
 /**
@@ -105,6 +113,10 @@ export interface FixtureTypes {
     appiumConfig: AppiumFixtureConfig;
     appiumDriver: AppiumDriver;
     gadsHub: GadsHubClient;
+    /** The test's cleanup stack; the client fixtures record their inserts in it. */
+    dataCleanup: CleanupRegistry;
+    /** Factories, unique values and custom cleanups for the test's data. */
+    testData: TestData;
 }
 
 /**
@@ -128,6 +140,7 @@ const configOptionFixtures = {
     authRole: [undefined as string | undefined, { option: true }],
     graphql: [undefined as GraphQLFixtureConfig | undefined, { option: true }],
     appium: [undefined as AppiumFixtureConfig | undefined, { option: true }],
+    autoCleanup: [true, { option: true }],
 };
 
 /**
@@ -352,6 +365,34 @@ const mockConfigFixture = {
 };
 
 /**
+ * Test data: `dataCleanup` is the per-test undo stack the client fixtures
+ * record their inserts in, run before they disconnect. `testData` adds
+ * factories and unique values on top. Neither connects to anything.
+ */
+const testDataFixtures = {
+    dataCleanup: async ({ autoCleanup }: { autoCleanup: boolean }, use: (registry: CleanupRegistry) => Promise<void>) => {
+        const registry = new CleanupRegistry(autoCleanup);
+        await use(registry);
+        // Whatever no client fixture ran (testData.cleanup() in a test with no client)
+        await registry.flush();
+    },
+    testData: async (
+        { dataCleanup }: { dataCleanup: CleanupRegistry },
+        use: (data: TestData) => Promise<void>,
+        testInfo: { workerIndex: number },
+    ) => {
+        let faker: FakerLike;
+        let fakerError: Error | undefined;
+        try {
+            faker = (await loadOptional<{ faker: FakerLike }>('@faker-js/faker', 'testData (faker)')).faker;
+        } catch (error) {
+            fakerError = error as Error; // only thrown if the test reads testData.faker
+        }
+        await use(new TestData(dataCleanup, { runId: newRunId(testInfo.workerIndex), faker, fakerError }));
+    },
+};
+
+/**
  * The appiumConfig fixture loads Appium configuration from the project config option
  * or falls back to ConfigLoader.
  */
@@ -419,6 +460,7 @@ const allFixtures = {
     ...graphqlFixture,
     ...appiumConfigFixture,
     ...appiumFixture,
+    ...testDataFixtures,
 };
 
 /**
@@ -440,6 +482,7 @@ export type { RedisClient } from './redis.fixture.js';
 export type { MongoDbClient } from './mongodb.fixture.js';
 export type { Neo4jClient, Neo4jTransaction, Neo4jWriteResult, CypherParams } from './neo4j.fixture.js';
 export type { OtpClient } from './otp.fixture.js';
+export type { InsertOptions } from './database.fixture.js';
 export type { GraphQLClient } from './graphql.fixture.js';
 export type {
     AppiumDriver,

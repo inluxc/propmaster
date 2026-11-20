@@ -27,6 +27,7 @@ export const FIXTURE_PACKAGES = {
     kafkaClient: ['kafkajs'],
     redisClient: ['ioredis'],
     otpClient: ['otplib'],
+    'testData (faker)': ['@faker-js/faker'],
     appiumDriver: ['webdriverio'],
     'any backend with `container: true`': ['testcontainers'],
 } as const satisfies Record<string, readonly string[]>;

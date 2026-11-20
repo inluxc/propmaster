@@ -103,11 +103,13 @@ await test.step('Step 1: Request a user that does not exist', async () => {
 
 ## Isolate test data
 
-Tests run in parallel, so give each run its own data and clean it up:
+Tests run in parallel, so give each test its own data. Data created through the clients is cleaned up for you, pass or fail ([Test data](../test-data)):
 
-- **Redis:** set `PW_REDIS_KEY_PREFIX` (for example `test:ci-${GITHUB_RUN_ID}:`) so runs never share keys.
-- **Neo4j and MongoDB:** tag created nodes or documents with a unique run ID and delete them in `afterEach`.
-- **SQL:** use parameterized queries, never string interpolation, and delete what the test inserted.
+- **Unique values:** build keys and emails with a factory, `testData.unique()` or `testData.email()`. Each test's run ID is unique across workers.
+- **SQL:** `databaseClient.insert()` rows are deleted after the test. Raw `execute()` inserts need `testData.cleanup()`. Always use parameterized queries, never string interpolation.
+- **MongoDB:** `insertOne`/`insertMany` documents are deleted by `_id`.
+- **Redis:** keys you `set` are deleted, or restored if they existed. `PW_REDIS_KEY_PREFIX` (for example `test:ci-${GITHUB_RUN_ID}:`) keeps runs apart as well.
+- **Neo4j:** write with `{ runId: testData.runId }`. Those nodes are detach-deleted after the test.
 
 ## Working with AI agents
 

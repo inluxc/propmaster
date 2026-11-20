@@ -214,6 +214,12 @@ test('run an aggregation', async ({ mongoDbClient }) => {
 
 ---
 
+## Automatic Cleanup
+
+Documents inserted with `insertOne` and `insertMany` are deleted by `_id` when the test ends, pass or fail. Pass `{ keep: true }` as the last argument to leave them in place. Updates and deletes aren't undone. See [Test Data and Automatic Cleanup](./test-data).
+
+---
+
 ## Lifecycle
 
 1. **Setup** — Creates MongoClient, connects, verifies with a ping command

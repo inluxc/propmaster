@@ -17,15 +17,32 @@ import { FixtureInitError, FixtureOperationError } from '../errors.js';
 import { loadOptional } from './optional-package.js';
 import type { ContainerManager } from '../containers/container-manager.js';
 import { DatabaseFixtureConfig } from '../config/schema.js';
+import type { CleanupRegistry, KeepOption } from '../test-data/registry.js';
+import { trackDatabase } from '../test-data/tracking.js';
 
 /**
  * Client interface exposed to tests for database operations.
  */
 export interface DatabaseClient {
     query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
+    /** Runs a statement. Not tracked for cleanup: use insert() or testData.cleanup() for data the test creates. */
     execute(sql: string, params?: unknown[]): Promise<{ affectedRows: number }>;
+    /**
+     * Inserts one row or many, and deletes them again when the test ends (pass or fail).
+     * Rows are matched for the delete on `options.key`, else `id` when every row has one,
+     * else every inserted column. `{ keep: true }` leaves them in place.
+     */
+    insert(table: string, rows: Record<string, unknown> | Record<string, unknown>[], options?: InsertOptions): Promise<{ affectedRows: number }>;
     close(): Promise<void>;
 }
+
+export interface InsertOptions extends KeepOption {
+    /** Column(s) identifying an inserted row for the cleanup DELETE (default: `id`, else every inserted column). */
+    key?: string | string[];
+}
+
+/** A database connection before cleanup tracking adds insert(). */
+export type DatabaseConnection = Omit<DatabaseClient, 'insert'>;
 
 const DEFAULT_CONNECTION_TIMEOUT = 10000;
 const DEFAULT_QUERY_TIMEOUT = 30000;
@@ -33,7 +50,7 @@ const DEFAULT_QUERY_TIMEOUT = 30000;
 /**
  * Creates a PostgreSQL database client using the `pg` library.
  */
-async function createPostgresClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
+async function createPostgresClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     const { Pool } = await loadOptional<typeof import('pg')>('pg', 'databaseClient (postgresql)');
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
@@ -103,7 +120,7 @@ async function createPostgresClient(config: DatabaseFixtureConfig): Promise<Data
 /**
  * Creates a MySQL database client using the `mysql2` library.
  */
-async function createMysqlClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
+async function createMysqlClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     const mysql = await loadOptional<typeof import('mysql2/promise')>('mysql2/promise', 'databaseClient (mysql)', ['mysql2']);
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
@@ -220,7 +237,7 @@ function normalizePositionalParams(
 /**
  * Creates a SQLite database client using the `better-sqlite3` library.
  */
-async function createSqliteClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
+async function createSqliteClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     // CommonJS `export =` module: a dynamic import exposes it as `default`.
     const BetterSqlite3 = await loadOptional<{ default: typeof import('better-sqlite3') }>('better-sqlite3', 'databaseClient (sqlite)');
 
@@ -285,7 +302,7 @@ async function createSqliteClient(config: DatabaseFixtureConfig): Promise<Databa
 /**
  * Creates a MSSQL database client using the `mssql` library.
  */
-async function createMssqlClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
+async function createMssqlClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     const mssqlModule = await loadOptional<typeof import('mssql')>('mssql', 'databaseClient (mssql)');
     // Handle ESM/CJS interop — ConnectionPool may be on default export or top-level
     const mssql = ((mssqlModule as unknown as { default?: typeof mssqlModule }).default ?? mssqlModule) as typeof mssqlModule;
@@ -379,7 +396,7 @@ async function createMssqlClient(config: DatabaseFixtureConfig): Promise<Databas
 /**
  * Creates a DatabaseClient based on the configured database type.
  */
-async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<DatabaseClient> {
+async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     switch (config.type) {
         case 'postgresql':
             return createPostgresClient(config);
@@ -407,7 +424,7 @@ async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<Data
  */
 export const databaseFixture = {
     databaseClient: async (
-        { database, stagehandContainers }: { database: DatabaseFixtureConfig | undefined; stagehandContainers: ContainerManager },
+        { database, stagehandContainers, dataCleanup }: { database: DatabaseFixtureConfig | undefined; stagehandContainers: ContainerManager; dataCleanup: CleanupRegistry },
         use: (client: DatabaseClient) => Promise<void>,
     ) => {
         // Use config from project `use` block if provided, otherwise fall back to ConfigLoader
@@ -430,12 +447,17 @@ export const databaseFixture = {
         config = await stagehandContainers.database(config);
 
         // Setup: create client and verify connectivity
-        const client = await createDatabaseClient(config);
+        const connection = await createDatabaseClient(config);
+        const client = trackDatabase(connection, dataCleanup);
 
         // Provide client to the test
-        await use(client);
-
-        // Teardown: close connections
-        await client.close();
+        try {
+            await use(client);
+            // Undo the test's inserts (every client is still connected here)
+            await dataCleanup.flush();
+        } finally {
+            // Teardown: close connections
+            await connection.close();
+        }
     },
 };

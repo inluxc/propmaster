@@ -64,4 +64,25 @@ test.describe('Database Fixture Examples', () => {
             [-1],
         );
     });
+
+    test('[TC-DB-005] factory rows are deleted after the test', { tag: ['@TC-DB-005'] }, async ({ databaseClient, testData }) => {
+        const user = testData.define('user', (f) => ({ name: `User ${f.seq}`, email: f.email('db'), active: true }));
+        const rows = testData.buildMany(user, 3);
+
+        await test.step('Step 1: Insert three users built by the factory', async () => {
+            const result = await databaseClient.insert('users', rows);
+            expect(result.affectedRows).toBe(3);
+        });
+
+        await test.step('Step 2: Verify the rows exist', async () => {
+            const found = await databaseClient.query('SELECT email FROM users WHERE email IN ($1, $2, $3)', rows.map((r) => r.email));
+            expect(found).toHaveLength(3);
+        });
+
+        await test.step('Step 3: Run the cleanups now (normally at teardown) and verify the rows are gone', async () => {
+            await testData.flushCleanups();
+            const found = await databaseClient.query('SELECT email FROM users WHERE email IN ($1, $2, $3)', rows.map((r) => r.email));
+            expect(found).toEqual([]);
+        });
+    });
 });

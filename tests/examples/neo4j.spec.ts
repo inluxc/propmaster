@@ -193,4 +193,22 @@ test.describe('Neo4j Fixture Examples', () => {
             expect((error as FixtureOperationError).details.cypher).toBe('MATCH (n RETURN n');
         });
     });
+
+    test('[TC-NEO-008] nodes tagged with the test run ID are deleted after the test', { tag: ['@TC-NEO-008'] }, async ({ neo4jClient, testData }) => {
+        const { runId } = testData; // unique to this test, across workers
+
+        await test.step('Step 1: Create two linked nodes tagged with the run ID', async () => {
+            const counters = await neo4jClient.write(
+                'CREATE (:PropmasterTest:Person {runId: $runId, name: $name})-[:OWNS]->(:PropmasterTest:Account {runId: $runId})',
+                { runId, name: 'Alice' },
+            );
+            expect(counters.nodesCreated).toBe(2);
+        });
+
+        await test.step('Step 2: Run the cleanups now and verify the nodes are gone', async () => {
+            await testData.flushCleanups();
+            const rows = await neo4jClient.run<{ total: number }>('MATCH (n {runId: $runId}) RETURN count(n) AS total', { runId });
+            expect(rows[0].total).toBe(0);
+        });
+    });
 });

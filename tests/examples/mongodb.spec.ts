@@ -113,4 +113,23 @@ test.describe('MongoDB Fixture Examples', () => {
 
         await mongo.verifyDocumentProperties('Verify aggregation result structure', results, ['_id', 'count']);
     });
+
+    test('[TC-MDB-008] inserted documents are deleted after the test', { tag: ['@TC-MDB-008'] }, async ({ mongoDbClient, testData }) => {
+        const email = testData.email('mongo');
+
+        await test.step('Step 1: Insert one document and keep another', async () => {
+            await mongoDbClient.insertOne('users', { email, active: true });
+            await mongoDbClient.insertOne('users', { email: `${email}.kept`, active: true }, { keep: true });
+        });
+
+        await test.step('Step 2: Run the cleanups now and verify only the kept document remains', async () => {
+            await testData.flushCleanups();
+            expect(await mongoDbClient.findOne('users', { email })).toBeNull();
+            expect(await mongoDbClient.findOne('users', { email: `${email}.kept` })).not.toBeNull();
+        });
+
+        await test.step('Step 3: Remove the kept document', async () => {
+            await mongoDbClient.deleteOne('users', { email: `${email}.kept` });
+        });
+    });
 });
