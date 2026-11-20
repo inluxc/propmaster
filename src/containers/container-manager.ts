@@ -303,6 +303,37 @@ export function freePort(): Promise<number> {
 
 // ─── Manager ────────────────────────────────────────────────────────────────
 
+/** Extra test time allowed while a container without its own startup timeout starts. */
+const DEFAULT_STARTUP_BUDGET_MS = 180_000;
+/** On top of the startup timeout: pulling the image isn't part of it. */
+const IMAGE_PULL_BUDGET_MS = 120_000;
+
+/**
+ * Waits for a container start without spending the test's own timeout on it.
+ * The container starts during the first test that needs it, so that test's
+ * timeout is extended by the startup timeout first, then set back to its
+ * original value plus the time the start actually took. Outside a test (no
+ * `test.info()`) it just waits.
+ */
+export async function withStartupBudget<T>(pending: Promise<T>, budgetMs: number): Promise<T> {
+    let info: { timeout: number; setTimeout(ms: number): void } | undefined;
+    try {
+        const { test } = await import('@playwright/test');
+        info = test.info();
+    } catch {
+        return pending;
+    }
+    const original = info.timeout;
+    if (!original) return pending; // timeouts disabled
+    const t0 = Date.now();
+    info.setTimeout(original + budgetMs + IMAGE_PULL_BUDGET_MS);
+    try {
+        return await pending;
+    } finally {
+        info.setTimeout(original + (Date.now() - t0));
+    }
+}
+
 interface Started {
     container: StartedTestContainer;
     host: string;
@@ -318,6 +349,8 @@ interface Started {
  */
 export class ContainerManager {
     private readonly started = new Map<string, Promise<Started>>();
+    /** Keys whose container is up: tests that ask for them again don't wait. */
+    private readonly ready = new Set<string>();
 
     /** The database config with host/port/credentials pointing at a container. SQLite is returned unchanged. */
     async database(config: DatabaseFixtureConfig): Promise<DatabaseFixtureConfig> {
@@ -415,21 +448,29 @@ export class ContainerManager {
 
     private ensure(spec: ContainerSpec, afterStart?: (c: StartedTestContainer) => Promise<void>): Promise<Started> {
         const key = JSON.stringify([spec.kind, spec.image, spec.env, spec.command, spec.files]);
-        return this.ensureKeyed(key, async () => {
-            const started = await this.start(spec);
-            if (afterStart) await afterStart(started.container);
-            return started;
-        });
+        return this.ensureKeyed(
+            key,
+            async () => {
+                const started = await this.start(spec);
+                if (afterStart) await afterStart(started.container);
+                return started;
+            },
+            spec.startupTimeoutMs,
+        );
     }
 
-    private ensureKeyed(key: string, create: () => Promise<Started>): Promise<Started> {
+    private ensureKeyed(key: string, create: () => Promise<Started>, startupTimeoutMs = DEFAULT_STARTUP_BUDGET_MS): Promise<Started> {
         let pending = this.started.get(key);
         if (!pending) {
             pending = create();
             this.started.set(key, pending);
-            pending.catch(() => this.started.delete(key)); // a later test can retry
+            pending.then(
+                () => this.ready.add(key),
+                () => this.started.delete(key), // a later test can retry
+            );
         }
-        return pending;
+        if (this.ready.has(key)) return pending;
+        return withStartupBudget(pending, startupTimeoutMs);
     }
 
     private testcontainers(fixture: string): Promise<Testcontainers> {
