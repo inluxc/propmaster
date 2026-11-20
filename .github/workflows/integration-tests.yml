@@ -3,11 +3,22 @@ name: Integration Tests
 on:
   push:
     branches: [main]
+    paths-ignore: &docs-only
+      - "docs/**"
+      - "README.md"
+      - "LICENSE"
   pull_request:
     branches: [main]
+    paths-ignore: *docs-only
+
+# A new push to a PR cancels that PR's older run; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  SCARF_ANALYTICS: "false"
 
 jobs:
   typecheck:
@@ -15,24 +26,27 @@ jobs:
     container: node:24
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - run: npm run typecheck
       - name: Check test conventions (TestCaseIDs, tags, steps, imports)
         run: npm run lint:tests
+      - name: Check the browser job's Playwright image matches @playwright/test
+        run: |
+          v=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")
+          grep -q "mcr.microsoft.com/playwright:v$v-" .github/workflows/integration-tests.yml \
+            || { echo "::error::Bump the test-browser container image to v$v"; exit 1; }
 
   property-tests:
-    needs: [typecheck]
     runs-on: ubuntu-latest
     container: node:24
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - run: npx playwright test --project=property-tests
       - run: npx playwright test --project=unit-tests
 
   test-postgres:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -59,7 +73,7 @@ jobs:
       PW_DB_PASSWORD: testpass
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
@@ -67,14 +81,14 @@ jobs:
       - name: Run PostgreSQL integration tests
         run: npx playwright test --project=integration-database
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-postgres
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-postgres
@@ -82,7 +96,6 @@ jobs:
           retention-days: 7
 
   test-mysql:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -110,7 +123,7 @@ jobs:
       PW_DB_PASSWORD: testpass
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
@@ -118,14 +131,14 @@ jobs:
       - name: Run MySQL integration tests
         run: npx playwright test --project=integration-database
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-mysql
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-mysql
@@ -133,7 +146,6 @@ jobs:
           retention-days: 7
 
   test-mssql:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -161,7 +173,7 @@ jobs:
       PW_DB_TRUST_SERVER_CERTIFICATE: "true"
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
@@ -169,14 +181,14 @@ jobs:
       - name: Run MSSQL integration tests
         run: npx playwright test --project=integration-database
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-mssql
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-mssql
@@ -184,7 +196,6 @@ jobs:
           retention-days: 7
 
   test-sqlite:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     env:
@@ -193,7 +204,7 @@ jobs:
       PW_DB_NAME: ${{ github.workspace }}/tmp/test.db
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Create SQLite database with schema
         run: |
           mkdir -p tmp
@@ -201,14 +212,14 @@ jobs:
       - name: Run SQLite integration tests
         run: npx playwright test --project=integration-database
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-sqlite
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-sqlite
@@ -216,7 +227,6 @@ jobs:
           retention-days: 7
 
   test-redis:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -236,20 +246,20 @@ jobs:
       PW_REDIS_KEY_PREFIX: "test:ci-${{ github.run_id }}:"
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_REDIS_HOST PW_REDIS_PORT PW_REDIS_KEY_PREFIX
       - name: Run Redis integration tests
         run: npx playwright test --project=integration-redis
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-redis
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-redis
@@ -257,7 +267,6 @@ jobs:
           retention-days: 7
 
   test-neo4j:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -279,20 +288,20 @@ jobs:
       PW_NEO4J_PASSWORD: testpassword
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_NEO4J_URI PW_NEO4J_USERNAME PW_NEO4J_PASSWORD
       - name: Run Neo4j integration tests
         run: npx playwright test --project=integration-neo4j
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-neo4j
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-neo4j
@@ -300,7 +309,6 @@ jobs:
           retention-days: 7
 
   test-kafka:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     services:
@@ -330,20 +338,20 @@ jobs:
       PW_KAFKA_BROKERS: kafka:9092
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_KAFKA_BROKERS
       - name: Run Kafka integration tests
         run: npx playwright test --project=integration-kafka
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-kafka
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-kafka
@@ -351,7 +359,6 @@ jobs:
           retention-days: 7
 
   test-openapi:
-    needs: [property-tests]
     runs-on: ubuntu-latest
     container: node:24
     env:
@@ -360,12 +367,12 @@ jobs:
       PW_OPENAPI_BASE_URL: http://localhost:4010
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
+      - uses: ./.github/actions/npm-install
       - name: Download OpenAPI spec locally
         run: curl -s https://petstore.swagger.io/v2/swagger.json -o /tmp/petstore-spec.json
       - name: Start Prism mock server
         run: |
-          npx --yes @stoplight/prism-cli mock /tmp/petstore-spec.json --port 4010 --host 0.0.0.0 --errors false &
+          npx prism mock /tmp/petstore-spec.json --port 4010 --host 0.0.0.0 --errors false &
           echo "Prism PID: $!"
       - name: Wait for mock server
         run: |
@@ -383,14 +390,14 @@ jobs:
       - name: Run OpenAPI integration tests
         run: npx playwright test --project=openapi
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-openapi
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-openapi
@@ -398,50 +405,31 @@ jobs:
           retention-days: 7
 
   test-browser:
-    needs: [property-tests]
     runs-on: ubuntu-latest
+    # Browsers and their system libraries are preinstalled; keep the tag in step with
+    # @playwright/test in package-lock.json. --user 1001 matches the runner's workspace owner.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
     env:
       CI: true
-      PW_OPENAPI_BASE_URL: http://localhost:4010
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+      # The image's Node has no better-sqlite3 prebuild and no compiler; browser tests don't need it.
+      - uses: ./.github/actions/npm-install
         with:
-          node-version: "24"
-      - run: npm ci
-      - name: Download OpenAPI spec locally
-        run: curl -s https://petstore.swagger.io/v2/swagger.json -o /tmp/petstore-spec.json
-      - name: Start Prism mock server
-        run: |
-          npx --yes @stoplight/prism-cli mock /tmp/petstore-spec.json --port 4010 --host 0.0.0.0 --errors false &
-          echo "Prism PID: $!"
-      - name: Wait for mock server
-        run: |
-          for i in $(seq 1 60); do
-            if bash -c 'echo > /dev/tcp/localhost/4010' 2>/dev/null; then
-              echo "Mock server is ready (port 4010 open)"
-              sleep 2
-              exit 0
-            fi
-            echo "Waiting for mock server... ($i/60)"
-            sleep 2
-          done
-          echo "Mock server failed to start within 120 seconds"
-          exit 1
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+          ignore-scripts: "true"
       - name: Run browser tests
         run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit
       - name: Upload HTML report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: html-report-browser
           path: playwright-report/
           retention-days: 7
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-browser
