@@ -4,22 +4,18 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runCheck, runNextId } from './check-tests.js';
+import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
+import { planOrganize, runOrganize } from './organize.js';
 
 export * from './check-tests.js';
+export * from './layout.js';
+export * from './organize.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Directory structure to scaffold
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DIRECTORIES = [
-    'tests/specs',
-    'tests/pages',
-    'tests/utils',
-    'tests/fixtures',
-    'tests/data',
-    'tests/models',
-    'tests/config',
-];
+const DIRECTORIES = [...TEST_TYPES.map((t) => t.dir), ...SUPPORT_DIRS];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // File templates
@@ -38,73 +34,7 @@ blob-report/
 !.env.*.example
 `,
 
-    'playwright.config.ts': `import { defineConfig, devices } from '@playwright/test';
-import { ConfigLoader, type ConfigOptions } from '@inluxc/stagehand';
-
-const config = new ConfigLoader().load();
-
-export default defineConfig<ConfigOptions>({
-    testDir: './tests',
-    timeout: 30_000,
-    retries: 0,
-    reporter: [['list'], ['html', { open: 'never' }]],
-    use: {
-        trace: 'retain-on-failure',
-    },
-    projects: [
-        {
-            name: 'specs',
-            testMatch: '**/specs/**/*.spec.ts',
-            use: {
-                openapi: config.openapi,
-                database: config.database,
-                kafka: config.kafka,
-                redis: config.redis,
-            },
-        },
-        {
-            name: 'browser-chromium',
-            testMatch: '**/specs/**/*.browser.ts',
-            use: {
-                ...devices['Desktop Chrome'],
-                baseURL: config.openapi?.baseUrl,
-            },
-        },
-        {
-            name: 'browser-firefox',
-            testMatch: '**/specs/**/*.browser.ts',
-            use: {
-                ...devices['Desktop Firefox'],
-                baseURL: config.openapi?.baseUrl,
-            },
-        },
-        {
-            name: 'browser-webkit',
-            testMatch: '**/specs/**/*.browser.ts',
-            use: {
-                ...devices['Desktop Safari'],
-                baseURL: config.openapi?.baseUrl,
-            },
-        },
-        {
-            name: 'mobile-android',
-            testMatch: '**/specs/**/*.mobile.ts',
-            timeout: 300_000,
-            use: {
-                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, platform: 'android' },
-            },
-        },
-        {
-            name: 'mobile-ios',
-            testMatch: '**/specs/**/*.mobile.ts',
-            timeout: 300_000,
-            use: {
-                appium: { serverUrl: 'http://127.0.0.1:4723', ...config.appium, platform: 'ios' },
-            },
-        },
-    ],
-});
-`,
+    'playwright.config.ts': ROOT_CONFIG_TEMPLATE,
 
     'environments.json': `{
     "environments": {
@@ -162,8 +92,9 @@ export default defineConfig<ConfigOptions>({
     "type": "module",
     "scripts": {
         "test": "npx playwright test",
-        "test:specs": "npx playwright test --project=specs",
-        "test:browser": "npx playwright test --project=browser-chromium",
+        "test:api": "npx playwright test --project=api",
+        "test:integration": "npx playwright test --project=integration",
+        "test:e2e": "npx playwright test --project='e2e-*'",
         "test:mobile": "npx playwright test --project=mobile-android",
         "test:tag": "npx playwright test --grep",
         "typecheck": "tsc --noEmit",
@@ -172,8 +103,8 @@ export default defineConfig<ConfigOptions>({
         "verify": "npm run typecheck && npm run lint:tests"
     },
     "stagehand": {
-        "testDirs": ["tests/specs"],
-        "testFileSuffixes": [".spec.ts", ".browser.ts", ".mobile.ts"],
+        "testDirs": ["tests"],
+        "testFileSuffixes": [".spec.ts", ".test.ts"],
         "exemptDirs": [],
         "docFiles": ["AGENTS.md", "SKILLS.md"]
     },
@@ -207,11 +138,11 @@ export default defineConfig<ConfigOptions>({
         "rootDir": ".",
         "types": ["node"],
         "paths": {
-            "@pages/*": ["./tests/pages/*"],
-            "@utils/*": ["./tests/utils/*"],
-            "@fixtures/*": ["./tests/fixtures/*"],
-            "@data/*": ["./tests/data/*"],
-            "@models/*": ["./tests/models/*"]
+            "@pages/*": ["./tests/support/pages/*"],
+            "@utils/*": ["./tests/support/utils/*"],
+            "@fixtures/*": ["./tests/support/fixtures/*"],
+            "@data/*": ["./tests/support/data/*"],
+            "@models/*": ["./tests/support/models/*"]
         }
     },
     "include": [
@@ -246,16 +177,24 @@ npm run verify                  # typecheck + lint:tests — run before finishin
 
 ## Structure
 
+One folder per test type. Each folder's \`projects.ts\` defines its Playwright projects, and the root \`playwright.config.ts\` imports them all:
+
 \`\`\`
 tests/
-├── specs/       # Test spec files (*.spec.ts, *.browser.ts, *.mobile.ts)
-├── pages/       # Page Object Model classes (*.page.ts)
-├── utils/       # Test utilities and helpers
-├── fixtures/    # Custom test fixtures (*.fixture.ts)
-├── data/        # Fixed test data (JSON/YAML)
-├── models/      # Database models and schemas
-└── config/      # Test configuration files
+├── api/             # REST/GraphQL tests: no browser, device or backend service  → --project=api
+├── integration/     # need a database, broker or cache                           → --project=integration
+├── e2e/             # browser user journeys                                      → --project='e2e-*'
+├── mobile/          # Appium / GADS device tests                                 → --project=mobile-android
+└── support/
+    ├── pages/       # Page Object Model classes (*.page.ts)
+    ├── fixtures/    # Custom test fixtures (*.fixture.ts)
+    ├── data/        # Fixed test data (JSON/YAML)
+    ├── models/      # Database models and schemas
+    ├── utils/       # Test utilities and helpers
+    └── config/      # Test configuration helpers
 \`\`\`
+
+**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, Redis, MongoDB or Neo4j client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx stagehand organize\` to check (it prints where each test belongs).
 
 ## Writing Tests
 
@@ -334,8 +273,8 @@ for (const c of cases) {
 
 \`\`\`json
 "stagehand": {
-    "testDirs": ["tests/specs"],
-    "testFileSuffixes": [".spec.ts", ".browser.ts", ".mobile.ts"],
+    "testDirs": ["tests"],
+    "testFileSuffixes": [".spec.ts", ".test.ts"],
     "exemptDirs": [],
     "docFiles": ["AGENTS.md", "SKILLS.md"]
 }
@@ -345,9 +284,10 @@ Files under \`exemptDirs\` are skipped (their IDs are still reserved for \`next-
 
 ## Conventions
 
-- Page objects go in \`tests/pages/\` with a \`.page.ts\` suffix
-- Test data goes in \`tests/data/\` as JSON or YAML files
-- Custom fixtures extend the base \`test\` in \`tests/fixtures/\`
+- Each spec goes in the folder for its type (\`tests/api\`, \`tests/integration\`, \`tests/e2e\`, \`tests/mobile\`); keep one type per file
+- Page objects go in \`tests/support/pages/\` with a \`.page.ts\` suffix
+- Test data goes in \`tests/support/data/\` as JSON or YAML files
+- Custom fixtures extend the base \`test\` in \`tests/support/fixtures/\`
 - Use parameterized queries for all database operations — never string interpolation
 - Use \`test.describe()\` to group related tests; keep each file focused on one feature
 - **Every test has a unique TestCaseID in its title and tag**
@@ -381,7 +321,7 @@ Rules: IDs are unique across the project, never reused after a test is deleted, 
 
 ## Skill 1: Create a Spec Test
 
-Create files in \`tests/specs/\` with a \`.spec.ts\` extension (\`.browser.ts\` for browser tests, \`.mobile.ts\` for Appium mobile tests — \`appiumDriver\` is a WebdriverIO \`Browser\`; set \`appium.gads\` to run on a GADS device farm).
+Create a \`.spec.ts\` file in the folder for the test's type: \`tests/api/\` (HTTP/GraphQL clients only), \`tests/integration/\` (database, Kafka, Redis, MongoDB or Neo4j clients), \`tests/e2e/\` (\`page\`) or \`tests/mobile/\` (\`appiumDriver\`, a WebdriverIO \`Browser\`; set \`appium.gads\` to run on a GADS device farm).
 
 \`\`\`typescript
 import { test, expect } from '@inluxc/stagehand';
@@ -412,7 +352,7 @@ Steps:
 
 ## Skill 2: Create a Browser Test with a Page Object
 
-Create page objects in \`tests/pages/\` with a \`.page.ts\` extension, and browser specs in \`tests/specs/\` with a \`.browser.ts\` extension.
+Create page objects in \`tests/support/pages/\` with a \`.page.ts\` extension, and browser specs in \`tests/e2e/\` with a \`.spec.ts\` extension.
 
 \`\`\`typescript
 import type { Locator, Page } from '@playwright/test';
@@ -442,7 +382,7 @@ export class LoginPage {
 
 \`\`\`typescript
 import { test, expect } from '@inluxc/stagehand';
-import { LoginPage } from '../pages/login.page';
+import { LoginPage } from '../support/pages/login.page';
 
 test.describe('Browser — Login', () => {
     test('[TC-BRW-NNN] valid credentials reach the dashboard', { tag: ['@TC-BRW-NNN'] }, async ({ page }) => {
@@ -497,7 +437,7 @@ Always use parameterized queries (\`$1\`, \`?\`) — never string interpolation.
 
 ## Skill 4: Create a Custom Fixture
 
-Create files in \`tests/fixtures/\` with a \`.fixture.ts\` extension.
+Create files in \`tests/support/fixtures/\` with a \`.fixture.ts\` extension.
 
 \`\`\`typescript
 import { test as base } from '@inluxc/stagehand';
@@ -514,13 +454,31 @@ export { expect } from '@inluxc/stagehand';
 \`\`\`
 
 Specs that need the custom fixture import \`test\`/\`expect\` from this file instead of \`@inluxc/stagehand\`; every other convention still applies.
+
+## Skill 5: Sort Existing Tests into the Layout
+
+\`stagehand organize\` moves tests into \`tests/api\`, \`tests/integration\`, \`tests/e2e\` and \`tests/mobile\` by their fixtures. It places most files by rule and leaves the rest for you.
+
+1. Commit or stash your work, then see the plan:
+   \`\`\`bash
+   npx stagehand organize            # dry run: what moves where, and why some files stay
+   npx stagehand organize --json     # same, as JSON: { moves, inPlace, ambiguous, conflicts, warnings, edits }
+   \`\`\`
+2. Apply it. Tracked files move with \`git mv\`, and relative imports are updated in moved files and in files that import them:
+   \`\`\`bash
+   npx stagehand organize --apply
+   \`\`\`
+3. For each entry in \`ambiguous\`, decide by hand:
+   - **Mixes test types:** split the file, one file per type, then run \`organize\` again.
+   - **Custom fixtures:** open the fixture definition. If it wraps \`page\`, the test is \`e2e\`; if it wraps a database, broker or cache client, \`integration\`; if only HTTP clients, \`api\`. Move the file with \`git mv\` and fix its relative imports.
+   - **No fixtures (unit-style):** these usually belong next to the application code with its own unit-test runner, not in a Playwright folder. Ask before moving them.
+4. For each entry in \`warnings\`, check the paths the file reads relative to itself (\`__dirname\`, \`storageState\`, \`setInputFiles\`).
+5. Make sure \`playwright.config.ts\` registers every folder's \`projects.ts\`, then run \`npx playwright test --list\` and \`npm run verify\`.
 `,
 
     // ─── Directory starter files ─────────────────────────────────────────────
 
-    'tests/specs/.gitkeep': '',
-
-    'tests/pages/example.page.ts': `import type { Locator, Page } from '@playwright/test';
+    'tests/support/pages/example.page.ts': `import type { Locator, Page } from '@playwright/test';
 
 /**
  * Example Page Object Model.
@@ -547,7 +505,7 @@ export class ExamplePage {
 }
 `,
 
-    'tests/utils/index.ts': `/**
+    'tests/support/utils/index.ts': `/**
  * Test utilities and helpers.
  * Add shared helper functions used across multiple test files.
  */
@@ -578,7 +536,7 @@ export async function waitFor(
 }
 `,
 
-    'tests/fixtures/index.ts': `/**
+    'tests/support/fixtures/index.ts': `/**
  * Custom fixtures for this project.
  * Extend the base stagehand fixtures here.
  *
@@ -589,7 +547,7 @@ export async function waitFor(
 export {};
 `,
 
-    'tests/data/users.json': `[
+    'tests/support/data/users.json': `[
     {
         "id": 1,
         "name": "Alice",
@@ -605,7 +563,7 @@ export {};
 ]
 `,
 
-    'tests/models/index.ts': `/**
+    'tests/support/models/index.ts': `/**
  * Database models and type definitions.
  * Define interfaces that match your database schema.
  */
@@ -628,7 +586,7 @@ export interface Order {
 }
 `,
 
-    'tests/config/index.ts': `/**
+    'tests/support/config/index.ts': `/**
  * Test-specific configuration helpers.
  * Use this for test environment setup, feature flags, etc.
  */
@@ -644,6 +602,7 @@ export const testConfig = {
     baseUrl: process.env.PW_OPENAPI_BASE_URL ?? 'http://localhost:3000',
 };
 `,
+    ...Object.fromEntries(TEST_TYPES.map((t) => [`${t.dir}/projects.ts`, projectsTemplate(t.type)])),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -655,11 +614,20 @@ const HELP = `
 
   Usage:
     npx stagehand init [directory]
+    npx stagehand organize [--apply] [--force] [--json] [--root <dir>]
     npx stagehand check [--json] [--list-ids] [--root <dir>]
     npx stagehand next-id <CATEGORY> [count] [--root <dir>]
 
   Commands:
-    init      Scaffold a new Stagehand project structure
+    init      Scaffold the project layout: tests/api, tests/integration,
+              tests/e2e, tests/mobile (each with its projects.ts) and
+              tests/support. In a project that already has Playwright tests
+              it adds only what's missing, moves and overwrites nothing, and
+              reports where the existing tests belong.
+    organize  Sort existing Playwright tests into those folders by the
+              fixtures they use. Dry run by default; --apply moves the files
+              (git mv when tracked) and updates relative imports. Files it
+              can't place stay where they are and are listed with the reason.
     check     Check test conventions: [TC-XXX-NNN] title prefix, matching
               { tag: ['@TC-XXX-NNN'] }, unique IDs, test.step() bodies, and
               no value imports of @playwright/test in test files.
@@ -680,12 +648,124 @@ const HELP = `
     --help  Show this help message
 `;
 
+const PLAYWRIGHT_CONFIG = /^playwright\.config\.(?:c|m)?[jt]s$/;
+
+/** Playwright config files at the root of `dir` (any extension). */
+export function existingPlaywrightConfigs(dir: string): string[] {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter((f) => PLAYWRIGHT_CONFIG.test(f)).sort();
+}
+
+export interface InitResult {
+    created: string[];
+    skipped: string[];
+    /** Playwright configs that were already there; when set, none is written. */
+    existingConfigs: string[];
+    /** Where existing tests belong, when the project already had some. */
+    plan: ReturnType<typeof planOrganize> | null;
+}
+
+/**
+ * Scaffolds the layout into `targetDir`. Never overwrites a file and never
+ * moves one: in a project that already has Playwright tests or a config, it
+ * adds only what's missing and reports where the existing tests belong.
+ */
+export function initProject(targetDir: string, log: (line?: string) => void = console.log): InitResult {
+    const existingConfigs = existingPlaywrightConfigs(targetDir);
+    const before = fs.existsSync(targetDir) ? planOrganize(targetDir) : null;
+    const testCount = before ? before.moves.length + before.inPlace.length + before.ambiguous.length + before.conflicts.length : 0;
+    const plan = testCount > 0 ? before : null;
+    const result: InitResult = { created: [], skipped: [], existingConfigs, plan };
+
+    for (const dir of DIRECTORIES) {
+        const fullPath = path.join(targetDir, dir);
+        if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath, { recursive: true });
+            log(`  ✓ Created ${dir}/`);
+        } else {
+            log(`  · Exists  ${dir}/`);
+        }
+    }
+    log();
+
+    for (const [filePath, content] of Object.entries(FILES)) {
+        const fullPath = path.join(targetDir, filePath);
+        if (filePath === 'playwright.config.ts' && existingConfigs.length) {
+            log(`  · Skipped ${filePath} (you have ${existingConfigs.join(', ')})`);
+            result.skipped.push(filePath);
+            continue;
+        }
+        if (fs.existsSync(fullPath)) {
+            log(`  · Skipped ${filePath} (already exists)`);
+            result.skipped.push(filePath);
+            continue;
+        }
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, content, 'utf-8');
+        log(`  ✓ Created ${filePath}`);
+        result.created.push(filePath);
+    }
+
+    log();
+    log(`  Done! Created ${result.created.length} files, skipped ${result.skipped.length} existing.`);
+    log();
+
+    if (plan || existingConfigs.length) {
+        reportExisting(result, log);
+    } else {
+        log('  Next steps:');
+        log('    1. npm install');
+        log('    2. npx playwright install');
+        log('    3. Update environments.json with your service URLs');
+        log('    4. Get a TestCaseID: npm run next-id -- API');
+        log('    5. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
+        log('    6. Check conventions: npm run lint:tests');
+        log();
+    }
+    return result;
+}
+
+function reportExisting({ plan, existingConfigs }: InitResult, log: (line?: string) => void): void {
+    const found = [
+        existingConfigs.length ? existingConfigs.join(', ') : '',
+        plan ? `${plan.moves.length + plan.inPlace.length + plan.ambiguous.length + plan.conflicts.length} test file(s)` : '',
+    ].filter(Boolean);
+    log(`  Existing Playwright setup found: ${found.join(', ')}.`);
+    log('  Nothing was moved or overwritten.');
+    log();
+
+    if (plan) {
+        const counts = TEST_TYPES.map((t) => `${t.type} ${[...plan.moves, ...plan.inPlace].filter((m) => m.type === t.type).length}`);
+        log('  Where your tests belong, by the fixtures they use:');
+        log(`    ${counts.join(' · ')} · to decide by hand ${plan.ambiguous.length + plan.conflicts.length}`);
+        log(`    (${plan.inPlace.length} already in the right folder, ${plan.moves.length} to move)`);
+        log();
+        log('  Next steps:');
+        log('    1. npx stagehand organize            see what moves where, and why some files stay');
+        log('    2. npx stagehand organize --apply    move them and update imports (commit first)');
+    } else {
+        log('  Next steps:');
+    }
+    if (existingConfigs.length) {
+        log(`    ${plan ? 3 : 1}. Add the new folders' projects to ${existingConfigs[0]}:`);
+        log();
+        log(
+            configSnippet()
+                .split('\n')
+                .map((l) => `         ${l}`)
+                .join('\n'),
+        );
+    }
+    log();
+}
+
 function main(): number {
     const args = process.argv.slice(2);
     const command = args[0];
 
     if (command === 'check') return runCheck(args.slice(1));
     if (command === 'next-id') return runNextId(args.slice(1));
+    if (command === 'organize') return runOrganize(args.slice(1));
     if (command !== 'init') {
         console.log(HELP);
         return command === undefined || command === '--help' || command === 'help' ? 0 : 2;
@@ -698,53 +778,7 @@ function main(): number {
     console.log('  🎭 Stagehand — Initializing project...');
     console.log(`  📁 Target: ${isCurrentDir ? '.' : path.relative(process.cwd(), targetDir)}`);
     console.log('');
-
-    // Create directories
-    for (const dir of DIRECTORIES) {
-        const fullPath = path.join(targetDir, dir);
-        if (!fs.existsSync(fullPath)) {
-            fs.mkdirSync(fullPath, { recursive: true });
-            console.log(`  ✓ Created ${dir}/`);
-        } else {
-            console.log(`  · Exists  ${dir}/`);
-        }
-    }
-
-    console.log('');
-
-    // Create files (skip if already exists)
-    let created = 0;
-    let skipped = 0;
-
-    for (const [filePath, content] of Object.entries(FILES)) {
-        const fullPath = path.join(targetDir, filePath);
-        const dir = path.dirname(fullPath);
-
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-
-        if (fs.existsSync(fullPath)) {
-            console.log(`  · Skipped ${filePath} (already exists)`);
-            skipped++;
-        } else {
-            fs.writeFileSync(fullPath, content, 'utf-8');
-            console.log(`  ✓ Created ${filePath}`);
-            created++;
-        }
-    }
-
-    console.log('');
-    console.log(`  Done! Created ${created} files, skipped ${skipped} existing.`);
-    console.log('');
-    console.log('  Next steps:');
-    console.log('    1. npm install');
-    console.log('    2. npx playwright install');
-    console.log('    3. Update environments.json with your service URLs');
-    console.log('    4. Get a TestCaseID: npm run next-id -- API');
-    console.log('    5. Create your first spec: tests/specs/my-feature.spec.ts');
-    console.log('    6. Check conventions: npm run lint:tests');
-    console.log('');
+    initProject(targetDir);
     return 0;
 }
 

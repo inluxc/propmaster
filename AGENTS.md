@@ -67,7 +67,8 @@ src/
 ├── steps/                      # Reusable step classes (OpenApiSteps, DatabaseSteps, RedisSteps, ...)
 │                               #   each method wraps its work in test.step() — prefer these in specs
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
-└── cli/                        # `stagehand` CLI: init (scaffolding), check + next-id (test conventions)
+└── cli/                        # `stagehand` CLI: init (scaffolding), organize (sort tests by type),
+                                #   check + next-id (test conventions); layout.ts = the scaffolded layout
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here

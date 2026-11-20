@@ -17,11 +17,13 @@ The database, Kafka, Redis, MongoDB, Neo4j and Appium drivers come with the pack
 
 ### Or scaffold a new project
 
-`stagehand init` creates a project with a Playwright config, an `environments.json`, example tests and folders for page objects, test data and helpers:
+`stagehand init` creates a project with one folder per test type (`tests/api`, `tests/integration`, `tests/e2e`, `tests/mobile`), a Playwright config that runs each type as its own project, an `environments.json`, and `tests/support/` for page objects, fixtures, test data and helpers:
 
 ```bash
 npx stagehand init my-tests
 ```
+
+Run it in a project that already has Playwright tests and it adds only what's missing. It moves nothing and reports where your tests belong; `npx stagehand organize` then moves them. See [Project Layout](./project-layout).
 
 ## Your first test
 
@@ -95,6 +97,7 @@ Need something else? [Write your own fixture](../custom-fixtures) on top of Stag
 
 ## Next steps
 
+- [Project Layout](./project-layout): folders by test type, one config, and sorting existing tests
 - [Configuration](./configuration): environments, `.env` files and per-project settings
 - [Writing Tests](./writing-tests): test IDs, steps and the convention checker
 - [Running in CI](../ci): GitHub Actions jobs with real services
