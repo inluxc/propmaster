@@ -54,7 +54,9 @@
         "typecheck": "tsc --noEmit",
         "lint:tests": "tsx src/cli/init.ts check",
         "next-id": "tsx src/cli/init.ts next-id",
-        "verify": "npm run typecheck && npm run lint:tests && npx playwright test --project=unit-tests --project=property-tests"
+        "verify": "npm run typecheck && npm run lint:tests && npx playwright test --project=unit-tests --project=property-tests",
+        "docs:dev": "npm --prefix docs ci && npm --prefix docs run dev",
+        "docs:build": "npm --prefix docs ci && npm --prefix docs run build"
     },
     "dependencies": {
         "better-sqlite3": "^13.2.0",

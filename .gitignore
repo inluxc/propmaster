@@ -3,3 +3,5 @@ dist/
 playwright-report/
 test-results/
 *.tgz
+docs/.vitepress/cache/
+docs/.vitepress/dist/

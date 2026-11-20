@@ -491,7 +491,7 @@ This reads from `.env.dev` and maps the specified keys into the framework config
 
 #### `.env.dev` Example
 
-```env
+```dotenv
 PW_DB_PASSWORD=my-local-password
 PW_REDIS_PASSWORD=redis-secret
 PW_API_KEY=sk-test-12345
