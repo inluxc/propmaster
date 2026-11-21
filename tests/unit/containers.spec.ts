@@ -11,6 +11,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { ConfigLoader } from '../../src/config/loader';
 import {
+    withStartupBudget,
     ContainerManager,
     DEFAULT_IMAGES,
     containerOptions,
@@ -182,5 +183,22 @@ test.describe('containers — PW_*_CONTAINER variables', () => {
         process.env.PW_DB_TYPE = 'postgresql';
         const config = new ConfigLoader(dir).load('local');
         expect(config.database?.container).toBeUndefined();
+    });
+});
+
+test.describe('containers — startup time does not count against the test timeout', () => {
+    test('a start longer than the test timeout still passes; the timeout grows by the time it took', async () => {
+        test.setTimeout(1_000);
+        const slowStart = new Promise((r) => setTimeout(() => r('up'), 1_500));
+        await expect(withStartupBudget(slowStart, 10_000)).resolves.toBe('up');
+        const timeout = test.info().timeout;
+        expect(timeout).toBeGreaterThanOrEqual(2_400);
+        expect(timeout).toBeLessThan(5_000); // the unused budget is handed back
+    });
+
+    test('a failed start is rethrown and the budget handed back', async () => {
+        test.setTimeout(5_000);
+        await expect(withStartupBudget(Promise.reject(new Error('no docker')), 60_000)).rejects.toThrow('no docker');
+        expect(test.info().timeout).toBeLessThan(6_000);
     });
 });
