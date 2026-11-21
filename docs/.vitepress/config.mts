@@ -87,7 +87,10 @@ export default defineConfig({
             },
             {
                 text: 'Operations',
-                items: [{ text: 'Secrets Management', link: '/secrets' }],
+                items: [
+                    { text: 'Secrets Management', link: '/secrets' },
+                    { text: 'MCP server for agents', link: '/mcp-server' },
+                ],
             },
         ],
         socialLinks: [{ icon: 'github', link: repo }],

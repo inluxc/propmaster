@@ -396,7 +396,7 @@ async function createMssqlClient(config: DatabaseFixtureConfig): Promise<Databas
 /**
  * Creates a DatabaseClient based on the configured database type.
  */
-async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
+export async function createDatabaseClient(config: DatabaseFixtureConfig): Promise<DatabaseConnection> {
     switch (config.type) {
         case 'postgresql':
             return createPostgresClient(config);

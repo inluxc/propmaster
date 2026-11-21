@@ -135,7 +135,7 @@ function buildConnectionUri(config: MongoDbFixtureConfig): string {
 /**
  * Creates a MongoDB client and verifies connectivity.
  */
-async function createMongoDbClient(config: MongoDbFixtureConfig): Promise<MongoDbClient> {
+export async function createMongoDbClient(config: MongoDbFixtureConfig): Promise<MongoDbClient> {
     const { MongoClient } = await loadOptional<typeof import('mongodb')>('mongodb', 'mongoDbClient');
 
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;

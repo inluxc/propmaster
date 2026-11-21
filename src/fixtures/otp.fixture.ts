@@ -68,7 +68,7 @@ function resolveSecret(secret: string | undefined, defaultSecret: string | undef
 /**
  * Creates an OTP client configured with the provided options.
  */
-function createOtpClient(config: OtpFixtureConfig, { TOTP, HOTP, NobleCryptoPlugin, ScureBase32Plugin }: Otplib): OtpClient {
+export function createOtpClient(config: OtpFixtureConfig, { TOTP, HOTP, NobleCryptoPlugin, ScureBase32Plugin }: Otplib): OtpClient {
     const crypto = new NobleCryptoPlugin();
     const base32 = new ScureBase32Plugin();
 

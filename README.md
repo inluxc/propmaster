@@ -421,6 +421,19 @@ See [docs/secrets.md](docs/secrets.md) for every provider's options.
 
 ---
 
+## MCP Server for Coding Agents
+
+`npx propmaster mcp` lets a coding agent (Claude Code, VS Code, Cursor, ...) see the backends while it writes or debugs tests. It can query the database, read MongoDB, Redis, Kafka and Neo4j, list the OpenAPI operations, and get the next free TestCaseID. It uses the project's `environments.json` and secrets, is read-only unless you pass `--allow-writes`, refuses production environments, and never shows credentials.
+
+```json
+// .mcp.json (Claude Code)
+{ "mcpServers": { "propmaster": { "command": "npx", "args": ["propmaster", "mcp"] } } }
+```
+
+See [docs/mcp-server.md](docs/mcp-server.md) for every tool and the VS Code setup.
+
+---
+
 ## Running in CI
 
 Integration tests run in GitHub Actions against real services started as containers. Each backend gets its own job, and all jobs run in parallel:
