@@ -117,6 +117,9 @@ resources:
         RABBITMQ_DEFAULT_USER: testuser
         RABBITMQ_DEFAULT_PASS: testpass
       options: --health-cmd "rabbitmq-diagnostics -q check_port_connectivity" --health-interval 5s --health-retries 20
+    - container: moto_svc
+      image: motoserver/moto:5.2.5
+      options: --health-cmd "curl -fs http://localhost:5000/moto-api/ > /dev/null" --health-interval 2s --health-retries 15
 
 pool:
   vmImage: ubuntu-latest
@@ -199,6 +202,19 @@ jobs:
       - template: ci/playwright-steps.yml
         parameters:
           projects: --project=integration-amqp
+
+  - job: aws
+    container: node
+    services:
+      moto: moto_svc
+    variables:
+      PW_AWS_ENDPOINT: http://moto:5000
+      PW_AWS_REGION: us-east-1
+      PW_AWS_S3_BUCKET: propmaster-examples
+    steps:
+      - template: ci/playwright-steps.yml
+        parameters:
+          projects: --project=integration-aws
 
   - job: browser
     container: playwright

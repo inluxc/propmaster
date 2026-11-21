@@ -31,6 +31,8 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `neo4jClient` | `neo4j-driver` |
 | `kafkaClient` | `kafkajs` |
 | `amqpClient` | `amqplib` |
+| `s3Client` | `@aws-sdk/client-s3` |
+| `sqsClient` | `@aws-sdk/client-sqs` (`@aws-sdk/client-sns` too, for topics) |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `inboxClient` | nothing (uses `fetch`); needs a [Mailpit](https://mailpit.axllent.org/) server |
@@ -92,6 +94,8 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `databaseClient` | `DatabaseClient` | Multi-dialect DB client (PostgreSQL, MySQL, MSSQL, SQLite) | [Setup & Usage](docs/database-fixture.md) |
 | `kafkaClient` | `KafkaClient` | Kafka producer/consumer | [Setup & Usage](docs/kafka-fixture.md) |
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: publish, listen on an exchange, consume, purge | [Setup & Usage](docs/amqp-fixture.md) |
+| `s3Client` | `S3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [Setup & Usage](docs/aws-fixture.md) |
+| `sqsClient` | `SqsClient` | SQS send/receive/purge, SNS publish and listen on a topic | [Setup & Usage](docs/aws-fixture.md) |
 | `redisClient` | `RedisClient` | Redis client with pub/sub | [Setup & Usage](docs/redis-fixture.md) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
@@ -232,6 +236,28 @@ test.describe('Order events', () => {
   });
 });
 ```
+
+### AWS Clients (S3, SQS, SNS)
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test.describe('Exports', () => {
+  test('an export writes its file and announces it', async ({ s3Client, sqsClient, openApiClient }) => {
+    // Listen first: a temporary queue subscribed to the topic, so the app's own subscribers keep their copies
+    const listener = await sqsClient.listen('exports-events');
+    const key = s3Client.key('orders.csv');   // under the test's own prefix, deleted afterwards
+
+    await (openApiClient.client as any).startExport(null, { bucket: s3Client.bucket, key });
+
+    const file = await s3Client.waitForObject(key, { timeout: 30_000 });
+    expect(file.text()).toContain('id,total');
+    await listener.waitForMessage((m) => m.json<{ key: string }>().key === key);
+  });
+});
+```
+
+Runs on Moto (`docker compose -f compose.test.yaml up -d --wait moto`), LocalStack or a real test account.
 
 ### Redis Client
 
@@ -394,6 +420,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_DB_USERNAME` / `PW_DB_PASSWORD` | Database credentials |
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`), or `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST` |
+| `PW_AWS_ENDPOINT` / `PW_AWS_REGION` / `PW_AWS_S3_BUCKET` | AWS emulator URL (Moto, LocalStack), region and default bucket; credentials from `PW_AWS_ACCESS_KEY_ID`/`PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` or the standard AWS chain |
 | `PW_REDIS_HOST` / `PW_REDIS_PORT` / `PW_REDIS_PASSWORD` | Redis connection |
 | `PW_REDIS_KEY_PREFIX` | Key prefix for test isolation |
 | `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
@@ -483,7 +510,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 

@@ -80,11 +80,12 @@ export default defineConfig<ConfigOptions>({
         },
         {
             name: 'api-integration',
-            testMatch: '**/examples/{database,kafka,amqp,redis,mongodb,neo4j}.spec.ts',
+            testMatch: '**/examples/{database,kafka,amqp,aws,redis,mongodb,neo4j}.spec.ts',
             use: {
                 database: config.database,
                 kafka: config.kafka,
                 amqp: config.amqp,
+                aws: config.aws,
                 redis: config.redis,
                 mongodb: config.mongodb,
                 neo4j: config.neo4j,
@@ -109,6 +110,13 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/examples/amqp.spec.ts',
             use: {
                 amqp: config.amqp,
+            },
+        },
+        {
+            name: 'integration-aws',
+            testMatch: '**/examples/aws.spec.ts',
+            use: {
+                aws: config.aws,
             },
         },
         {

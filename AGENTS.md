@@ -41,6 +41,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.9.1`)
 - **Database:** PostgreSQL (`pg`), MySQL (`mysql2`), MSSQL (`mssql`), SQLite (`better-sqlite3`)
 - **Messaging:** KafkaJS (`kafkajs ^2.2.4`), amqplib for RabbitMQ / AMQP 0-9-1 (`amqplib ^2.2.0`)
+- **AWS:** AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/client-sqs`, `@aws-sdk/client-sns` `^3.700.0`); Moto as the emulator in compose/CI/containers
 - **Cache:** ioredis (`ioredis ^6.0.0`)
 - **MongoDB:** mongodb (`mongodb ^7.x`)
 - **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
@@ -73,6 +74,9 @@ src/
 │   ├── graphql.fixture.ts      # GraphQL client fixture (queries, mutations, rawRequest)
 │   ├── kafka.fixture.ts        # Kafka producer/consumer fixture
 │   ├── amqp.fixture.ts         # RabbitMQ / AMQP fixture (publish, listen, consume, purge)
+│   ├── aws.ts                  # Shared AWS config → SDK client options (endpoint, region, credentials)
+│   ├── s3.fixture.ts           # S3 fixture (per-test prefix, put/get/list, waitForObject)
+│   ├── sqs.fixture.ts          # SQS + SNS fixture (send, receive, purge, publish, listen on a topic)
 │   ├── mongodb.fixture.ts      # MongoDB client fixture (CRUD + aggregation)
 │   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
 │   ├── redis.fixture.ts        # Redis client fixture
@@ -110,6 +114,7 @@ tests/
 │   ├── graphql.spec.ts
 │   ├── kafka.spec.ts
 │   ├── amqp.spec.ts
+│   ├── aws.spec.ts
 │   ├── mongodb.spec.ts
 │   ├── neo4j.spec.ts
 │   ├── redis.spec.ts
@@ -145,6 +150,7 @@ import { test, expect } from '../../src/fixtures';
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | RabbitMQ (AMQP) | `*.spec.ts` | `tests/examples/` or custom dir |
+| AWS (S3, SQS, SNS) | `*.spec.ts` | `tests/examples/` or custom dir |
 | Redis | `*.spec.ts` | `tests/examples/` or custom dir |
 | Appium (incl. GADS) | `*.spec.ts` | `tests/examples/` or custom dir |
 | Browser | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -163,6 +169,8 @@ Request fixtures by name in the test function signature:
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: `publish`, `sendToQueue`, `listen(exchange, key)` (temporary queue, doesn't take the app's messages), `consume`, `purge`, `checkQueue`, `assertQueue`/`assertExchange`/`bindQueue` (removed after the test) |
+| `s3Client` | `S3Client` | S3: `prefix`/`key(name)` (per-test prefix, deleted after), `putObject` (undone: deleted or restored), `getObject` (`text()`, `json()`, `content`), `headObject`, `exists`, `listObjects`, `waitForObject`, `deleteObject`, `deletePrefix`, `createBucket` |
+| `sqsClient` | `SqsClient` | SQS: `send`, `receive` (deletes what it takes), `purge`, `checkQueue`, `createQueue`; SNS: `publish`, `createTopic`, `listen(topic)` (temporary subscribed queue, doesn't take the app's messages) |
 | `redisClient` | `RedisClient` | Redis with `get`, `set`, `del`, `publish`, `subscribe` |
 | `otpClient` | `OtpClient` | OTP with `generateTotp`, `verifyTotp`, `generateHotp`, `verifyHotp`, `generateSecret`, `generateKeyUri` |
 | `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
@@ -274,6 +282,24 @@ await amqpClient.sendToQueue(queue, 'job');
 const taken = await amqpClient.consume(queue, { count: 1, timeout: 5000 }); // takes and acks: never on the app's own queues
 await amqpClient.purge(queue);                                           // → number removed
 const info = await amqpClient.checkQueue(queue);                         // { messageCount, consumerCount } | null
+```
+
+**AWS (S3, SQS, SNS):**
+```typescript
+// s3Client: every test has its own prefix; everything under it is deleted after the test
+const key = s3Client.key('exports/orders.csv');                         // propmaster-tests/t0-9f2a1c0b/exports/orders.csv
+await s3Client.putObject(key, { rows: 3 });                             // object → JSON; string → text/plain; Buffer as is
+const file = await s3Client.waitForObject(key, { timeout: 30_000 });    // polls; the error lists the keys that are there
+expect(file.json()).toEqual({ rows: 3 });                               // also text(), content, contentType, metadata
+await s3Client.putObject('config/flags.json', { beta: true });          // outside the prefix: deleted, or old content put back
+const keys = await s3Client.listObjects();                              // default: the test's prefix; { bucket } on any call
+// sqsClient: queues and SNS topics (by name, URL or ARN)
+const queue = await sqsClient.createQueue(testData.unique('jobs'));     // deleted after the test
+await sqsClient.send(queue, { job: 1 }, { attributes: { priority: 1 } });
+const [job] = await sqsClient.receive(queue, { count: 1, timeout: 5000 }); // deletes what it takes; { delete: false } to leave it
+const listener = await sqsClient.listen('orders-events', { filterPolicy: { eventType: ['OrderCreated'] } }); // temp queue subscribed; listen BEFORE the action
+await sqsClient.publish('orders-events', { orderId }, { subject: 'OrderCreated', attributes: { eventType: 'OrderCreated' } });
+const event = await listener.waitForMessage((m) => m.json<{ orderId: string }>().orderId === orderId); // body, subject, attributes
 ```
 
 **Redis Client:**
@@ -474,6 +500,9 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`, `amqps://` for TLS) |
 | `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST`, `PW_AMQP_TLS` | AMQP broker without a URL |
 | `PW_AMQP_TIMEOUT`, `PW_AMQP_HEARTBEAT` | Default wait for messages (ms), heartbeat (s) |
+| `PW_AWS_ENDPOINT` | AWS emulator URL for every service (Moto, LocalStack); leave out for real AWS |
+| `PW_AWS_REGION`, `PW_AWS_PROFILE`, `PW_AWS_ACCESS_KEY_ID`, `PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_SESSION_TOKEN` | Region and credentials (default: the standard AWS chain; `test`/`test` with an endpoint) |
+| `PW_AWS_S3_BUCKET`, `PW_AWS_S3_PREFIX`, `PW_AWS_TIMEOUT`, `PW_AWS_FORCE_PATH_STYLE` | Default bucket, root of the per-test prefix, default wait (ms), path-style URLs |
 | `PW_REDIS_HOST`, `PW_REDIS_PORT`, `PW_REDIS_PASSWORD` | Redis connection |
 | `PW_REDIS_KEY_PREFIX` | Test key prefix for isolation |
 | `PW_MONGODB_URI` | Full MongoDB connection URI (overrides host/port) |
@@ -492,7 +521,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_APPIUM_NEW_COMMAND_TIMEOUT`, `PW_APPIUM_SESSION_TIMEOUT` | Idle timeout (s), session-create timeout (ms) |
 | `PW_GADS_CLIENT_SECRET` | Enables the GADS preset; client secret from GADS Admin → Client credentials |
 | `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
-| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER` | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
+| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER`, `PW_AWS_CONTAINER` (Moto) | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
 | `PW_DB_CONTAINER_INIT` | Comma-separated SQL files run once in the database container (PostgreSQL, MySQL, MSSQL) |
 | `PW_MOCK_URL`, `PW_MOCK_ADMIN_URL`, `PW_MOCK_CONTAINER` | WireMock base/admin URL for `mockServer`, or start it in a container |
 | `PW_AUTH_ISSUER` / `PW_AUTH_TOKEN_URL` | OAuth/OIDC token endpoint (issuer uses discovery) for the auth helpers |
@@ -523,10 +552,11 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
-| `api-integration` | `**/examples/{database,kafka,amqp,redis,mongodb,neo4j}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `redisClient`, `mongoDbClient`, `neo4jClient` |
+| `api-integration` | `**/examples/{database,kafka,amqp,aws,redis,mongodb,neo4j}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `redisClient`, `mongoDbClient`, `neo4jClient` |
 | `integration-database` | `**/examples/database.spec.ts` | `databaseClient` |
 | `integration-kafka` | `**/examples/kafka.spec.ts` | `kafkaClient` |
 | `integration-amqp` | `**/examples/amqp.spec.ts` | `amqpClient` (needs RabbitMQ) |
+| `integration-aws` | `**/examples/aws.spec.ts` | `s3Client`, `sqsClient` (needs Moto, LocalStack or an AWS account; `PW_AWS_S3_BUCKET`) |
 | `integration-redis` | `**/examples/redis.spec.ts` | `redisClient` |
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
@@ -607,7 +637,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

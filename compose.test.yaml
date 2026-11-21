@@ -105,6 +105,17 @@ services:
       interval: 5s
       retries: 30
 
+  moto:
+    # AWS emulator (S3, SQS, SNS, ...). LocalStack's image needs an auth token
+    # since 2026; Moto doesn't. Mapped to 4566, LocalStack's port, so either works
+    # with PW_AWS_ENDPOINT=http://localhost:4566.
+    image: motoserver/moto:5.2.5
+    ports: ["127.0.0.1:4566:5000"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5000/moto-api/ > /dev/null"]
+      interval: 2s
+      retries: 15
+
   mailpit:
     image: axllent/mailpit:latest
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]   # API/UI, SMTP

@@ -281,6 +281,50 @@ export class ConfigLoader {
                 if (!cfg.kafka) cfg.kafka = { brokers: [] };
                 cfg.kafka.brokers = val.split(',').map(b => b.trim());
             },
+            'PW_AWS_REGION': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.region = val;
+            },
+            'PW_AWS_ENDPOINT': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.endpoint = val;
+            },
+            'PW_AWS_ACCESS_KEY_ID': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.accessKeyId = val;
+            },
+            'PW_AWS_SECRET_ACCESS_KEY': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.secretAccessKey = val;
+            },
+            'PW_AWS_SESSION_TOKEN': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.sessionToken = val;
+            },
+            'PW_AWS_PROFILE': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.profile = val;
+            },
+            'PW_AWS_FORCE_PATH_STYLE': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.forcePathStyle = val.toLowerCase() === 'true';
+            },
+            'PW_AWS_S3_BUCKET': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.s3 = { ...cfg.aws.s3, bucket: val };
+            },
+            'PW_AWS_S3_PREFIX': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.s3 = { ...cfg.aws.s3, prefix: val };
+            },
+            'PW_AWS_TIMEOUT': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.timeout = parseInt(val, 10);
+            },
+            'PW_AWS_CONTAINER': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.container = parseContainerEnv(val);
+            },
             'PW_AMQP_URL': (cfg, val) => {
                 cfg.amqp ??= {};
                 cfg.amqp.url = val;

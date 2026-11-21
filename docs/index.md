@@ -35,6 +35,11 @@ features:
     details: Produce and consume Kafka messages, publish to RabbitMQ and listen for the events your app publishes, and use Redis keys and pub/sub with per-run key prefixes.
     link: /kafka-fixture
     linkText: Messaging fixtures
+  - icon: ☁️
+    title: AWS (S3, SQS, SNS)
+    details: Wait for the files your app writes to S3, send and receive SQS messages, and listen on SNS topics. Runs on Moto, LocalStack or a real test account.
+    link: /aws-fixture
+    linkText: AWS fixtures
   - icon: 📱
     title: Mobile with Appium
     details: A WebdriverIO session on local Appium, a grid, a cloud farm or a GADS device farm. The device is freed when the test ends.

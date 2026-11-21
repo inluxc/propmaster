@@ -47,6 +47,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-neo4j` | `integration-neo4j` | `neo4j:5` | Neo4j fixture |
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
+| `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
 | `test-inbox` | `integration-inbox` | `axllent/mailpit:latest` | Inbox fixture (email) |
 | `test-mocks` | `integration-mocks` | `wiremock/wiremock:3.13.2` | Mock-server fixture (third-party APIs) |
 | `test-openapi` | `openapi` | Prism mock server (started in a step) | OpenAPI fixture |
@@ -292,6 +293,25 @@ services:
 env:
   PW_AMQP_URL: amqp://testuser:testpass@rabbitmq:5672
 ```
+
+### AWS (S3, SQS, SNS)
+
+Moto emulates every AWS service on one port and needs no account. (LocalStack's image needs an auth token since 2026; with one, use `localstack/localstack` on port 4566 instead.) With an endpoint, the fixtures use the credentials `test`/`test`:
+
+```yaml
+services:
+  moto:
+    image: motoserver/moto:5.2.5
+    options: >-
+      --health-cmd "curl -fs http://localhost:5000/moto-api/ > /dev/null"
+      --health-interval 2s --health-timeout 10s --health-retries 15
+env:
+  PW_AWS_ENDPOINT: http://moto:5000
+  PW_AWS_REGION: us-east-1
+  PW_AWS_S3_BUCKET: propmaster-examples
+```
+
+Against a real test account, leave out the service and `PW_AWS_ENDPOINT`, and give the job AWS credentials (OIDC with `aws-actions/configure-aws-credentials` is the usual way on GitHub).
 
 ### OpenAPI against a mock server
 

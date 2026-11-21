@@ -27,3 +27,5 @@ export type { MockServer, RecordedRequest } from './mock-server.steps.js';
 export { BrowserSteps } from './browser.steps.js';
 export { AppiumSteps } from './appium.steps.js';
 export type { AppiumDriver } from './appium.steps.js';
+export { S3Steps, SqsSteps } from './aws.steps.js';
+export type { S3Client, S3Object, SqsClient, SqsMessage, SnsListener, SnsMessage } from './aws.steps.js';
