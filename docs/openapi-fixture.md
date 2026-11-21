@@ -13,6 +13,8 @@ The `openApiClient` fixture provides a typed HTTP client generated from your Ope
 - Provides both the Axios client instance and the underlying API object
 - Optionally checks every request and response against the spec ([contract checks](#contract-checks))
 
+To get a starting test for each operation, run [`propmaster generate openapi`](./guide/generate-api-tests.md).
+
 ---
 
 ## Setup

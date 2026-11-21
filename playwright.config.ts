@@ -22,6 +22,15 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            // Tests written by `propmaster generate openapi` (CI generates them into
+            // tests/generated/ and runs them against the Prism mock).
+            name: 'openapi-generated',
+            testMatch: '**/generated/**/*.spec.ts',
+            use: {
+                openapi: config.openapi,
+            },
+        },
+        {
             name: 'appium-android',
             testMatch: '**/examples/appium.spec.ts',
             timeout: 300_000,
