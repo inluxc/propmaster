@@ -16,6 +16,17 @@ npm run verify                  # typecheck + lint:tests + unit + property tests
 
 `lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`) and the fix.
 
+### Propmaster MCP server
+
+When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/mcp-server.md](docs/mcp-server.md)), use its tools to see the real backends instead of guessing:
+
+- **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
+- **Asserting on stored data:** `db_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
+- **A test fails on a backend assertion:** read what's actually stored and compare it with what the test expected, before changing the assertion.
+- **After changing tests:** `check_tests` (same rules as `npm run lint:tests`).
+
+The server is read-only unless it was started with `--allow-writes`. Even then, tests create their data through the fixtures (`databaseClient.insert`, `testData`, ...), never through MCP write tools: MCP writes aren't cleaned up. Results never contain credentials; don't try to read them some other way.
+
 ## Project Overview
 
 A reusable Playwright test framework with an extensible fixture architecture for API, integration, browser, and mobile (Appium) testing. Tests are organized into Playwright projects, each with its own configuration and fixture set.
@@ -72,7 +83,9 @@ src/
 │                               #   each method wraps its work in test.step() — prefer these in specs
 ├── test-data/                  # testData fixture: factories, unique values, cleanup registry, per-client tracking
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
-└── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type),
+├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
+│                               #   read-only SQL guard, production refusal, credential redaction
+└── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp,
                                 #   check + next-id (test conventions); layout.ts = the scaffolded layout
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)

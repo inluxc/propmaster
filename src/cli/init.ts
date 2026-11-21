@@ -38,6 +38,16 @@ blob-report/
 
     'playwright.config.ts': ROOT_CONFIG_TEMPLATE,
 
+    '.mcp.json': `{
+    "mcpServers": {
+        "propmaster": {
+            "command": "npx",
+            "args": ["propmaster", "mcp"]
+        }
+    }
+}
+`,
+
     'environments.json': `{
     "environments": {
         "local": {
@@ -176,6 +186,10 @@ npm run verify                  # typecheck + lint:tests — run before finishin
 \`\`\`
 
 \`lint:tests\` (\`propmaster check\`) exits non-zero on any violation. Each violation names the rule (\`tc-id\`, \`tc-tag\`, \`tc-unique\`, \`test-step\`, \`import\`) and the fix.
+
+## Propmaster MCP server
+
+\`.mcp.json\` connects the \`propmaster\` MCP server (\`npx propmaster mcp\`, read-only). Use it to see the real backends instead of guessing: \`openapi_operations\` for operation IDs and parameters, \`db_query\` / \`mongo_find\` / \`redis_get\` / \`kafka_peek\` / \`neo4j_read\` for what's actually stored, \`next_test_id\` for new IDs and \`check_tests\` after changing tests. Tests still create their data through the fixtures, never through MCP write tools.
 
 ## Structure
 
@@ -622,6 +636,7 @@ const HELP = `
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
+    npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
 
   Commands:
     init      Scaffold the project layout: tests/api, tests/integration,
@@ -642,6 +657,12 @@ const HELP = `
               --list-ids to print every TestCaseID in use.
     next-id   Print the next free TestCaseID(s) for a category, e.g.
               \`propmaster next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
+    mcp       Start an MCP server (stdio) that gives coding agents read tools
+              for the configured backends (db_query, mongo_find, redis_get,
+              kafka_peek, neo4j_read, openapi_operations, ...) plus
+              next_test_id and check_tests. Read-only unless --allow-writes;
+              refuses production environments unless --allow-prod.
+              \`propmaster mcp --help\` for details.
 
   Configuration (optional, "propmaster" key in package.json):
     "propmaster": {
@@ -859,4 +880,13 @@ function isEntryPoint(): boolean {
     }
 }
 
-if (isEntryPoint()) process.exitCode = main();
+if (isEntryPoint()) {
+    if (process.argv[2] === 'mcp') {
+        // Loaded on demand: the server pulls in every client factory.
+        void import('../mcp/server.js').then(({ runMcp }) => runMcp(process.argv.slice(3))).then((code) => {
+            process.exitCode = code;
+        });
+    } else {
+        process.exitCode = main();
+    }
+}

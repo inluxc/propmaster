@@ -113,4 +113,4 @@ Tests run in parallel, so give each test its own data. Data created through the 
 
 ## Working with AI agents
 
-The repository's [AGENTS.md](https://github.com/inluxc/propmaster/blob/main/AGENTS.md) and [SKILLS.md](https://github.com/inluxc/propmaster/blob/main/SKILLS.md) teach coding agents these conventions with templates for each fixture. `propmaster init` copies both into new projects, and `propmaster check` also checks the code samples inside them.
+The repository's [AGENTS.md](https://github.com/inluxc/propmaster/blob/main/AGENTS.md) and [SKILLS.md](https://github.com/inluxc/propmaster/blob/main/SKILLS.md) teach coding agents these conventions with templates for each fixture. `propmaster init` copies both into new projects, and `propmaster check` also checks the code samples inside them. To let an agent look at the backends and get TestCaseIDs while it works, connect the [MCP server](../mcp-server.md) (`npx propmaster mcp`).

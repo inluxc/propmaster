@@ -33,6 +33,12 @@ test.describe('init — layout', () => {
         expect(result.created).toContain('playwright.config.ts');
     });
 
+    test('a new project gets .mcp.json for the Propmaster MCP server', () => {
+        initProject(root, quiet);
+        expect(JSON.parse(read('.mcp.json'))).toEqual({ mcpServers: { propmaster: { command: 'npx', args: ['propmaster', 'mcp'] } } });
+        expect(read('AGENTS.md')).toContain('## Propmaster MCP server');
+    });
+
     test('the root config imports and spreads every projects.ts', () => {
         initProject(root, quiet);
         const config = read('playwright.config.ts');

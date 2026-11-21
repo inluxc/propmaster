@@ -45,7 +45,7 @@ const DEFAULT_SUBSCRIBE_TIMEOUT = 5000;
  * Verifies connectivity with a PING command.
  * If keyPrefix is configured, creates a separate subscriber client for pub/sub.
  */
-async function createRedisClient(config: RedisFixtureConfig): Promise<{
+export async function createRedisClient(config: RedisFixtureConfig): Promise<{
     client: Redis;
     subscriber: Redis | null;
 }> {

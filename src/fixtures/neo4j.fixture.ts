@@ -134,7 +134,7 @@ function wrapError(operation: 'run' | 'write' | 'transaction', cypher: string | 
 /**
  * Creates a driver and verifies the server is reachable and the credentials work.
  */
-async function createNeo4jDriver(config: Neo4jFixtureConfig): Promise<Driver> {
+export async function createNeo4jDriver(config: Neo4jFixtureConfig): Promise<Driver> {
     const connectionTimeout = config.connectionTimeout ?? DEFAULT_CONNECTION_TIMEOUT;
     let driver: Driver | undefined;
     neo4j ??= await loadOptional<Neo4jModule>('neo4j-driver', 'neo4jClient');
