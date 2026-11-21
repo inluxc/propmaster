@@ -160,6 +160,20 @@ jobs:
           setup:
             - wait-for: { port: 5672 }
 
+  aws:
+    docker:
+      - image: node:24
+        environment:
+          PW_AWS_ENDPOINT: http://localhost:5000
+          PW_AWS_REGION: us-east-1
+          PW_AWS_S3_BUCKET: propmaster-examples
+      - image: motoserver/moto:5.2.5
+    steps:
+      - playwright:
+          projects: --project=integration-aws
+          setup:
+            - wait-for: { port: 5000 }
+
   browser:
     docker:
       - image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test
@@ -172,7 +186,7 @@ jobs:
 
 workflows:
   tests:
-    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, browser]
+    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, browser]
 ```
 
 `node:24` and the Playwright image both include `git` and `ssh`, which `checkout` needs. CircleCI's `cimg/node` images work too.

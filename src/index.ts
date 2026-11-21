@@ -30,6 +30,26 @@ export type {
     AmqpWaitOptions,
     AmqpListenOptions,
     AmqpQueueInfo,
+    S3Client,
+    S3Object,
+    S3ObjectInfo,
+    S3ObjectSummary,
+    S3PutOptions,
+    S3WaitOptions,
+    S3BucketOption,
+    SqsClient,
+    SqsMessage,
+    SqsSendOptions,
+    SqsReceiveOptions,
+    SqsQueueInfo,
+    SqsCreateQueueOptions,
+    SnsListener,
+    SnsMessage,
+    SnsPublishOptions,
+    SnsListenOptions,
+    SnsWaitOptions,
+    AwsMessageAttributes,
+    AwsBody,
     RedisClient,
     MongoDbClient,
     Neo4jClient,
@@ -68,6 +88,7 @@ export type {
     Neo4jFixtureConfig,
     KafkaFixtureConfig,
     AmqpFixtureConfig,
+    AwsFixtureConfig,
     RedisFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
@@ -92,6 +113,10 @@ export { EnvLoader } from './config/index.js';
 
 // AMQP client outside the fixture (e.g. a global setup that declares exchanges)
 export { createAmqpClient } from './fixtures/amqp.fixture.js';
+
+// AWS clients outside the fixtures (e.g. a global setup that creates buckets and queues)
+export { createS3Client } from './fixtures/s3.fixture.js';
+export { createSqsClient } from './fixtures/sqs.fixture.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
 export { startAppiumSession, createGadsHubClient, gadsSessionInfo } from './fixtures/appium.fixture.js';

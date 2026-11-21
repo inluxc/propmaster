@@ -137,6 +137,36 @@ export interface AmqpFixtureConfig {
 }
 
 /**
+ * Configuration for the AWS fixtures (`s3Client`, `sqsClient`): one config for
+ * every service, pointed at an emulator (Moto, LocalStack) with `endpoint` or
+ * at a real test account without it.
+ */
+export interface AwsFixtureConfig {
+    /** Region (default: AWS_REGION / AWS_DEFAULT_REGION, else `us-east-1` with an endpoint). */
+    region?: string;
+    /** Emulator URL for every service, e.g. `http://localhost:5000` (Moto) or `http://localhost:4566` (LocalStack). */
+    endpoint?: string;
+    /** Static credentials. Without them the standard AWS chain is used (env, profile, SSO, instance role); with an endpoint, `test`/`test`. */
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    sessionToken?: string;
+    /** A profile from ~/.aws/config for the standard chain. */
+    profile?: string;
+    /** Path-style S3 URLs (`endpoint/bucket/key`). Default: true with an endpoint, false without. */
+    forcePathStyle?: boolean;
+    s3?: {
+        /** Bucket used when a call doesn't name one. */
+        bucket?: string;
+        /** Root of the per-test prefix (default: `propmaster-tests/`). */
+        prefix?: string;
+    };
+    /** Default wait for `waitForObject()`, `receive()` and `waitForMessage()` in ms (default: 10000). */
+    timeout?: number;
+    /** Start Moto (an AWS emulator) in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
+}
+
+/**
  * Configuration for the Redis integration fixture.
  */
 export interface RedisFixtureConfig {
@@ -392,6 +422,8 @@ export interface FrameworkConfig {
     kafka?: KafkaFixtureConfig;
     /** RabbitMQ / AMQP fixture configuration. */
     amqp?: AmqpFixtureConfig;
+    /** AWS (S3, SQS, SNS) fixture configuration. */
+    aws?: AwsFixtureConfig;
     /** Redis fixture configuration. */
     redis?: RedisFixtureConfig;
     /** MongoDB fixture configuration. */

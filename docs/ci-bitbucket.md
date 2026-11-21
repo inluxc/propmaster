@@ -53,6 +53,8 @@ definitions:
       variables:
         RABBITMQ_DEFAULT_USER: testuser
         RABBITMQ_DEFAULT_PASS: testpass
+    moto:
+      image: motoserver/moto:5.2.5
 
 
 pipelines:
@@ -140,6 +142,19 @@ pipelines:
                 - *npm-ci
                 - wait_for 5672
                 - npx playwright test --project=integration-amqp --reporter=line,junit
+              artifacts: [playwright-report/**]
+
+          - step:
+              name: AWS (S3, SQS, SNS)
+              caches: [npm]
+              services: [moto]
+              script:
+                - *wait-for
+                - *junit
+                - export PW_AWS_ENDPOINT=http://localhost:5000 PW_AWS_REGION=us-east-1 PW_AWS_S3_BUCKET=propmaster-examples
+                - *npm-ci
+                - wait_for 5000
+                - npx playwright test --project=integration-aws --reporter=line,junit
               artifacts: [playwright-report/**]
 
           - step:

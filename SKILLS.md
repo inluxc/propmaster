@@ -33,6 +33,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `DB` | Database tests |
 | `KFK` | Kafka tests |
 | `AMQ` | RabbitMQ / AMQP tests |
+| `AWS` | AWS tests (S3, SQS, SNS) |
 | `RDS` | Redis tests |
 | `MDB` | MongoDB tests |
 | `NEO` | Neo4j tests |
@@ -2708,6 +2709,70 @@ test.describe('RabbitMQ — Orders', () => {
 
 ---
 
+## Skill 23: Test S3 Files and SQS/SNS Messages (AWS)
+
+**When to use:** The application writes files to S3, sends messages to SQS, or publishes events to SNS. Runs against Moto, LocalStack or a real test account.
+
+**Steps:**
+
+1. Use `s3Client` and `sqsClient` (`PW_AWS_ENDPOINT` for an emulator, `PW_AWS_CONTAINER=true` for Moto in Docker, or a test account through the standard AWS chain; `PW_AWS_S3_BUCKET` for the default bucket). `S3Steps` / `SqsSteps` from `src/steps` wrap the calls in `test.step()`.
+2. S3: give the application a key under the test's own prefix, `s3Client.key('name')`, then `waitForObject(key)`. Everything under `s3Client.prefix` is deleted after the test, and `putObject()` elsewhere is undone.
+3. SNS: `listen(topic)` **before** the action. The listener is a temporary queue subscribed to the topic, so the app's own subscribers keep their messages. Match on a value unique to the test: parallel tests share the topic.
+4. SQS: `receive()` deletes what it takes, so only use it on queues the test owns (`createQueue`, deleted afterwards) or that the test is meant to drain.
+5. Get IDs with `npm run next-id -- AWS <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test.describe('AWS — Exports', () => {
+    test('[TC-AWS-NNN] an export writes its CSV and publishes ExportReady', { tag: ['@TC-AWS-NNN'] }, async ({ s3Client, sqsClient, openApiClient }) => {
+        const listener = await sqsClient.listen('exports-events', { filterPolicy: { eventType: ['ExportReady'] } });
+        const key = s3Client.key('exports/orders.csv');
+
+        await test.step('Step 1: Start the export, telling the app where to write', async () => {
+            const response = await (openApiClient.client as any).startExport(null, { bucket: s3Client.bucket, key });
+            expect(response.status).toBe(202);
+        });
+
+        await test.step('Step 2: Verify the file is written', async () => {
+            const file = await s3Client.waitForObject(key, { timeout: 30_000 });
+            expect(file.text().split('\n')[0]).toBe('id,total');
+        });
+
+        await test.step('Step 3: Verify the ExportReady event for this file', async () => {
+            const event = await listener.waitForMessage((m) => m.json<{ key: string }>().key === key);
+            expect(event.attributes.eventType).toBe('ExportReady');
+        });
+    });
+
+    test('[TC-AWS-NNN] a job sent to the queue is processed', { tag: ['@TC-AWS-NNN'] }, async ({ sqsClient, databaseClient, testData }) => {
+        const jobId = testData.unique('job');
+
+        await test.step('Step 1: Send the job to the application queue', async () => {
+            await sqsClient.send('jobs-in', { jobId, type: 'reindex' }, { attributes: { source: 'tests' } });
+        });
+
+        await test.step('Step 2: Verify the job is marked done', async () => {
+            await expect.poll(async () => {
+                const [row] = await databaseClient.query<{ status: string }>('SELECT status FROM jobs WHERE id = $1', [jobId]);
+                return row?.status;
+            }, { timeout: 15_000 }).toBe('done');
+        });
+    });
+});
+```
+
+**Key points:**
+- `waitForObject()` and `listener.waitForMessage()` throw on timeout and list what is there instead (nearby keys, the messages that arrived): read it before changing the test.
+- A string body is sent as `text/plain`, an object as JSON, a Buffer as it is. `S3Object` has `text()`, `json()`, `content`, `contentType`, `metadata`; `SnsMessage` has `body`, `json()`, `subject`, `attributes`.
+- Message attributes take strings, numbers or Buffers, and come back as strings.
+- Each call takes `{ bucket }` to use another bucket than the default.
+- On real AWS, `purge()` works once per queue every 60 seconds, and a new subscription can take a few seconds to receive messages.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2717,6 +2782,7 @@ test.describe('RabbitMQ — Orders', () => {
 | Query or modify database records | Skill 2 (Database) |
 | Test event publishing/consuming | Skill 3 (Kafka) |
 | Test RabbitMQ events or commands | Skill 22 (RabbitMQ) |
+| Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
 | Test caching or pub/sub | Skill 4 (Redis) |
 | Test a native mobile app (Appium) | Skill 5 (Appium) |
 | Test document storage or aggregations | Skill 6 (MongoDB) |

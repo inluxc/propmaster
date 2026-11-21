@@ -143,6 +143,19 @@ rabbitmq:
     - wait_for rabbitmq 5672
     - npx playwright test --project=integration-amqp --reporter=line,junit
 
+aws:
+  extends: .playwright
+  services:
+    - name: motoserver/moto:5.2.5
+      alias: moto
+  variables:
+    PW_AWS_ENDPOINT: http://moto:5000
+    PW_AWS_REGION: us-east-1
+    PW_AWS_S3_BUCKET: propmaster-examples
+  script:
+    - wait_for moto 5000
+    - npx playwright test --project=integration-aws --reporter=line,junit
+
 browser:
   extends: .playwright
   image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test

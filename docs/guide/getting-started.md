@@ -24,6 +24,8 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 | `neo4jClient` | `neo4j-driver` |
 | `kafkaClient` | `kafkajs` |
 | `amqpClient` | `amqplib` |
+| `s3Client` | `@aws-sdk/client-s3` |
+| `sqsClient` | `@aws-sdk/client-sqs` (and `@aws-sdk/client-sns` for topics) |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `inboxClient` | nothing (uses `fetch`); needs a Mailpit server |
@@ -113,6 +115,8 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `neo4jClient` | Neo4j Cypher reads, writes and transactions | [Neo4j](../neo4j-fixture) |
 | `kafkaClient` | Kafka produce and consume | [Kafka](../kafka-fixture) |
 | `amqpClient` | RabbitMQ publish, listen on an exchange, consume and purge | [RabbitMQ](../amqp-fixture) |
+| `s3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [AWS](../aws-fixture) |
+| `sqsClient` | SQS send, receive, purge; SNS publish and listen on a topic | [AWS](../aws-fixture) |
 | `redisClient` | Redis keys and pub/sub | [Redis](../redis-fixture) |
 | `otpClient` | TOTP/HOTP codes for 2FA flows | [OTP](../otp-fixture) |
 | `inboxClient` | Emailed codes, verification and reset links (Mailpit) | [Inbox](../inbox-fixture) |

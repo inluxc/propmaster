@@ -26,6 +26,7 @@ import type {
     DatabaseFixtureConfig,
     KafkaFixtureConfig,
     AmqpFixtureConfig,
+    AwsFixtureConfig,
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -40,6 +41,8 @@ import { openApiFixture, type OpenApiClient } from './openapi.fixture.js';
 import { databaseFixture, type DatabaseClient } from './database.fixture.js';
 import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
 import { amqpFixture, type AmqpClient } from './amqp.fixture.js';
+import { s3Fixture, type S3Client } from './s3.fixture.js';
+import { sqsFixture, type SqsClient } from './sqs.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
@@ -66,6 +69,7 @@ export interface ConfigOptions {
     database: DatabaseFixtureConfig | undefined;
     kafka: KafkaFixtureConfig | undefined;
     amqp: AmqpFixtureConfig | undefined;
+    aws: AwsFixtureConfig | undefined;
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
@@ -94,6 +98,10 @@ export interface FixtureTypes {
     kafkaClient: KafkaClient;
     /** RabbitMQ / AMQP 0-9-1: publish, listen on an exchange, consume, purge. */
     amqpClient: AmqpClient;
+    /** S3: write, read, list and wait for objects under a per-test prefix. */
+    s3Client: S3Client;
+    /** SQS and SNS: send, receive, purge, publish to a topic, listen on a topic. */
+    sqsClient: SqsClient;
     redisConfig: RedisFixtureConfig;
     redisClient: RedisClient;
     mongoDbClient: MongoDbClient;
@@ -136,6 +144,7 @@ const configOptionFixtures = {
     database: [undefined as DatabaseFixtureConfig | undefined, { option: true }],
     kafka: [undefined as KafkaFixtureConfig | undefined, { option: true }],
     amqp: [undefined as AmqpFixtureConfig | undefined, { option: true }],
+    aws: [undefined as AwsFixtureConfig | undefined, { option: true }],
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
@@ -453,6 +462,8 @@ const allFixtures = {
     ...databaseFixture,
     ...kafkaFixture,
     ...amqpFixture,
+    ...s3Fixture,
+    ...sqsFixture,
     ...redisConfigFixture,
     ...redisFixture,
     ...mongoDbFixture,
@@ -494,6 +505,22 @@ export type {
     AmqpListenOptions,
     AmqpQueueInfo,
 } from './amqp.fixture.js';
+export type { S3Client, S3Object, S3ObjectInfo, S3ObjectSummary, S3PutOptions, S3WaitOptions, S3BucketOption } from './s3.fixture.js';
+export type {
+    SqsClient,
+    SqsMessage,
+    SqsSendOptions,
+    SqsReceiveOptions,
+    SqsQueueInfo,
+    SqsCreateQueueOptions,
+    SnsListener,
+    SnsMessage,
+    SnsPublishOptions,
+    SnsListenOptions,
+    SnsWaitOptions,
+    AwsMessageAttributes,
+} from './sqs.fixture.js';
+export type { AwsBody } from './aws.js';
 export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';
 export type { MockServer, RequestMatch, StubResponse, RecordedRequest, Stub } from './mock-server.fixture.js';
 export type { RedisClient } from './redis.fixture.js';

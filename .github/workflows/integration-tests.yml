@@ -534,6 +534,47 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-aws:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      moto:
+        image: motoserver/moto:5.2.5
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "curl -fs http://localhost:5000/moto-api/ > /dev/null"
+          --health-interval 2s
+          --health-timeout 10s
+          --health-retries 15
+    env:
+      CI: true
+      PW_AWS_ENDPOINT: http://moto:5000
+      PW_AWS_REGION: us-east-1
+      PW_AWS_S3_BUCKET: propmaster-examples
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_AWS_ENDPOINT PW_AWS_S3_BUCKET
+      - name: Run AWS (S3, SQS, SNS) integration tests
+        run: npx playwright test --project=integration-aws
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-aws
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-aws
+          path: test-results/
+          retention-days: 7
+
   test-openapi:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -625,6 +666,8 @@ jobs:
       PW_NEO4J_CONTAINER: "true"
       PW_KAFKA_CONTAINER: "true"
       PW_AMQP_CONTAINER: "true"
+      PW_AWS_CONTAINER: "true"
+      PW_AWS_S3_BUCKET: propmaster-examples
       PW_INBOX_CONTAINER: "true"
       PW_MOCK_CONTAINER: "true"
     steps:

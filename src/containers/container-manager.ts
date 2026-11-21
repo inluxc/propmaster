@@ -23,6 +23,7 @@ import type {
     DatabaseFixtureConfig,
     KafkaFixtureConfig,
     AmqpFixtureConfig,
+    AwsFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
     RedisFixtureConfig,
@@ -34,7 +35,7 @@ import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'mailpit' | 'wiremock';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'mailpit' | 'wiremock';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -46,6 +47,7 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     neo4j: 'neo4j:5',
     kafka: 'apache/kafka:latest',
     rabbitmq: 'rabbitmq:4',
+    moto: 'motoserver/moto:5.2.5',
     mailpit: 'axllent/mailpit:latest',
     wiremock: 'wiremock/wiremock:3.13.2',
 };
@@ -290,6 +292,19 @@ export function rabbitMqSpec(config: AmqpFixtureConfig, options: ContainerOption
     };
 }
 
+/**
+ * Moto: one endpoint for S3, SQS, SNS and the rest of AWS. (LocalStack's
+ * image needs an auth token since 2026, so the container uses Moto.)
+ */
+export function motoSpec(options: ContainerOptions): ContainerSpec {
+    return {
+        ...baseSpec('moto', 's3Client / sqsClient', options),
+        env: {},
+        port: 5000,
+        healthCheck: 'curl -fs http://localhost:5000/moto-api/ > /dev/null',
+    };
+}
+
 /** Mailpit: the API/UI on 8025 for the fixture, SMTP on 1025 for the app under test. */
 export function mailpitSpec(options: ContainerOptions): ContainerSpec {
     return {
@@ -443,6 +458,23 @@ export class ContainerManager {
         const { spec, username, password, vhost } = rabbitMqSpec(config, options);
         const started = await this.ensure(spec);
         return { ...config, url: undefined, tls: false, host: started.host, port: started.port, username, password, vhost, container: false };
+    }
+
+    /** Moto: `endpoint` points at the container, with its `test` credentials and us-east-1 unless the config sets a region. */
+    async aws(config: AwsFixtureConfig): Promise<AwsFixtureConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const started = await this.ensure(motoSpec(options));
+        return {
+            ...config,
+            endpoint: `http://${started.host}:${started.port}`,
+            region: config.region ?? 'us-east-1',
+            accessKeyId: 'test',
+            secretAccessKey: 'test',
+            sessionToken: undefined,
+            profile: undefined,
+            container: false,
+        };
     }
 
     /** Mailpit: `url` points at its API, `smtpHost`/`smtpPort` at its SMTP server. */
