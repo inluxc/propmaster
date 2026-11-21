@@ -430,7 +430,7 @@ export function checkSources(sources: SourceInput[]): CheckResult {
 
 // ─── Files ──────────────────────────────────────────────────────────────────
 
-function walk(dir: string): string[] {
+export function walk(dir: string): string[] {
     if (!existsSync(dir)) return [];
     const out: string[] = [];
     for (const name of readdirSync(dir)) {
