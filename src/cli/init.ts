@@ -183,6 +183,7 @@ npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (s
 npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
 npm run lint:tests -- --list-ids  # every TestCaseID in use, with file:line
 npm run verify                  # typecheck + lint:tests — run before finishing any task
+npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 \`\`\`
 
 \`lint:tests\` (\`propmaster check\`) exits non-zero on any violation. Each violation names the rule (\`tc-id\`, \`tc-tag\`, \`tc-unique\`, \`test-step\`, \`import\`) and the fix.
@@ -636,6 +637,7 @@ const HELP = `
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
+    npx propmaster generate openapi [--tag <tag>] [--operation <id>] [--dry-run] [--prism]
     npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
 
   Commands:
@@ -657,6 +659,11 @@ const HELP = `
               --list-ids to print every TestCaseID in use.
     next-id   Print the next free TestCaseID(s) for a category, e.g.
               \`propmaster next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
+    generate  Scaffold API tests from the OpenAPI spec into tests/api: one file
+              per tag, a test per operation and documented status code, with
+              real TestCaseIDs and test.step() blocks. Never overwrites a file;
+              skips operations that already have a test.
+              \`propmaster generate --help\` for details.
     mcp       Start an MCP server (stdio) that gives coding agents read tools
               for the configured backends (db_query, mongo_find, redis_get,
               kafka_peek, neo4j_read, openapi_operations, ...) plus
@@ -881,7 +888,11 @@ function isEntryPoint(): boolean {
 }
 
 if (isEntryPoint()) {
-    if (process.argv[2] === 'mcp') {
+    if (process.argv[2] === 'generate') {
+        void import('./generate.js').then(({ runGenerate }) => runGenerate(process.argv.slice(3))).then((code) => {
+            process.exitCode = code;
+        });
+    } else if (process.argv[2] === 'mcp') {
         // Loaded on demand: the server pulls in every client factory.
         void import('../mcp/server.js').then(({ runMcp }) => runMcp(process.argv.slice(3))).then((code) => {
             process.exitCode = code;

@@ -12,6 +12,7 @@ npm run next-id -- API 3        # three sequential IDs
 npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (specs + SKILLS.md/AGENTS.md samples)
 npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
 npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
+npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 ```
 
 `lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`) and the fix.
@@ -62,7 +63,9 @@ src/
 │   ├── env-loader.ts           # EnvLoader — .env file loading
 │   └── schema.ts               # TypeScript interfaces for all configs
 ├── openapi/
-│   └── contract.ts             # ContractValidator: requests/responses against the OpenAPI spec (Ajv)
+│   ├── contract.ts             # ContractValidator: requests/responses against the OpenAPI spec (Ajv)
+│   ├── generate.ts             # `propmaster generate openapi`: API tests from the spec
+│   └── load.ts                 # Loads a spec (file or URL, JSON or YAML) as a plain object
 ├── fixtures/
 │   ├── index.ts                # Fixture registry — composes all fixtures via test.extend()
 │   ├── openapi.fixture.ts      # OpenAPI client fixture
@@ -85,7 +88,7 @@ src/
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction
-└── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp,
+└── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
                                 #   check + next-id (test conventions); layout.ts = the scaffolded layout
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)

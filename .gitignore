@@ -6,3 +6,4 @@ test-results/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .auth/
+tests/generated/

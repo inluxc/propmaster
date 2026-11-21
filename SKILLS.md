@@ -121,6 +121,8 @@ test.describe('Feature Name', () => {
 
 **When to use:** Testing REST API endpoints defined in an OpenAPI specification.
 
+**Starting from nothing?** `npx propmaster generate openapi --tag <tag>` writes a test per operation and documented status code into `tests/api/<tag>.spec.ts`, with real IDs and steps ([docs/guide/generate-api-tests.md](docs/guide/generate-api-tests.md)). Then replace the example values with real data, add body assertions and resolve the `test.fixme` TODOs. Write the tests by hand, as below, for flows that span several operations.
+
 **Steps:**
 
 1. Create a file matching the project's `testMatch` pattern (e.g., `tests/examples/openapi.spec.ts` or add a new pattern to `playwright.config.ts`)

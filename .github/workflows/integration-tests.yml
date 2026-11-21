@@ -528,6 +528,15 @@ jobs:
           exit 1
       - name: Run OpenAPI integration tests
         run: npx playwright test --project=openapi
+      # `propmaster generate openapi` must write tests that pass the checker,
+      # typecheck and pass against the mock. --prism makes every documented
+      # status code runnable (Prism answers Prefer: code=<status>).
+      - name: Generate API tests from the spec
+        run: npx tsx src/cli/init.ts generate openapi --spec /tmp/petstore-spec.json --out tests/generated --import ../../src --prism
+      - name: Check and typecheck the generated tests
+        run: npm run lint:tests && npm run typecheck
+      - name: Run the generated tests against Prism
+        run: npx playwright test --project=openapi-generated
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4

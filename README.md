@@ -421,6 +421,12 @@ See [docs/secrets.md](docs/secrets.md) for every provider's options.
 
 ---
 
+## Generating API Tests
+
+`npx propmaster generate openapi` writes a starting set of tests from your OpenAPI spec: one file per tag in `tests/api/`, a test per operation and documented status code, with TestCaseIDs from `next-id` and `test.step()` blocks. Requests are built from the schema examples. 400 tests send a body without its required fields, and 404 tests use IDs that don't exist. Status codes the generator can't provoke become `test.fixme` with a TODO. It never overwrites a file; run it again after the spec changes to get tests for just the new operations. See [docs/guide/generate-api-tests.md](docs/guide/generate-api-tests.md).
+
+---
+
 ## MCP Server for Coding Agents
 
 `npx propmaster mcp` lets a coding agent (Claude Code, VS Code, Cursor, ...) see the backends while it writes or debugs tests. It can query the database, read MongoDB, Redis, Kafka and Neo4j, list the OpenAPI operations, and get the next free TestCaseID. It uses the project's `environments.json` and secrets, is read-only unless you pass `--allow-writes`, refuses production environments, and never shows credentials.

@@ -16,7 +16,7 @@ import { createMongoDbClient } from '../fixtures/mongodb.fixture.js';
 import type { MongoDbClient } from '../fixtures/mongodb.fixture.js';
 import { createNeo4jDriver, toPlain } from '../fixtures/neo4j.fixture.js';
 import { createOtpClient } from '../fixtures/otp.fixture.js';
-import { isRemoteSpec, resolveSpecDefinition } from '../fixtures/openapi.fixture.js';
+import { loadOpenApiDocument } from '../openapi/load.js';
 import { readOnlySqlProblem, writingPipelineStage } from './guards.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
@@ -391,7 +391,7 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
             handler: async (args) => {
                 const oc = config?.openapi;
                 if (!oc?.specPath) notConfigured('The OpenAPI spec', 'Add "openapi.specPath" to environments.json or set PW_OPENAPI_SPEC_PATH.');
-                const document = await loadSpec(oc.specPath, ctx.root);
+                const document = await loadOpenApiDocument(oc.specPath, ctx.root);
                 const operations = listOperations(document, optStr(args, 'filter'));
                 return { baseUrl: oc.baseUrl, count: operations.length, operations };
             },
@@ -674,19 +674,6 @@ async function peekTopic(kafka: KafkaInstance, admin: KafkaAdmin, topic: string,
 // ─── OpenAPI ────────────────────────────────────────────────────────────────
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
-
-async function loadSpec(specPath: string, root: string): Promise<Record<string, unknown>> {
-    if (!isRemoteSpec(specPath)) return (await resolveSpecDefinition(specPath, root)) as unknown as Record<string, unknown>;
-    const response = await fetch(specPath);
-    if (!response.ok) throw new Error(`Couldn't fetch the OpenAPI spec from ${specPath}: HTTP ${response.status}`);
-    const text = await response.text();
-    try {
-        return JSON.parse(text) as Record<string, unknown>;
-    } catch {
-        const yaml = await loadOptional<typeof import('js-yaml')>('js-yaml', 'openApiClient (YAML specs)');
-        return yaml.load(text) as Record<string, unknown>;
-    }
-}
 
 interface OperationSummary {
     operationId?: string;
