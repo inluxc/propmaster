@@ -48,6 +48,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
+| `test-dynamodb` | `integration-dynamodb` | `motoserver/moto:5.2.5` | DynamoDB fixture |
 | `test-search-elasticsearch`, `test-search-opensearch` | `integration-search` | `elasticsearch:9.5.5`, `opensearchproject/opensearch:3.10.0` | Search fixture, once per engine |
 | `test-grpc` | `grpc` | `moul/grpcbin:latest` | gRPC fixture (proto files, reflection, streaming, TLS) |
 | `test-realtime` | `realtime` | `jmalloc/echo-server:v0.3.7` | Realtime fixture (WebSocket and SSE) |
@@ -316,6 +317,24 @@ env:
 
 Against a real test account, leave out the service and `PW_AWS_ENDPOINT`, and give the job AWS credentials (OIDC with `aws-actions/configure-aws-credentials` is the usual way on GitHub).
 
+### DynamoDB
+
+The same Moto service, without a bucket. The examples create their tables with `createTable()`. For your own suite, create the application's tables in a `beforeAll`, or with your infrastructure code against the emulator:
+
+```yaml
+services:
+  moto:
+    image: motoserver/moto:5.2.5
+    options: >-
+      --health-cmd "curl -fs http://localhost:5000/moto-api/ > /dev/null"
+      --health-interval 2s --health-timeout 10s --health-retries 15
+env:
+  PW_AWS_ENDPOINT: http://moto:5000
+  PW_AWS_REGION: us-east-1
+```
+
+To run the S3, SQS and DynamoDB tests in one job, list both projects: `--project=integration-aws --project=integration-dynamodb`.
+
 ### Elasticsearch / OpenSearch
 
 A single node with security off: plain HTTP, no password. The disk-threshold setting stops a nearly full runner disk from turning the indices read-only:
@@ -386,7 +405,8 @@ steps:
   - uses: actions/checkout@v4
   - uses: ./.github/actions/npm-install
   - name: Start Prism mock server
-    run: npx prism mock ./openapi.yaml --port 4010 --host 0.0.0.0 --errors false &
+    # To a file: the step's output pipe closes when the step ends, and Prism, which logs every request, dies writing to it
+    run: nohup npx prism mock ./openapi.yaml --port 4010 --host 0.0.0.0 --errors false > /tmp/prism.log 2>&1 &
   - name: Wait for mock server
     run: |
       for i in $(seq 1 60); do

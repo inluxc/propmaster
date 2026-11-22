@@ -157,7 +157,7 @@ pipelines:
               artifacts: [playwright-report/**]
 
           - step:
-              name: AWS (S3, SQS, SNS)
+              name: AWS (S3, SQS, SNS, DynamoDB)
               caches: [npm]
               services: [moto]
               script:
@@ -166,7 +166,7 @@ pipelines:
                 - export PW_AWS_ENDPOINT=http://localhost:5000 PW_AWS_REGION=us-east-1 PW_AWS_S3_BUCKET=propmaster-examples
                 - *npm-ci
                 - wait_for 5000
-                - npx playwright test --project=integration-aws --reporter=line,junit
+                - npx playwright test --project=integration-aws --project=integration-dynamodb --reporter=line,junit
               artifacts: [playwright-report/**]
 
           - step:

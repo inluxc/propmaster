@@ -154,7 +154,7 @@ aws:
     PW_AWS_S3_BUCKET: propmaster-examples
   script:
     - wait_for moto 5000
-    - npx playwright test --project=integration-aws --reporter=line,junit
+    - npx playwright test --project=integration-aws --project=integration-dynamodb --reporter=line,junit
 
 search:
   extends: .playwright

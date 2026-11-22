@@ -177,7 +177,7 @@ pipeline {
                             withService(image: 'motoserver/moto:5.2.5', alias: 'moto',
                                         ready: 'curl -fs http://localhost:5000/moto-api/ > /dev/null') {
                                 withEnv(['PW_AWS_ENDPOINT=http://moto:5000', 'PW_AWS_REGION=us-east-1', 'PW_AWS_S3_BUCKET=propmaster-examples']) {
-                                    sh 'npx playwright test --project=integration-aws --reporter=line,junit'
+                                    sh 'npx playwright test --project=integration-aws --project=integration-dynamodb --reporter=line,junit'
                                 }
                             }
                         }

@@ -28,6 +28,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
 | `sqsClient` | `@aws-sdk/client-sqs` (and `@aws-sdk/client-sns` for topics) |
+| `dynamoDbClient` | `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` |
 | `searchClient` | nothing (uses `fetch`); needs Elasticsearch or OpenSearch |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
@@ -122,6 +123,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `amqpClient` | RabbitMQ publish, listen on an exchange, consume and purge | [RabbitMQ](../amqp-fixture) |
 | `s3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [AWS](../aws-fixture) |
 | `sqsClient` | SQS send, receive, purge; SNS publish and listen on a topic | [AWS](../aws-fixture) |
+| `dynamoDbClient` | DynamoDB items as plain objects: put, get, update, query, scan, wait for an item; writes undone | [DynamoDB](../dynamodb-fixture) |
 | `searchClient` | Elasticsearch / OpenSearch: index, search, wait for documents | [Search](../search-fixture) |
 | `redisClient` | Redis keys and pub/sub | [Redis](../redis-fixture) |
 | `otpClient` | TOTP/HOTP codes for 2FA flows | [OTP](../otp-fixture) |

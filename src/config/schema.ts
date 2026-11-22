@@ -137,7 +137,7 @@ export interface AmqpFixtureConfig {
 }
 
 /**
- * Configuration for the AWS fixtures (`s3Client`, `sqsClient`): one config for
+ * Configuration for the AWS fixtures (`s3Client`, `sqsClient`, `dynamoDbClient`): one config for
  * every service, pointed at an emulator (Moto, LocalStack) with `endpoint` or
  * at a real test account without it.
  */
@@ -160,7 +160,11 @@ export interface AwsFixtureConfig {
         /** Root of the per-test prefix (default: `propmaster-tests/`). */
         prefix?: string;
     };
-    /** Default wait for `waitForObject()`, `receive()` and `waitForMessage()` in ms (default: 10000). */
+    dynamodb?: {
+        /** Root of the per-test table-name prefix from `tableName()` (default: `propmaster-tests-`). */
+        tablePrefix?: string;
+    };
+    /** Default wait for `waitForObject()`, `receive()`, `waitForMessage()`, `waitForItem()` and `waitForQuery()` in ms (default: 10000). */
     timeout?: number;
     /** Start Moto (an AWS emulator) in a Docker container for the run (see ContainerOptions). */
     container?: ContainerSetting;

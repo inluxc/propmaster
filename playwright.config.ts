@@ -94,7 +94,7 @@ export default defineConfig<ConfigOptions>({
         },
         {
             name: 'api-integration',
-            testMatch: '**/examples/{database,kafka,amqp,aws,search,redis,mongodb,neo4j}.spec.ts',
+            testMatch: '**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j}.spec.ts',
             use: {
                 database: config.database,
                 kafka: config.kafka,
@@ -130,6 +130,13 @@ export default defineConfig<ConfigOptions>({
         {
             name: 'integration-aws',
             testMatch: '**/examples/aws.spec.ts',
+            use: {
+                aws: config.aws,
+            },
+        },
+        {
+            name: 'integration-dynamodb',
+            testMatch: '**/examples/dynamodb.spec.ts',
             use: {
                 aws: config.aws,
             },

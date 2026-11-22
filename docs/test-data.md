@@ -36,12 +36,13 @@ Each client records how to undo its own inserts. When the test ends, the undo ac
 | `databaseClient.insert(table, rows)` | `DELETE` of each row, matched on `key`, else `id` when every row has one, else every inserted column |
 | `mongoDbClient.insertOne` / `insertMany` | `deleteMany` by the inserted `_id`s |
 | `redisClient.set(key, ...)` | `DEL` of a new key; a key that already existed gets its previous value back (without its TTL) |
+| `dynamoDbClient.put` / `putMany` / `update` | Deletes a new item; an item that already existed gets its previous content back. Tables made with `createTable()` are deleted |
 | `neo4jClient.write(cypher, { runId })` | `MATCH (n {runId: $runId}) DETACH DELETE n`, once per run ID. `executeInTransaction` too, once the transaction has committed |
 | `testData.cleanup(fn)` | Your own undo action, for data made another way |
 
 **Not tracked:**
 - **Raw SQL through `databaseClient.execute()`.** An arbitrary statement can't be undone reliably. Use `insert()`, or register the undo yourself with `testData.cleanup()`.
-- **Updates and deletes** in every backend.
+- **Updates and deletes** in every backend, except DynamoDB `update()`.
 - **Neo4j writes without a `runId` parameter.**
 - **Data your application creates.**
 

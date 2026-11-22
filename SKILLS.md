@@ -34,6 +34,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `KFK` | Kafka tests |
 | `AMQ` | RabbitMQ / AMQP tests |
 | `AWS` | AWS tests (S3, SQS, SNS) |
+| `DDB` | DynamoDB tests |
 | `SRCH` | Search tests (Elasticsearch, OpenSearch) |
 | `RDS` | Redis tests |
 | `MDB` | MongoDB tests |
@@ -2126,6 +2127,7 @@ Never put tokens, secret_ids or JWTs in `environments.json`. See [docs/secrets.m
    - `databaseClient.insert(table, rows)`
    - `mongoDbClient.insertOne` / `insertMany`
    - `redisClient.set`
+   - `dynamoDbClient.put` / `putMany` / `update`
    - `neo4jClient.write` with `{ runId: testData.runId }`
 3. For anything else (an API call, raw SQL, a browser flow), register the undo with `testData.cleanup(label, fn)` right after creating the data.
 4. Only data meant to stay (a seeding setup project) opts out, with `{ keep: true }` or `use: { autoCleanup: false }`.
@@ -2963,6 +2965,74 @@ test.describe('Realtime — Order updates', () => {
 
 ---
 
+## Skill 27: Test What a Backend Stores in DynamoDB
+
+**When to use:** The backend reads or writes DynamoDB tables: check the item an API call stored, wait for a worker to update it, seed items a test needs, or check that a conditional write (no duplicates, optimistic locking) refuses what it should.
+
+**Steps:**
+
+1. Use `dynamoDbClient`. It takes the same `aws` config as `s3Client`/`sqsClient`: `PW_AWS_ENDPOINT` for an emulator (Moto, LocalStack, DynamoDB Local), `PW_AWS_CONTAINER=true` for Moto in Docker, or a test account through the standard AWS chain. `DynamoDbSteps` from `src/steps` wraps the calls in `test.step()`.
+2. Pass plain objects everywhere. Items: `put('orders', { customerId, orderedAt, status: 'open' })`. Keys: `get('orders', { customerId, orderedAt })`. Conditions and filters: `{ status: 'open', total: { '>': 10 }, 'address.city': 'Porto' }`, with the operators `=`, `<>`, `<`, `<=`, `>`, `>=`, `between`, `beginsWith`, `contains`, `exists` and `in`. Never write `#name`/`:value` expressions or `{ S: '...' }` values by hand, unless the object form can't say it (`{ expression, names, values }`).
+3. For what the **application** writes, poll: `waitForItem(table, key, { until })` or `waitForQuery(table, keyCondition, { index, count })`, or `DynamoDbSteps.expectItem(..., expected)`, which waits until the item matches. Don't `get()` once right after an asynchronous action.
+4. Match on something unique to the test, such as a `testData.unique()` customer ID, since other tests share the table. `dynamoDbClient.tableKey(table)` tells you which attributes make up the key.
+5. Seed with `put`/`putMany`/`update`. They are undone after the test: deleted, or put back as they were. Don't write `afterEach` cleanup, and don't `delete()` to clean up.
+6. For an **expected refusal**, use `DynamoDbSteps.expectConditionFailed(description, () => dynamoDbClient.put(..., { ifNotExists: true }))`, or `await expect(...).rejects.toThrow(/ConditionalCheckFailedException/)`. Never wrap the write in try/catch.
+7. On an emulator the tables may not exist: `createTable(name, { key: { customerId: 'S', orderedAt: 'N' }, indexes: { byStatus: { status: 'S' } } }, { keep: true })` in a `beforeEach` makes the application's table if it's missing. For a table of the test's own, use `createTable(dynamoDbClient.tableName('x'), ...)`, which is deleted afterwards.
+8. Get IDs with `npm run next-id -- DDB <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+import { DynamoDbSteps } from '@inluxc/propmaster/steps';
+
+test.describe('DynamoDB — Orders', () => {
+    test.beforeEach(async ({ dynamoDbClient }) => {
+        // Only does something on an emulator where the table is missing
+        await dynamoDbClient.createTable('orders', { key: { customerId: 'S', orderedAt: 'N' }, indexes: { byStatus: { status: 'S', orderedAt: 'N' } } }, { keep: true });
+    });
+
+    test('[TC-DDB-NNN] a placed order is stored, then shipped by the worker', { tag: ['@TC-DDB-NNN'] }, async ({ dynamoDbClient, openApiClient, testData }) => {
+        const dynamo = new DynamoDbSteps(dynamoDbClient);
+        const customerId = testData.unique('customer');
+        let orderedAt = 0;
+
+        await test.step('Step 1: Place an order through the API', async () => {
+            const response = await (openApiClient.client as any).placeOrder(null, { customerId, sku: 'A-1', qty: 2 });
+            expect(response.status).toBe(201);
+            orderedAt = response.data.orderedAt;
+        });
+
+        await dynamo.expectItem('Verify the order is stored', 'orders', { customerId, orderedAt }, { status: 'open', lines: [{ sku: 'A-1', qty: 2 }] });
+        await dynamo.expectItem('Verify the worker ships it', 'orders', { customerId, orderedAt }, { status: 'shipped' }, { timeout: 30_000 });
+        await dynamo.expectCount('Verify the customer has one order', 'orders', { customerId }, 1);
+    });
+
+    test('[TC-DDB-NNN] an account update at a stale version is refused', { tag: ['@TC-DDB-NNN'] }, async ({ dynamoDbClient, testData }) => {
+        const dynamo = new DynamoDbSteps(dynamoDbClient);
+        const id = testData.unique('acct');
+
+        await dynamo.put('Seed an account at version 2', 'accounts', { id, balance: 100, version: 2 });
+
+        await dynamo.expectConditionFailed('Verify an update at version 1 is refused', () =>
+            dynamoDbClient.update('accounts', { id }, { balance: 0, version: 2 }, { condition: { version: 1 } }));
+
+        await test.step('Step 1: Verify the balance did not change', async () => {
+            expect(await dynamoDbClient.get('accounts', { id })).toMatchObject({ balance: 100, version: 2 });
+        });
+    });
+});
+```
+
+**Key points:**
+- Reads are strongly consistent by default, except on global indexes, which DynamoDB can't read consistently. After the application writes, a query on a global index can lag: use `waitForQuery`.
+- `query()` and `scan()` follow every page; pass `limit` to stop early. `scan()` reads the whole table, so prefer `query()` on a key or an index.
+- Numbers come back as JS numbers, sets as `Set`, binary as `Uint8Array`. `update()` returns the whole item after the change, and never changes key attributes.
+- A failure message shows the table, the key and the condition with the real names and values (`version = 1`). A missing table names the region and endpoint asked: usually a wrong `PW_AWS_ENDPOINT` or region.
+- For transactions or anything else, `dynamoDbClient.documentClient` and `dynamoDbClient.sdk` are the AWS SDK clients. Writes through them aren't undone: register `testData.cleanup()`.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2973,6 +3043,7 @@ test.describe('Realtime — Order updates', () => {
 | Test event publishing/consuming | Skill 3 (Kafka) |
 | Test RabbitMQ events or commands | Skill 22 (RabbitMQ) |
 | Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
+| Test what a backend stores in DynamoDB | Skill 27 (DynamoDB) |
 | Test what reaches a search index, rankings or aggregations | Skill 24 (Search) |
 | Test caching or pub/sub | Skill 4 (Redis) |
 | Test a native mobile app (Appium) | Skill 5 (Appium) |

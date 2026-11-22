@@ -32,6 +32,7 @@ export const FIXTURE_PACKAGES = {
     s3Client: ['@aws-sdk/client-s3'],
     sqsClient: ['@aws-sdk/client-sqs'],
     'sqsClient (SNS)': ['@aws-sdk/client-sns'],
+    dynamoDbClient: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'],
     redisClient: ['ioredis'],
     otpClient: ['otplib'],
     'testData (faker)': ['@faker-js/faker'],

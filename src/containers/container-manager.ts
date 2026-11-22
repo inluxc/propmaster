@@ -317,7 +317,7 @@ export function rabbitMqSpec(config: AmqpFixtureConfig, options: ContainerOption
  */
 export function motoSpec(options: ContainerOptions): ContainerSpec {
     return {
-        ...baseSpec('moto', 's3Client / sqsClient', options),
+        ...baseSpec('moto', 's3Client / sqsClient / dynamoDbClient', options),
         env: {},
         port: 5000,
         healthCheck: 'curl -fs http://localhost:5000/moto-api/ > /dev/null',

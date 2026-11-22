@@ -575,6 +575,46 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-dynamodb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      moto:
+        image: motoserver/moto:5.2.5
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "curl -fs http://localhost:5000/moto-api/ > /dev/null"
+          --health-interval 2s
+          --health-timeout 10s
+          --health-retries 15
+    env:
+      CI: true
+      PW_AWS_ENDPOINT: http://moto:5000
+      PW_AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_AWS_ENDPOINT
+      - name: Run DynamoDB integration tests
+        run: npx playwright test --project=integration-dynamodb
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-dynamodb
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-dynamodb
+          path: test-results/
+          retention-days: 7
+
   test-search-elasticsearch:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -756,9 +796,12 @@ jobs:
       - uses: ./.github/actions/npm-install
       - name: Download OpenAPI spec locally
         run: curl -s https://petstore.swagger.io/v2/swagger.json -o /tmp/petstore-spec.json
+      # Prism logs every request. Its output goes to a file: this step's own
+      # output pipe closes when the step ends, and a background Prism still
+      # writing to it dies partway through the later test steps.
       - name: Start Prism mock server
         run: |
-          npx prism mock /tmp/petstore-spec.json --port 4010 --host 0.0.0.0 --errors false &
+          nohup npx prism mock /tmp/petstore-spec.json --port 4010 --host 0.0.0.0 --errors false > /tmp/prism.log 2>&1 &
           echo "Prism PID: $!"
       - name: Wait for mock server
         run: |
@@ -784,6 +827,9 @@ jobs:
         run: npm run lint:tests && npm run typecheck
       - name: Run the generated tests against Prism
         run: npx playwright test --project=openapi-generated
+      - name: Show the Prism log
+        if: failure()
+        run: tail -n 200 /tmp/prism.log || true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4

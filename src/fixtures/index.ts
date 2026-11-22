@@ -46,6 +46,7 @@ import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
 import { amqpFixture, type AmqpClient } from './amqp.fixture.js';
 import { s3Fixture, type S3Client } from './s3.fixture.js';
 import { sqsFixture, type SqsClient } from './sqs.fixture.js';
+import { dynamoDbFixture, type DynamoDbClient } from './dynamodb.fixture.js';
 import { searchFixture, type SearchClient } from './search.fixture.js';
 import { grpcFixture, type GrpcClient } from './grpc.fixture.js';
 export type {
@@ -124,6 +125,8 @@ export interface FixtureTypes {
     s3Client: S3Client;
     /** SQS and SNS: send, receive, purge, publish to a topic, listen on a topic. */
     sqsClient: SqsClient;
+    /** DynamoDB: put, get, update, query and scan plain objects; writes undone after the test. */
+    dynamoDbClient: DynamoDbClient;
     /** Elasticsearch / OpenSearch: index, search, count and wait for documents under a per-test index prefix. */
     searchClient: SearchClient;
     redisConfig: RedisFixtureConfig;
@@ -495,6 +498,7 @@ const allFixtures = {
     ...amqpFixture,
     ...s3Fixture,
     ...sqsFixture,
+    ...dynamoDbFixture,
     ...searchFixture,
     ...grpcFixture,
     ...realtimeFixture,
@@ -554,6 +558,27 @@ export type {
     SnsWaitOptions,
     AwsMessageAttributes,
 } from './sqs.fixture.js';
+export type {
+    DynamoDbClient,
+    DynamoItem,
+    DynamoKey,
+    DynamoComparison,
+    DynamoConditions,
+    DynamoExpression,
+    DynamoPutOptions,
+    DynamoUpdateOptions,
+    DynamoDeleteOptions,
+    DynamoGetOptions,
+    DynamoQueryOptions,
+    DynamoScanOptions,
+    DynamoWaitOptions,
+    DynamoWaitForItemOptions,
+    DynamoWaitForQueryOptions,
+    DynamoTableDefinition,
+    DynamoKeyDefinition,
+    DynamoKeyType,
+    DynamoTableKey,
+} from './dynamodb.fixture.js';
 export type { AwsBody } from './aws.js';
 export type {
     SearchClient,
