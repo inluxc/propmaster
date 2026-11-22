@@ -50,7 +50,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Mobile Testing:** Appium via WebdriverIO (`webdriverio ^9.33.1`) — local Appium, grids, cloud farms, and GADS device farms
 - **API Testing:** OpenAPI Client Axios (`openapi-client-axios ^7.9.1`)
 - **Database:** PostgreSQL (`pg`), MySQL (`mysql2`), MSSQL (`mssql`), SQLite (`better-sqlite3`)
-- **Messaging:** KafkaJS (`kafkajs ^2.2.4`), amqplib for RabbitMQ / AMQP 0-9-1 (`amqplib ^2.2.0`)
+- **Messaging:** KafkaJS (`kafkajs ^2.2.4`) or Confluent's client (`@confluentinc/kafka-javascript ^1.11.0`, `PW_KAFKA_DRIVER=confluent`), amqplib for RabbitMQ / AMQP 0-9-1 (`amqplib ^2.2.0`)
 - **AWS:** AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/client-sqs`, `@aws-sdk/client-sns`, `@aws-sdk/client-dynamodb` + `@aws-sdk/lib-dynamodb` `^3.700.0`); Moto as the emulator in compose/CI/containers
 - **Search:** Elasticsearch and OpenSearch over their shared REST API (built-in `fetch`, no driver)
 - **Cache:** ioredis (`ioredis ^6.0.0`)
@@ -88,6 +88,7 @@ src/
 │   ├── graphql.fixture.ts      # GraphQL client fixture (queries, mutations, rawRequest)
 │   ├── grpc.fixture.ts         # gRPC client fixture (proto files / server reflection, unary + streaming, GrpcError)
 │   ├── realtime.fixture.ts     # WebSocket (ws) + SSE (fetch) client: connect/subscribe, waitForMessage, RealtimeError
+│   ├── kafka-driver.ts         # kafkajs and Confluent behind one kafkajs-style interface (also used by the MCP Kafka tools)
 │   ├── kafka.fixture.ts        # Kafka producer/consumer fixture
 │   ├── amqp.fixture.ts         # RabbitMQ / AMQP fixture (publish, listen, consume, purge)
 │   ├── aws.ts                  # Shared AWS config → SDK client options (endpoint, region, credentials)
@@ -616,6 +617,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_DB_HOST`, `PW_DB_PORT`, `PW_DB_NAME` | Database connection |
 | `PW_DB_USERNAME`, `PW_DB_PASSWORD` | Database credentials |
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
+| `PW_KAFKA_DRIVER` | `kafkajs` (default) or `confluent`; same behaviour, the Kafka CI job runs both |
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`, `amqps://` for TLS) |
 | `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST`, `PW_AMQP_TLS` | AMQP broker without a URL |
 | `PW_AMQP_TIMEOUT`, `PW_AMQP_HEARTBEAT` | Default wait for messages (ms), heartbeat (s) |

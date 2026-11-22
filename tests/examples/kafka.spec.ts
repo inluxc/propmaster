@@ -48,4 +48,36 @@ test.describe('Kafka Fixture Examples', () => {
 
         await kafka.consumeExpectEmpty('Consume from an empty topic with short timeout', 'empty-topic', 2000);
     });
+
+    test('[TC-KFK-004] a second consume goes on where the first stopped', { tag: ['@TC-KFK-004'] }, async ({ kafkaClient, testData }) => {
+        const topic = testData.unique('orders');
+
+        await test.step('Step 1: Produce three messages to a new topic', async () => {
+            await kafkaClient.produce(topic, ['a', 'b', 'c'].map((value) => ({ key: null, value })));
+        });
+
+        await test.step('Step 2: Consume two from the beginning, then the rest', async () => {
+            const first = await kafkaClient.consume(topic, { fromBeginning: true, count: 2, timeout: 15_000 });
+            expect(first.map((m) => m.value)).toEqual(['a', 'b']);
+            // The test's consumer group committed what it read, so this starts at c
+            const rest = await kafkaClient.consume(topic, { fromBeginning: true, count: 1, timeout: 15_000 });
+            expect(rest.map((m) => m.value)).toEqual(['c']);
+        });
+    });
+
+    test('[TC-KFK-005] without fromBeginning only new messages arrive', { tag: ['@TC-KFK-005'] }, async ({ kafkaClient, testData }) => {
+        const topic = testData.unique('events');
+
+        await test.step('Step 1: Produce a message before consuming', async () => {
+            await kafkaClient.produce(topic, [{ key: 'old', value: 'before' }]);
+        });
+
+        await test.step('Step 2: Produce another once the consumer is listening, and receive only that one', async () => {
+            // The consumer joins its group within a few seconds; produce after that
+            setTimeout(() => void kafkaClient.produce(topic, [{ key: 'new', value: 'after' }]), 6000);
+            const messages = await kafkaClient.consume(topic, { count: 1, timeout: 20_000 });
+            expect(messages.map((m) => [m.key, m.value])).toEqual([['new', 'after']]);
+            expect(['kafkajs', 'confluent']).toContain(kafkaClient.driver);
+        });
+    });
 });

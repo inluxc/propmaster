@@ -29,6 +29,7 @@ export const FIXTURE_PACKAGES = {
     neo4jClient: ['neo4j-driver'],
     cassandraClient: ['cassandra-driver'],
     kafkaClient: ['kafkajs'],
+    'kafkaClient (confluent)': ['@confluentinc/kafka-javascript'],
     amqpClient: ['amqplib'],
     s3Client: ['@aws-sdk/client-s3'],
     sqsClient: ['@aws-sdk/client-sqs'],

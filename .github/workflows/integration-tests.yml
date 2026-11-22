@@ -580,7 +580,13 @@ jobs:
       - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_KAFKA_BROKERS
-      - name: Run Kafka integration tests
+      - name: Run Kafka integration tests (kafkajs)
+        run: npx playwright test --project=integration-kafka
+      # The same suite on Confluent's client (librdkafka); runs even when the kafkajs run failed
+      - name: Run Kafka integration tests (Confluent driver)
+        if: success() || failure()
+        env:
+          PW_KAFKA_DRIVER: confluent
         run: npx playwright test --project=integration-kafka
       - uses: ./.github/actions/test-history
         if: always()

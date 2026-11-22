@@ -281,6 +281,10 @@ export class ConfigLoader {
                 if (!cfg.kafka) cfg.kafka = { brokers: [] };
                 cfg.kafka.brokers = val.split(',').map(b => b.trim());
             },
+            'PW_KAFKA_DRIVER': (cfg, val) => {
+                if (!cfg.kafka) cfg.kafka = { brokers: [] };
+                cfg.kafka.driver = val as NonNullable<FrameworkConfig['kafka']>['driver'];
+            },
             'PW_AWS_REGION': (cfg, val) => {
                 cfg.aws ??= {};
                 cfg.aws.region = val;

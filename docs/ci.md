@@ -314,6 +314,8 @@ env:
   PW_KAFKA_BROKERS: kafka:9092
 ```
 
+Propmaster's own `test-kafka` job runs the suite twice: once on kafkajs, and once more with `PW_KAFKA_DRIVER: confluent` on Confluent's client. Do the same if you might switch drivers.
+
 ### RabbitMQ
 
 Create a user: the image's `guest` user can only connect from inside the container. `check_port_connectivity` waits for the AMQP port, which opens after `rabbitmq-diagnostics ping` already passes:

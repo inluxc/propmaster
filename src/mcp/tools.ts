@@ -16,6 +16,7 @@ import { createMongoDbClient } from '../fixtures/mongodb.fixture.js';
 import type { MongoDbClient } from '../fixtures/mongodb.fixture.js';
 import { createNeo4jDriver, toPlain } from '../fixtures/neo4j.fixture.js';
 import { createOtpClient } from '../fixtures/otp.fixture.js';
+import { createKafka, type KafkaAdminLike, type KafkaLike } from '../fixtures/kafka-driver.js';
 import { loadOpenApiDocument } from '../openapi/load.js';
 import { readOnlySqlProblem, writingPipelineStage } from './guards.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
@@ -174,19 +175,11 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
         });
     };
 
-    type KafkaModule = typeof import('kafkajs');
     const kafka = () => {
         const kc = config?.kafka;
-        if (!kc || kc.brokers.length === 0) notConfigured('Kafka', 'Add "kafka" to environments.json or set PW_KAFKA_BROKERS.'); 
+        if (!kc || kc.brokers.length === 0) notConfigured('Kafka', 'Add "kafka" to environments.json or set PW_KAFKA_BROKERS.');
         return connections.get('kafka', async () => {
-            const { Kafka, logLevel } = await loadOptional<KafkaModule>('kafkajs', 'kafkaClient');
-            const instance = new Kafka({
-                clientId: 'propmaster-mcp',
-                brokers: kc.brokers,
-                ssl: kc.ssl ?? false,
-                ...(kc.sasl ? { sasl: kc.sasl as never } : {}),
-                logLevel: logLevel.NOTHING,
-            });
+            const instance = await createKafka(kc, { clientId: 'propmaster-mcp', log: 'nothing' });
             const admin = instance.admin();
             await admin.connect();
             return { value: { instance, admin }, close: () => admin.disconnect() };
@@ -610,14 +603,12 @@ async function readRedisValue(client: Redis, key: string, type: string): Promise
     }
 }
 
-type KafkaInstance = InstanceType<typeof import('kafkajs').Kafka>;
-type KafkaAdmin = ReturnType<KafkaInstance['admin']>;
 
 /**
  * Reads up to `limit` of the latest messages on each partition with a
  * throwaway consumer group, then deletes the group.
  */
-async function peekTopic(kafka: KafkaInstance, admin: KafkaAdmin, topic: string, limit: number) {
+async function peekTopic(kafka: KafkaLike, admin: KafkaAdminLike, topic: string, limit: number) {
     const topics = await admin.listTopics();
     if (!topics.includes(topic)) throw new ToolInputError(`Topic "${topic}" doesn't exist. kafka_topics lists the topics.`);
 
@@ -628,17 +619,16 @@ async function peekTopic(kafka: KafkaInstance, admin: KafkaAdmin, topic: string,
     if (ranges.length === 0) return [];
 
     const groupId = `propmaster-mcp-${randomBytes(4).toString('hex')}`;
-    const consumer = kafka.consumer({ groupId });
+    const consumer = kafka.consumer({ groupId, fromBeginning: true, autoCommit: false });
     const messages: Array<{ partition: number; offset: string; timestamp: string; key: string | null; value: unknown; headers?: Record<string, string> }> = [];
     const remaining = new Map(ranges.map((r) => [r.partition, r.high]));
 
     await consumer.connect();
     try {
-        await consumer.subscribe({ topic, fromBeginning: true });
+        await consumer.subscribe({ topic });
         await new Promise<void>((resolve, reject) => {
             const timer = setTimeout(resolve, KAFKA_PEEK_TIMEOUT_MS);
             consumer.run({
-                autoCommit: false,
                 eachMessage: async ({ partition, message }) => {
                     const high = remaining.get(partition);
                     if (high === undefined) return;

@@ -807,7 +807,8 @@ test.describe('Kafka — [Event/Topic Name]', () => {
 - Messages are `{ key: string, value: string }` — serialize objects with `JSON.stringify()`
 - Consumed messages have: `topic`, `value`, `key`, `partition`, `offset`
 - `consume()` returns `[]` on timeout (does not throw)
-- Each test gets a unique consumer group ID automatically
+- Each test gets a unique consumer group ID automatically; a second `consume()` in the test goes on after the messages the first one returned
+- The same test runs on kafkajs (default) or Confluent's client (`PW_KAFKA_DRIVER=confluent`): don't write driver-specific code in tests
 
 ---
 
