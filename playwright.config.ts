@@ -29,6 +29,13 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            name: 'realtime',
+            testMatch: '**/examples/realtime.spec.ts',
+            use: {
+                realtime: config.realtime,
+            },
+        },
+        {
             // Tests written by `propmaster generate openapi` (CI generates them into
             // tests/generated/ and runs them against the Prism mock).
             name: 'openapi-generated',

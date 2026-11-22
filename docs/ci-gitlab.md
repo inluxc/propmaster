@@ -184,6 +184,17 @@ grpc:
     - wait_for grpcbin 9000
     - npx playwright test --project=grpc --reporter=line,junit
 
+realtime:
+  extends: .playwright
+  services:
+    - name: jmalloc/echo-server:v0.3.7
+      alias: echo-server
+  variables:
+    PW_REALTIME_URL: http://echo-server:8080
+  script:
+    - wait_for echo-server 8080
+    - npx playwright test --project=realtime --reporter=line,junit
+
 browser:
   extends: .playwright
   image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test

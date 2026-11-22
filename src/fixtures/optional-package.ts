@@ -20,6 +20,7 @@ export const FIXTURE_PACKAGES = {
     'openApiClient (contract checks)': ['ajv', 'ajv-formats'],
     graphqlClient: ['graphql-request', 'graphql'],
     grpcClient: ['@grpc/grpc-js', '@grpc/proto-loader'],
+    'realtimeClient (WebSocket)': ['ws'],
     'databaseClient (postgresql)': ['pg'],
     'databaseClient (mysql)': ['mysql2'],
     'databaseClient (mssql)': ['mssql'],

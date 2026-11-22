@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
         "propmaster": "dist/src/cli/init.js"
@@ -87,7 +87,8 @@
         "otplib": "^13.6.0",
         "pg": "^8.23.1",
         "testcontainers": "^12.2.1",
-        "webdriverio": "^9.33.1"
+        "webdriverio": "^9.33.1",
+        "ws": "^8.0.0"
     },
     "peerDependenciesMeta": {
         "@aws-sdk/client-s3": {
@@ -161,6 +162,9 @@
         },
         "webdriverio": {
             "optional": true
+        },
+        "ws": {
+            "optional": true
         }
     },
     "devDependencies": {
@@ -198,7 +202,8 @@
         "testcontainers": "12.2.1",
         "tsx": "^4.23.15",
         "typescript": "^7.0.2",
-        "webdriverio": "^9.33.1"
+        "webdriverio": "^9.33.1",
+        "ws": "^8.23.0"
     },
     "keywords": [
         "playwright",
@@ -237,7 +242,9 @@
         "localstack",
         "elasticsearch",
         "opensearch",
-        "grpc"
+        "grpc",
+        "websocket",
+        "sse"
     ],
     "author": "Inluxc",
     "license": "MIT",

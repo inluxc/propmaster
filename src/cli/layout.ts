@@ -22,7 +22,7 @@ export interface TestTypeInfo {
 }
 
 export const TEST_TYPES: readonly TestTypeInfo[] = [
-    { type: 'api', dir: 'tests/api', exportName: 'apiProjects', summary: 'REST / GraphQL / gRPC tests: no browser, device or backend service' },
+    { type: 'api', dir: 'tests/api', exportName: 'apiProjects', summary: 'REST / GraphQL / gRPC / WebSocket / SSE tests: no browser, device or backend service' },
     { type: 'integration', dir: 'tests/integration', exportName: 'integrationProjects', summary: 'tests that need a database, broker or cache' },
     { type: 'e2e', dir: 'tests/e2e', exportName: 'e2eProjects', summary: 'browser user journeys' },
     { type: 'mobile', dir: 'tests/mobile', exportName: 'mobileProjects', summary: 'Appium / GADS device tests' },
@@ -40,7 +40,7 @@ const PROJECT_TEMPLATES: Record<TestType, string> = {
     api: `import type { FrameworkConfig } from '@inluxc/propmaster';
 
 /**
- * API tests: REST, GraphQL and gRPC calls that need no browser, device or backend
+ * API tests: REST, GraphQL, gRPC, WebSocket and SSE calls that need no browser, device or backend
  * service, so they run anywhere, fast. Specs: *.spec.ts files under tests/api/
  */
 export const apiProjects = (config: FrameworkConfig) => [
@@ -51,6 +51,7 @@ export const apiProjects = (config: FrameworkConfig) => [
             openapi: config.openapi,
             graphql: config.graphql,
             grpc: config.grpc,
+            realtime: config.realtime,
             otp: config.otp,
         },
     },

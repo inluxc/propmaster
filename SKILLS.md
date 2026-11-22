@@ -40,6 +40,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `NEO` | Neo4j tests |
 | `GQL` | GraphQL tests |
 | `GRPC` | gRPC tests |
+| `RT` | WebSocket and SSE tests |
 | `BRW` | Browser tests |
 | `APM` | Appium mobile tests |
 | `GDS` | GADS device farm tests |
@@ -2897,6 +2898,71 @@ test.describe('gRPC — Orders', () => {
 
 ---
 
+## Skill 26: Test a WebSocket or SSE API
+
+**When to use:** The API pushes data over a WebSocket or Server-Sent Events: notifications, live updates, chat, a price feed. Also: checking that an action in one place (an API call, another client) reaches a connected client. For the sockets a web page opens itself, use Playwright's `page.on('websocket')` in a browser test instead.
+
+**Steps:**
+
+1. Use `realtimeClient` (`PW_REALTIME_URL`, e.g. `http://localhost:8080`). URLs are relative to it: `connect('/live')` opens `ws://…/live`, `subscribe('/events')` opens `http://…/events`. `RealtimeSteps` from `src/steps` wraps the calls in `test.step()`.
+2. WebSocket: `connect(url, { protocols, headers })`, then `send()` (an object is sent as JSON) and `waitForMessage(matcher)`. SSE: `subscribe(url)`, then `waitForMessage(matcher, { event: 'order.created' })`.
+3. Open the connection **before** the action that should produce the message. `waitForMessage()` also sees messages that arrived before the call, so "send, then wait" can't miss a fast reply. Each message is returned by one wait only: the same reply twice needs two waits.
+4. Match on something unique to the test (an order ID, `testData.unique()`): other tests' clients share the server. Matchers: a JSON subset `{ type, orderId }`, exact text, a RegExp, or a function.
+5. For an **expected refusal**, assert the `RealtimeError`: `await expect(realtimeClient.connect(url, { auth: false })).rejects.toMatchObject({ status: 401 })`, or `RealtimeSteps.expectConnectRejected()`. Never wrap `connect()` in try/catch.
+6. For "nothing arrives", use `RealtimeSteps.expectNoMessage(..., matcher, 2000)`: it waits, then checks.
+7. Connections are closed after the test. Whatever the messages made the server do isn't undone: register `testData.cleanup()` for it.
+8. Get IDs with `npm run next-id -- RT <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+import { RealtimeSteps } from '@inluxc/propmaster/steps';
+
+test.describe('Realtime — Order updates', () => {
+    test('[TC-RT-NNN] a shipped order reaches the live feed', { tag: ['@TC-RT-NNN'] }, async ({ realtimeClient, openApiClient, testData }) => {
+        const realtime = new RealtimeSteps(realtimeClient);
+        const orderId = testData.unique('order');
+        const ws = await realtime.connect('Open the live feed', '/live', { protocols: 'orders.v1' });
+
+        await realtime.sendAndExpect('Verify subscribing to the order is confirmed', ws, { op: 'subscribe', orderId }, { op: 'subscribed', orderId });
+
+        await test.step('Step 1: Ship the order through the API', async () => {
+            const response = await (openApiClient.client as any).shipOrder({ id: orderId });
+            expect(response.status).toBe(200);
+        });
+
+        const update = await realtime.expectMessage('Verify the update arrives', ws, { type: 'order.shipped', orderId }, { timeout: 15_000 });
+
+        await test.step('Step 2: Verify the update content', async () => {
+            expect(update.json()).toMatchObject({ status: 'shipped' });
+        });
+    });
+
+    test('[TC-RT-NNN] the event stream sends order events and refuses anonymous clients', { tag: ['@TC-RT-NNN'] }, async ({ realtimeClient }) => {
+        const realtime = new RealtimeSteps(realtimeClient);
+
+        await realtime.expectSubscribeRejected('Verify an anonymous subscriber gets 401', '/orders/events', 401, { auth: false });
+
+        const sse = await realtime.subscribe('Subscribe to order events', '/orders/events');
+
+        await test.step('Step 1: Verify a heartbeat event arrives', async () => {
+            const event = await sse.waitForMessage(undefined, { event: 'heartbeat', timeout: 30_000 });
+            expect(event.data).not.toBe('');
+        });
+    });
+});
+```
+
+**Key points:**
+- A wait fails at once, not at its timeout, when the connection closes, and the message lists what arrived. Read it before changing the test.
+- `ws.waitForClose()` returns `{ code, reason }` when the server is expected to drop the connection (e.g. a kicked user, code 4001).
+- With the auth helpers configured (`PW_AUTH_ISSUER`), the role's token is sent as `Authorization: Bearer …` on the request that opens the connection. `realtime.authToken` or a header passed to `connect()` wins; `{ auth: false }` sends none.
+- An API that takes the token in the URL (browsers can't send WebSocket headers): put it in the URL, e.g. ``connect(`/live?token=${authToken}`)``.
+- Two clients, one test: open two connections (with different `headers` for different users) and check that one's message reaches the other.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2913,6 +2979,7 @@ test.describe('gRPC — Orders', () => {
 | Test document storage or aggregations | Skill 6 (MongoDB) |
 | Test a GraphQL API | Skill 7 (GraphQL) |
 | Test a gRPC service | Skill 25 (gRPC) |
+| Test a WebSocket or SSE API, or that an action reaches a connected client | Skill 26 (WebSocket & SSE) |
 | Test a web page in a browser | Skill 8 (Browser) |
 | Verify an invariant for all inputs | Skill 9 (Property) |
 | Add a new service integration | Skill 10 (Custom Fixture) |

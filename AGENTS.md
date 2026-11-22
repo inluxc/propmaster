@@ -48,6 +48,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
 - **gRPC:** @grpc/grpc-js + @grpc/proto-loader (`@grpc/grpc-js ^1.12`); .proto files or server reflection
+- **WebSocket / SSE:** ws (`ws ^8`) for WebSockets; SSE over the built-in `fetch`
 - **OTP/2FA:** otplib (`otplib ^13.6.0`)
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
 - **Env Loading:** built-in `.env` parser (`src/config/env-loader.ts`), no dependency
@@ -75,6 +76,7 @@ src/
 │   ├── database.fixture.ts     # Database client fixture (pg/mysql/sqlite)
 │   ├── graphql.fixture.ts      # GraphQL client fixture (queries, mutations, rawRequest)
 │   ├── grpc.fixture.ts         # gRPC client fixture (proto files / server reflection, unary + streaming, GrpcError)
+│   ├── realtime.fixture.ts     # WebSocket (ws) + SSE (fetch) client: connect/subscribe, waitForMessage, RealtimeError
 │   ├── kafka.fixture.ts        # Kafka producer/consumer fixture
 │   ├── amqp.fixture.ts         # RabbitMQ / AMQP fixture (publish, listen, consume, purge)
 │   ├── aws.ts                  # Shared AWS config → SDK client options (endpoint, region, credentials)
@@ -117,6 +119,7 @@ tests/
 │   ├── database.spec.ts
 │   ├── graphql.spec.ts
 │   ├── grpc.spec.ts            # + protos/hello.proto (grpcbin's greeting service)
+│   ├── realtime.spec.ts        # WebSocket and SSE against echo-server
 │   ├── kafka.spec.ts
 │   ├── amqp.spec.ts
 │   ├── aws.spec.ts
@@ -152,6 +155,7 @@ import { test, expect } from '../../src/fixtures';
 | OpenAPI | `*.spec.ts` | `tests/examples/` or custom dir |
 | GraphQL | `*.spec.ts` | `tests/examples/` or custom dir |
 | gRPC | `*.spec.ts` | `tests/examples/` or custom dir |
+| WebSocket / SSE | `*.spec.ts` | `tests/examples/` or custom dir |
 | Database | `*.spec.ts` | `tests/examples/` or custom dir |
 | MongoDB | `*.spec.ts` | `tests/examples/` or custom dir |
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -173,6 +177,7 @@ Request fixtures by name in the test function signature:
 | `openApiClient` | `OpenApiClient` | Typed HTTP client from OpenAPI spec (`{ client, api, checkResponse }`); `validateResponses`/`validateRequests` check calls against the spec |
 | `graphqlClient` | `GraphQLClient` | GraphQL client with `query`, `mutate`, `rawRequest`, `setAuthToken` |
 | `grpcClient` | `GrpcClient` | gRPC: `call` (unary), `serverStream` (`limit`), `clientStream`, `bidiStream`, `invoke` (status instead of throwing), `services`, `methods`, `loadProtos`, `setMetadata`, `setAuthToken`; services from `.proto` files or server reflection |
+| `realtimeClient` | `RealtimeClient` | WebSocket and SSE: `connect` (→ `send`, `waitForMessage`, `waitForMessages`, `messages`, `close`, `waitForClose`), `subscribe` (SSE; waits take `{ event }`), `setHeader`, `setAuthToken`; a refused connection throws `RealtimeError` with `status` |
 | `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)`, `execute(sql, params?)` and `insert(table, rows, { key?, keep? })` (rows deleted after the test) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
@@ -186,7 +191,7 @@ Request fixtures by name in the test function signature:
 | `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
 | `testData` | `TestData` | Factories (`build`, `buildMany`, `define`), unique values (`unique`, `email`, `runId`), custom undo (`cleanup`); inserts through the clients are undone after every test |
 | `mockServer` | `MockServer` | WireMock: `stub`, `stubSequence`, `requests`, `verify`, `url` — third-party APIs your backend calls |
-| `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient`/`grpcClient` send it automatically |
+| `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient`/`grpcClient`/`realtimeClient` send it automatically |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing; needs `appium.gads` |
 
@@ -462,6 +467,24 @@ await grpcClient.methods('orders.v1.Orders');                            // kind
 // Nothing is undone automatically: register testData.cleanup('delete order', () => grpcClient.call(...)) for what a test creates
 ```
 
+**Realtime Client (WebSocket / SSE):**
+```typescript
+// URLs are relative to realtime.url (PW_REALTIME_URL); http(s) becomes ws(s) for connect(), and back for subscribe()
+const ws = await realtimeClient.connect('/live', { protocols: 'orders.v1', headers: { 'X-Tenant': 'acme' } });
+await ws.send({ op: 'subscribe', orderId });                             // object → JSON; also text or a Buffer
+// waitForMessage: the first matching message no earlier wait returned (already arrived or still to come) — no race after send
+const ack = await ws.waitForMessage({ op: 'subscribed', orderId });       // JSON subset; or 'exact text', /regex/, (m) => boolean
+expect(ack.json()).toMatchObject({ ok: true });                          // also data, binary, bytes, receivedAt
+const [a, b] = await ws.waitForMessages(2, /^tick/, { timeout: 5000 });   // a closed connection fails the wait at once
+ws.messages();                                                           // everything received, oldest first
+expect(await ws.waitForClose()).toEqual({ code: 4001, reason: 'kicked' }); // the server closing; ws.close(1000, 'done') from the test
+const sse = await realtimeClient.subscribe('/orders/events', { lastEventId: '41' });
+const created = await sse.waitForMessage({ orderId }, { event: 'order.created' }); // event, data, id, retry, json()
+// A refused connection: RealtimeError with the HTTP status and body; { auth: false } sends no token
+await expect(realtimeClient.connect('/live', { auth: false })).rejects.toMatchObject({ status: 401 });
+// Match on a test-unique value (other clients share the server). Open connections are closed after the test.
+```
+
 **OTP Client:**
 ```typescript
 // Generate a new base32 secret
@@ -496,7 +519,7 @@ await mockServer.verify({ path: '/v1/refunds' }, { times: 0 });   // never calle
 // Pick a role: the API token's identity AND the saved browser login (.auth/<role>.json)
 test.use({ authRole: 'admin' });
 
-// openApiClient / graphqlClient / grpcClient send `Authorization: Bearer <admin token>` automatically
+// openApiClient / graphqlClient / grpcClient / realtimeClient send `Authorization: Bearer <admin token>` automatically
 const res = await (openApiClient.client as any).listOrders();
 
 // Or use the token directly
@@ -561,6 +584,8 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_NEO4J_DATABASE` | Neo4j database (optional; server default) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
+| `PW_REALTIME_URL` | Base URL for WebSocket and SSE (`http://localhost:8080`); http(s) becomes ws(s) for WebSockets |
+| `PW_REALTIME_AUTH_TOKEN`, `PW_REALTIME_TIMEOUT`, `PW_REALTIME_CONNECT_TIMEOUT` | Bearer token; default wait for a message and for a connection (ms) |
 | `PW_GRPC_ADDRESS` | gRPC server: `host:port`, or `grpcs://host:port` for TLS |
 | `PW_GRPC_PROTO_FILES`, `PW_GRPC_INCLUDE_DIRS` | `.proto` files and import folders, comma-separated (leave out to use server reflection) |
 | `PW_GRPC_REFLECTION`, `PW_GRPC_AUTH_TOKEN`, `PW_GRPC_TIMEOUT` | `false` for proto files only; bearer token; deadline per call (ms) |
@@ -599,6 +624,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 |---|---|---|
 | `openapi` | `**/examples/openapi.spec.ts` | `openApiClient` |
 | `grpc` | `**/examples/grpc.spec.ts` | `grpcClient` (needs grpcbin: `docker compose -f compose.test.yaml up -d --wait grpcbin`) |
+| `realtime` | `**/examples/realtime.spec.ts` | `realtimeClient` (needs echo-server: `docker compose -f compose.test.yaml up -d --wait echo-server`) |
 | `appium-android` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform android) |
 | `appium-ios` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform ios) |
 | `gads` | `**/examples/gads.spec.ts` | `appiumDriver`, `gadsHub` (GADS preset; 5-minute test timeout for device queueing) |
@@ -691,7 +717,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `RT` (WebSocket/SSE), `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

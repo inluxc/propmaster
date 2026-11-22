@@ -33,3 +33,5 @@ export { SearchSteps } from './search.steps.js';
 export type { SearchClient, SearchHit, SearchResult } from './search.steps.js';
 export { GrpcSteps } from './grpc.steps.js';
 export type { GrpcClient, GrpcResult, GrpcStatusName } from './grpc.steps.js';
+export { RealtimeSteps } from './realtime.steps.js';
+export type { RealtimeClient, WebSocketConnection, WebSocketMessage, SseConnection, SseEvent } from './realtime.steps.js';

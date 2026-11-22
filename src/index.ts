@@ -69,6 +69,17 @@ export type {
     GrpcMethodInfo,
     GrpcMetadataInput,
     GrpcStatusName,
+    RealtimeClient,
+    WebSocketConnection,
+    WebSocketMessage,
+    SseConnection,
+    SseEvent,
+    MessageMatcher,
+    RealtimeWaitOptions,
+    SseWaitOptions,
+    WebSocketConnectOptions,
+    SseSubscribeOptions,
+    CloseInfo,
     RedisClient,
     MongoDbClient,
     Neo4jClient,
@@ -111,6 +122,7 @@ export type {
     SearchFixtureConfig,
     GrpcFixtureConfig,
     GrpcTlsConfig,
+    RealtimeFixtureConfig,
     RedisFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
@@ -145,6 +157,9 @@ export { createSearchClient } from './fixtures/search.fixture.js';
 
 // gRPC client outside the fixture, and its error type (code, codeName, details, trailers)
 export { createGrpcClient, GrpcError } from './fixtures/grpc.fixture.js';
+
+// Realtime (WebSocket / SSE) client outside the fixture, its connection error (status, body), and the SSE parser
+export { createRealtimeClient, RealtimeError, SseParser } from './fixtures/realtime.fixture.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
 export { startAppiumSession, createGadsHubClient, gadsSessionInfo } from './fixtures/appium.fixture.js';

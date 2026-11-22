@@ -703,6 +703,42 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-realtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      echo-server:
+        # WebSocket echo on any path, SSE on /.sse. The image has no shell, so no
+        # --health-cmd: the "Wait for echo-server" step below checks it instead.
+        image: jmalloc/echo-server:v0.3.7
+    env:
+      CI: true
+      PW_REALTIME_URL: http://echo-server:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_REALTIME_URL
+      - name: Wait for echo-server
+        run: node -e "const t=Date.now();(async()=>{for(;;){try{await fetch(process.env.PW_REALTIME_URL);return}catch{if(Date.now()-t>30000)throw new Error('echo-server is not up');await new Promise(r=>setTimeout(r,500))}}})()"
+      - name: Run realtime (WebSocket / SSE) tests
+        run: npx playwright test --project=realtime
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-realtime
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-realtime
+          path: test-results/
+          retention-days: 7
+
   test-openapi:
     runs-on: ubuntu-latest
     timeout-minutes: 15

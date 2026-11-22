@@ -35,6 +35,9 @@
                 "address": "localhost:9000",
                 "protoFiles": ["tests/examples/protos/hello.proto"]
             },
+            "realtime": {
+                "url": "http://localhost:8091"
+            },
             "redis": {
                 "host": "localhost",
                 "port": 6379

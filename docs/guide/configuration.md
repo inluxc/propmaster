@@ -61,6 +61,7 @@ Every setting has a `PW_*` variable. These are the most common ones. Each fixtur
 | `PW_OPENAPI_VALIDATE_RESPONSES`, `PW_OPENAPI_VALIDATE_REQUESTS` | `true` or `warn`: [contract checks](../openapi-fixture#contract-checks) against the spec |
 | `PW_GRAPHQL_ENDPOINT`, `PW_GRAPHQL_AUTH_TOKEN` | GraphQL endpoint and bearer token |
 | `PW_GRPC_ADDRESS`, `PW_GRPC_PROTO_FILES`, `PW_GRPC_AUTH_TOKEN`, `PW_GRPC_TLS_CA` | gRPC server, its .proto files (or none, for server reflection), token and TLS |
+| `PW_REALTIME_URL`, `PW_REALTIME_AUTH_TOKEN` | Base URL for WebSocket and SSE connections, and bearer token |
 | `PW_DB_TYPE` | `postgresql`, `mysql`, `mssql` or `sqlite` |
 | `PW_DB_HOST`, `PW_DB_PORT`, `PW_DB_NAME`, `PW_DB_USERNAME`, `PW_DB_PASSWORD` | Database connection |
 | `PW_MONGODB_URI` or `PW_MONGODB_HOST`, `PW_MONGODB_PORT`, `PW_MONGODB_DATABASE` | MongoDB connection |
