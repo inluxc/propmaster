@@ -597,6 +597,19 @@ See [docs/mcp-server.md](docs/mcp-server.md) for every tool and the VS Code setu
 
 ---
 
+## Flaky Tests and Quarantine
+
+The Propmaster reporter keeps each test's outcome across CI runs, keyed on its TestCaseID. `npx propmaster flaky` then ranks tests by how often they were flaky or failed. A known-flaky test can be quarantined in `quarantine.json`, with an owner and an issue: it keeps running and reporting, but doesn't fail the build, and `propmaster check` warns when an entry gets old.
+
+```typescript
+// playwright.config.ts
+reporter: [['list'], ['@inluxc/propmaster/reporter']],   // writes .propmaster/test-history.json; cache it between CI runs
+```
+
+See [docs/flaky-tests.md](docs/flaky-tests.md).
+
+---
+
 ## Running in CI
 
 Integration tests run in GitHub Actions against real services started as containers. Each backend gets its own job, and all jobs run in parallel:

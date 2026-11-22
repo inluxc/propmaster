@@ -12,10 +12,20 @@ npm run next-id -- API 3        # three sequential IDs
 npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (specs + SKILLS.md/AGENTS.md samples)
 npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
 npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
+npm run flaky                   # tests ranked by flake rate, from .propmaster/test-history.json (--json for scripts)
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 ```
 
-`lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`) and the fix.
+`lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`, `quarantine`) and the fix. It also warns (without failing) about `quarantine.json` entries older than their `maxAgeDays` and IDs no test has.
+
+### Flaky tests and quarantine
+
+The Propmaster reporter (`src/reporter/`, in `playwright.config.ts`) adds every run to `.propmaster/test-history.json`; CI keeps it in the cache (`.github/actions/test-history`). When a test fails intermittently:
+
+1. `npm run flaky` (or `--json`) shows its flake rate and recent outcomes (`~` flaky, `✗` failed). A test that never passed is broken, not flaky: fix it.
+2. Fix the cause (a race, a shared value, a missing wait) rather than adding sleeps or retries. Waits on the application's writes belong in `waitFor…` calls.
+3. Only when the fix needs more time, add the ID to `quarantine.json` with `owner`, `issue` and `since` (`YYYY-MM-DD`). It keeps running and reporting, but no longer fails the build. Never quarantine a test without an issue, and never quarantine a new test to get it merged.
+4. Remove the entry once the test passes reliably; the reporter says when a quarantined test passed.
 
 ### Propmaster MCP server
 
@@ -102,8 +112,9 @@ src/
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction
+├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
-                                #   check + next-id (test conventions); layout.ts = the scaffolded layout
+                                #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here
@@ -724,6 +735,7 @@ PW_ENVIRONMENT=dev npx playwright test            # Specific environment
 npm run typecheck                                 # Type checking only
 npm run lint:tests                                # Test conventions (IDs, tags, steps, imports)
 npm run verify                                    # typecheck + lint:tests + unit + property tests
+npm run flaky                                     # Flake ranking from the test history
 ```
 
 ### Running in CI
@@ -734,6 +746,7 @@ npm run verify                                    # typecheck + lint:tests + uni
 - Give the service a `--health-cmd` so tests start only once it is ready.
 - Set `CI: true`: the example specs skip themselves without it.
 - Install with `uses: ./.github/actions/npm-install` (cached `npm ci`).
+- Wrap the test step in `uses: ./.github/actions/test-history` (before) and the same with `save: true` and `if: always()` (after), so the job's test history builds up.
 - Upload reports with `if: failure()`, and don't add `needs:` between jobs.
 - Browser jobs run in `mcr.microsoft.com/playwright:v<@playwright/test version>-noble`; `typecheck` fails if the tag drifts.
 

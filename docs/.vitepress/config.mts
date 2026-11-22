@@ -97,6 +97,7 @@ export default defineConfig({
                 text: 'Operations',
                 items: [
                     { text: 'Secrets Management', link: '/secrets' },
+                    { text: 'Flaky tests & quarantine', link: '/flaky-tests' },
                     { text: 'MCP server for agents', link: '/mcp-server' },
                 ],
             },
