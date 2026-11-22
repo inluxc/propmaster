@@ -145,6 +145,16 @@ services:
       interval: 3s
       retries: 40
 
+  grpcbin:
+    # gRPC test server with server reflection: plaintext on 9000 (PW_GRPC_ADDRESS=localhost:9000),
+    # TLS with a self-signed certificate on 9001. amd64 only (emulated on Apple silicon)
+    image: moul/grpcbin:latest
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9000"]
+      interval: 2s
+      retries: 15
+
   mailpit:
     image: axllent/mailpit:latest
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]   # API/UI, SMTP

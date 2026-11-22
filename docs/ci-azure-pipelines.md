@@ -128,6 +128,9 @@ resources:
         cluster.routing.allocation.disk.threshold_enabled: "false"
         ES_JAVA_OPTS: -Xms512m -Xmx512m
       options: --health-cmd "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null" --health-interval 3s --health-retries 40
+    - container: grpcbin_svc
+      image: moul/grpcbin:latest
+      options: --health-cmd "nc -z localhost 9000" --health-interval 2s --health-retries 15
 
 pool:
   vmImage: ubuntu-latest
@@ -234,6 +237,18 @@ jobs:
       - template: ci/playwright-steps.yml
         parameters:
           projects: --project=integration-search
+
+  - job: grpc
+    container: node
+    services:
+      grpcbin: grpcbin_svc
+    variables:
+      PW_GRPC_ADDRESS: grpcbin:9000
+      PW_GRPC_PROTO_FILES: tests/examples/protos/hello.proto
+    steps:
+      - template: ci/playwright-steps.yml
+        parameters:
+          projects: --project=grpc
 
   - job: browser
     container: playwright

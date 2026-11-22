@@ -39,6 +39,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `MDB` | MongoDB tests |
 | `NEO` | Neo4j tests |
 | `GQL` | GraphQL tests |
+| `GRPC` | gRPC tests |
 | `BRW` | Browser tests |
 | `APM` | Appium mobile tests |
 | `GDS` | GADS device farm tests |
@@ -2839,6 +2840,63 @@ test.describe('Search — Catalogue', () => {
 
 ---
 
+## Skill 25: Test a gRPC Service
+
+**When to use:** The service under test (or one the test needs to set up data) speaks gRPC. Unary calls, server/client/bidirectional streams, status codes, metadata and deadlines.
+
+**Steps:**
+
+1. Use `grpcClient` (`PW_GRPC_ADDRESS`; `grpcs://host:port` for TLS). `GrpcSteps` from `src/steps` wraps the calls in `test.step()`.
+2. Services come from `grpc.protoFiles` (`PW_GRPC_PROTO_FILES`, with `PW_GRPC_INCLUDE_DIRS` for imports) or, for anything not in them, server reflection. If the server has reflection, no proto files are needed. When unsure of a method's name, kind or message types, call `grpcClient.methods('pkg.Service')`.
+3. Name methods `package.Service/Method`. Request and response fields use the names from the `.proto` (snake_case stays snake_case); `int64` and enum values are strings; unset fields come back with their default values.
+4. Pick the function for the method's kind: `call()` (unary), `serverStream()` (add `{ limit }` for a stream that doesn't end on its own), `clientStream()`, `bidiStream()`. The wrong one fails with a message naming the right one.
+5. For an **expected failure**, use `invoke()` and assert `codeName` (`NOT_FOUND`, `INVALID_ARGUMENT`, ...), or `expect(call).rejects.toMatchObject({ codeName })`. Never wrap `call()` in try/catch.
+6. Nothing is undone automatically: register `testData.cleanup()` for what the test creates through the service.
+7. Get IDs with `npm run next-id -- GRPC <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+import { GrpcSteps } from '@inluxc/propmaster/steps';
+
+test.describe('gRPC — Orders', () => {
+    test('[TC-GRPC-NNN] a created order can be read and watched', { tag: ['@TC-GRPC-NNN'] }, async ({ grpcClient, testData }) => {
+        const grpc = new GrpcSteps(grpcClient);
+        let orderId = '';
+
+        await test.step('Step 1: Create an order', async () => {
+            const order = await grpcClient.call<{ id: string }>('orders.v1.Orders/CreateOrder', { sku: testData.unique('sku'), quantity: 2 });
+            orderId = order.id;
+            testData.cleanup('delete the order', () => grpcClient.call('orders.v1.Orders/DeleteOrder', { id: orderId }));
+        });
+
+        await grpc.expectResponse('Verify the order reads back as pending', 'orders.v1.Orders/GetOrder', { id: orderId }, { status: 'PENDING', quantity: 2 });
+
+        await test.step('Step 2: Verify the first update on the watch stream', async () => {
+            const [first] = await grpcClient.serverStream('orders.v1.Orders/WatchOrder', { id: orderId }, { limit: 1 });
+            expect(first).toMatchObject({ id: orderId, status: 'PENDING' });
+        });
+    });
+
+    test('[TC-GRPC-NNN] an unknown order is NOT_FOUND', { tag: ['@TC-GRPC-NNN'] }, async ({ grpcClient }) => {
+        await test.step('Step 1: Verify the status and the message', async () => {
+            const result = await grpcClient.invoke('orders.v1.Orders/GetOrder', { id: 'no-such-order' });
+            expect(result.codeName).toBe('NOT_FOUND');
+            expect(result.details).toContain('no-such-order');
+        });
+    });
+});
+```
+
+**Key points:**
+- Metadata: `{ metadata: { 'x-request-id': id } }` per call, `grpcClient.setMetadata()` for every later call, `-bin` keys for binary values. Response headers are in `invoke()`'s `metadata`, trailing metadata in `trailers`.
+- Every call has a deadline (`grpc.timeout`, 10 s); pass `{ timeout }` for a slower call. Past it, the status is `DEADLINE_EXCEEDED`.
+- With the auth helpers configured (`PW_AUTH_ISSUER`), the role's token is sent as `authorization` metadata. `grpc.authToken` or a per-call `authorization` wins.
+- Errors say what's wrong: the server can't be reached, it has no reflection (list its proto files), it doesn't know the service (with the ones it knows), or the method doesn't exist (with the ones that do). Read the message before changing the test.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2854,6 +2912,7 @@ test.describe('Search — Catalogue', () => {
 | Test a native mobile app (Appium) | Skill 5 (Appium) |
 | Test document storage or aggregations | Skill 6 (MongoDB) |
 | Test a GraphQL API | Skill 7 (GraphQL) |
+| Test a gRPC service | Skill 25 (gRPC) |
 | Test a web page in a browser | Skill 8 (Browser) |
 | Verify an invariant for all inputs | Skill 9 (Property) |
 | Add a new service integration | Skill 10 (Custom Fixture) |

@@ -172,6 +172,18 @@ search:
     - wait_for elasticsearch 9200
     - npx playwright test --project=integration-search --reporter=line,junit
 
+grpc:
+  extends: .playwright
+  services:
+    - name: moul/grpcbin:latest
+      alias: grpcbin
+  variables:
+    PW_GRPC_ADDRESS: grpcbin:9000
+    PW_GRPC_PROTO_FILES: tests/examples/protos/hello.proto
+  script:
+    - wait_for grpcbin 9000
+    - npx playwright test --project=grpc --reporter=line,junit
+
 browser:
   extends: .playwright
   image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test

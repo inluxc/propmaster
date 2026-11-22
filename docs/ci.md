@@ -49,6 +49,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
 | `test-search-elasticsearch`, `test-search-opensearch` | `integration-search` | `elasticsearch:9.5.5`, `opensearchproject/opensearch:3.10.0` | Search fixture, once per engine |
+| `test-grpc` | `grpc` | `moul/grpcbin:latest` | gRPC fixture (proto files, reflection, streaming, TLS) |
 | `test-inbox` | `integration-inbox` | `axllent/mailpit:latest` | Inbox fixture (email) |
 | `test-mocks` | `integration-mocks` | `wiremock/wiremock:3.13.2` | Mock-server fixture (third-party APIs) |
 | `test-openapi` | `openapi` | Prism mock server (started in a step) | OpenAPI fixture |
@@ -335,6 +336,25 @@ env:
 ```
 
 For OpenSearch, use `opensearchproject/opensearch:3.10.0` with `DISABLE_SECURITY_PLUGIN: "true"`, `DISABLE_INSTALL_DEMO_CONFIG: "true"` and `OPENSEARCH_JAVA_OPTS` instead of the two `xpack`/`ES_` settings (each engine refuses the other's settings at start-up). This repo runs the example tests against both.
+
+### gRPC
+
+Propmaster's own job runs the examples against grpcbin, a public test server with reflection. In your project, run your service as a service container and point the fixture at it:
+
+```yaml
+services:
+  orders:
+    image: ghcr.io/your-org/orders-service:latest   # your gRPC service
+    options: >-
+      --health-cmd "grpc_health_probe -addr=localhost:50051"
+      --health-interval 3s --health-timeout 5s --health-retries 20
+env:
+  PW_GRPC_ADDRESS: orders:50051
+  PW_GRPC_PROTO_FILES: protos/orders/v1/orders.proto   # leave out when the service has server reflection
+  PW_GRPC_INCLUDE_DIRS: protos
+```
+
+The health command has to exist in your image: `grpc_health_probe` for services with the standard health service, or `nc -z localhost 50051` for a port check, as the grpcbin job does.
 
 ### OpenAPI against a mock server
 

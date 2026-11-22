@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
         "propmaster": "dist/src/cli/init.js"
@@ -67,6 +67,8 @@
         "@aws-sdk/client-sns": "^3.700.0",
         "@aws-sdk/client-sqs": "^3.700.0",
         "@faker-js/faker": "^10.6.0",
+        "@grpc/grpc-js": "^1.12.0",
+        "@grpc/proto-loader": "^0.7.13 || ^0.8.0",
         "@playwright/test": ">=1.50.0",
         "ajv": "^8.17.1",
         "ajv-formats": "^3.0.1",
@@ -98,6 +100,12 @@
             "optional": true
         },
         "@faker-js/faker": {
+            "optional": true
+        },
+        "@grpc/grpc-js": {
+            "optional": true
+        },
+        "@grpc/proto-loader": {
             "optional": true
         },
         "ajv": {
@@ -160,6 +168,9 @@
         "@aws-sdk/client-sns": "^3.1175.0",
         "@aws-sdk/client-sqs": "^3.1175.0",
         "@faker-js/faker": "^10.6.0",
+        "@grpc/grpc-js": "^1.14.7",
+        "@grpc/proto-loader": "^0.8.1",
+        "@grpc/reflection": "^1.0.4",
         "@playwright/test": "^1.65.1",
         "@stoplight/prism-cli": "5.16.0",
         "@types/better-sqlite3": "^9.6.0",
@@ -225,7 +236,8 @@
         "sns",
         "localstack",
         "elasticsearch",
-        "opensearch"
+        "opensearch",
+        "grpc"
     ],
     "author": "Inluxc",
     "license": "MIT",

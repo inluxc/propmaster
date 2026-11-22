@@ -215,6 +215,8 @@ test.describe('auth — roles and headers', () => {
         expect(authApplies({ roles: {} }, 'openapi')).toBe(false); // browser-only auth config
         expect(authApplies({ tokenUrl: 't' }, 'graphql')).toBe(true);
         expect(authApplies({ issuer: 'i', applyTo: ['openapi'] }, 'graphql')).toBe(false);
+        expect(authApplies({ tokenUrl: 't' }, 'grpc')).toBe(true); // default: every client
+        expect(authApplies({ tokenUrl: 't', applyTo: ['openapi', 'graphql'] }, 'grpc')).toBe(false);
     });
 
     test('withBearer adds the token unless an Authorization header is set', async () => {

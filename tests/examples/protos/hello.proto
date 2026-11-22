@@ -1,0 +1,25 @@
+// The greeting service of the grpcbin test server (moul/grpcbin), used by
+// tests/examples/grpc.spec.ts to show calls from a .proto file. The other
+// services of that server are looked up through server reflection instead.
+syntax = "proto3";
+
+package hello;
+
+service HelloService {
+    // One request, one response.
+    rpc SayHello(HelloRequest) returns (HelloResponse);
+    // One request, a stream of 10 responses.
+    rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse);
+    // A stream of requests, one response greeting them all.
+    rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse);
+    // A response per request.
+    rpc BidiHello(stream HelloRequest) returns (stream HelloResponse);
+}
+
+message HelloRequest {
+    string greeting = 1;
+}
+
+message HelloResponse {
+    string reply = 1;
+}

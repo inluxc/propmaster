@@ -17,7 +17,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { EnvLoader } from './env-loader.js';
 import { ConfigurationError } from '../errors.js';
-import type { FrameworkConfig, EnvironmentsFile } from './schema.js';
+import type { FrameworkConfig, EnvironmentsFile, GrpcTlsConfig } from './schema.js';
 import { parseContainerEnv } from '../containers/container-manager.js';
 import { parseContractMode } from '../openapi/contract.js';
 
@@ -353,6 +353,40 @@ export class ConfigLoader {
                 cfg.search ??= {};
                 cfg.search.container = parseContainerEnv(val);
             },
+            'PW_GRPC_ADDRESS': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.address = val;
+            },
+            'PW_GRPC_PROTO_FILES': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.protoFiles = splitList(val);
+            },
+            'PW_GRPC_INCLUDE_DIRS': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.includeDirs = splitList(val);
+            },
+            'PW_GRPC_REFLECTION': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.reflection = val.toLowerCase() !== 'false';
+            },
+            'PW_GRPC_AUTH_TOKEN': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.authToken = val;
+            },
+            'PW_GRPC_TIMEOUT': (cfg, val) => {
+                cfg.grpc ??= {};
+                cfg.grpc.timeout = parseInt(val, 10);
+            },
+            'PW_GRPC_TLS': (cfg, val) => {
+                cfg.grpc ??= {};
+                const on = val.toLowerCase() === 'true';
+                cfg.grpc.tls = typeof cfg.grpc.tls === 'object' ? (on ? cfg.grpc.tls : false) : on;
+            },
+            'PW_GRPC_TLS_CA': (cfg, val) => setGrpcTls(cfg, { ca: val }),
+            'PW_GRPC_TLS_CERT': (cfg, val) => setGrpcTls(cfg, { cert: val }),
+            'PW_GRPC_TLS_KEY': (cfg, val) => setGrpcTls(cfg, { key: val }),
+            'PW_GRPC_TLS_SERVER_NAME': (cfg, val) => setGrpcTls(cfg, { serverName: val }),
+            'PW_GRPC_TLS_SKIP_VERIFY': (cfg, val) => setGrpcTls(cfg, { insecureSkipVerify: val.toLowerCase() === 'true' }),
             'PW_AMQP_URL': (cfg, val) => {
                 cfg.amqp ??= {};
                 cfg.amqp.url = val;
@@ -648,4 +682,16 @@ function parseJsonObject(key: string, value: string): Record<string, unknown> {
         throw new ConfigurationError([], undefined, `${key} must be a JSON object`);
     }
     return parsed as Record<string, unknown>;
+}
+
+/** A comma-separated list, trimmed, without empty entries. */
+function splitList(value: string): string[] {
+    return value.split(',').map((v) => v.trim()).filter(Boolean);
+}
+
+/** Merges TLS settings into grpc.tls, turning TLS on. */
+function setGrpcTls(cfg: FrameworkConfig, values: GrpcTlsConfig): void {
+    cfg.grpc ??= {};
+    const current = typeof cfg.grpc.tls === 'object' ? cfg.grpc.tls : {};
+    cfg.grpc.tls = { ...current, ...values };
 }
