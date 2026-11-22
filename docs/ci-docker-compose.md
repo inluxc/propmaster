@@ -35,6 +35,7 @@ Ports are published on `127.0.0.1`. Tests running on the host use `localhost`. T
 | Elasticsearch | `elasticsearch` | `PW_SEARCH_URL=http://localhost:9200` | `PW_SEARCH_URL=http://elasticsearch:9200` |
 | OpenSearch | `opensearch` | `PW_SEARCH_URL=http://localhost:9201` | `PW_SEARCH_URL=http://opensearch:9200` |
 | gRPC (grpcbin) | `grpcbin` | `PW_GRPC_ADDRESS=localhost:9000` (TLS: `localhost:9001`) | `PW_GRPC_ADDRESS=grpcbin:9000` |
+| WebSocket / SSE (echo-server) | `echo-server` | `PW_REALTIME_URL=http://localhost:8091` | `PW_REALTIME_URL=http://echo-server:8080` |
 | AWS (Moto) | `moto` | `PW_AWS_ENDPOINT=http://localhost:4566` `PW_AWS_S3_BUCKET=propmaster-examples` | `PW_AWS_ENDPOINT=http://moto:5000` |
 | WireMock (mock server) | `wiremock` | `PW_MOCK_URL=http://localhost:8089` | `PW_MOCK_URL=http://wiremock:8080` |
 | Mailpit (inbox) | `mailpit` | `PW_INBOX_URL=http://localhost:8025`; the app sends SMTP to `localhost:1025` | `PW_INBOX_URL=http://mailpit:8025`; SMTP `mailpit:1025` |

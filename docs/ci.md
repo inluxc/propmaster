@@ -50,6 +50,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
 | `test-search-elasticsearch`, `test-search-opensearch` | `integration-search` | `elasticsearch:9.5.5`, `opensearchproject/opensearch:3.10.0` | Search fixture, once per engine |
 | `test-grpc` | `grpc` | `moul/grpcbin:latest` | gRPC fixture (proto files, reflection, streaming, TLS) |
+| `test-realtime` | `realtime` | `jmalloc/echo-server:v0.3.7` | Realtime fixture (WebSocket and SSE) |
 | `test-inbox` | `integration-inbox` | `axllent/mailpit:latest` | Inbox fixture (email) |
 | `test-mocks` | `integration-mocks` | `wiremock/wiremock:3.13.2` | Mock-server fixture (third-party APIs) |
 | `test-openapi` | `openapi` | Prism mock server (started in a step) | OpenAPI fixture |
@@ -355,6 +356,23 @@ env:
 ```
 
 The health command has to exist in your image: `grpc_health_probe` for services with the standard health service, or `nc -z localhost 50051` for a port check, as the grpcbin job does.
+
+### WebSocket and SSE
+
+Propmaster's own job runs the examples against echo-server, which echoes WebSocket messages and streams SSE. Its image is a single binary with no shell, so the job has no `--health-cmd` and waits for the port in a step instead:
+
+```yaml
+services:
+  echo-server:
+    image: jmalloc/echo-server:v0.3.7
+env:
+  PW_REALTIME_URL: http://echo-server:8080
+steps:
+  - name: Wait for echo-server
+    run: node -e "const t=Date.now();(async()=>{for(;;){try{await fetch(process.env.PW_REALTIME_URL);return}catch{if(Date.now()-t>30000)throw new Error('echo-server is not up');await new Promise(r=>setTimeout(r,500))}}})()"
+```
+
+In your project, run your service the same way and set `PW_REALTIME_URL` to it. A service with a shell can use a normal `--health-cmd`, e.g. `curl -fs http://localhost:8080/health`.
 
 ### OpenAPI against a mock server
 

@@ -23,15 +23,17 @@ The `--project` names are the ones in Propmaster's `playwright.config.ts`; use y
 // Needs the Docker Pipeline and JUnit plugins, and agents labelled "docker".
 
 // Starts a service container on a private network, waits until `ready` succeeds
-// inside it, then runs `body` in node:24 on that network. Tests reach it by `alias`.
+// inside it (if given), then runs `body` in node:24 on that network. Tests reach it by `alias`.
 def withService(Map svc, Closure body) {
     def net = "propmaster-${env.BUILD_TAG}-${svc.alias}".replaceAll(/[^A-Za-z0-9_.-]/, '-')
     sh "docker network create ${net}"
     try {
         docker.image(svc.image).withRun("--network ${net} --network-alias ${svc.alias} ${svc.args ?: ''}") { c ->
-            timeout(time: 3, unit: 'MINUTES') {
-                waitUntil(initialRecurrencePeriod: 2000) {
-                    sh(script: "docker exec ${c.id} ${svc.ready}", returnStatus: true) == 0
+            if (svc.ready) {
+                timeout(time: 3, unit: 'MINUTES') {
+                    waitUntil(initialRecurrencePeriod: 2000) {
+                        sh(script: "docker exec ${c.id} ${svc.ready}", returnStatus: true) == 0
+                    }
                 }
             }
             docker.image('node:24').inside("--network ${net}") {
@@ -204,6 +206,20 @@ pipeline {
                             withService(image: 'moul/grpcbin:latest', alias: 'grpcbin', ready: 'nc -z localhost 9000') {
                                 withEnv(['PW_GRPC_ADDRESS=grpcbin:9000', 'PW_GRPC_PROTO_FILES=tests/examples/protos/hello.proto']) {
                                     sh 'npx playwright test --project=grpc --reporter=line,junit'
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('WebSocket / SSE') {
+                    agent { label 'docker' }
+                    steps {
+                        script {
+                            // echo-server's image has no shell for a `ready` command; it serves as soon as it runs
+                            withService(image: 'jmalloc/echo-server:v0.3.7', alias: 'echo-server') {
+                                withEnv(['PW_REALTIME_URL=http://echo-server:8080']) {
+                                    sh 'npx playwright test --project=realtime --reporter=line,junit'
                                 }
                             }
                         }

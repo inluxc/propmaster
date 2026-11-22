@@ -155,6 +155,13 @@ services:
       interval: 2s
       retries: 15
 
+  echo-server:
+    # WebSocket echo on any path, SSE on /.sse (PW_REALTIME_URL=http://localhost:8091).
+    # The image is a single Go binary with no shell, so there is no health check:
+    # it serves as soon as the container runs.
+    image: jmalloc/echo-server:v0.3.7
+    ports: ["127.0.0.1:8091:8080"]
+
   mailpit:
     image: axllent/mailpit:latest
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]   # API/UI, SMTP

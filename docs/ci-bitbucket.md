@@ -65,6 +65,8 @@ definitions:
         ES_JAVA_OPTS: -Xms512m -Xmx512m
     grpcbin:
       image: moul/grpcbin:latest
+    echo-server:
+      image: jmalloc/echo-server:v0.3.7
 
 
 pipelines:
@@ -191,6 +193,19 @@ pipelines:
                 - *npm-ci
                 - wait_for 9000
                 - npx playwright test --project=grpc --reporter=line,junit
+              artifacts: [playwright-report/**]
+
+          - step:
+              name: WebSocket / SSE
+              caches: [npm]
+              services: [echo-server]
+              script:
+                - *wait-for
+                - *junit
+                - export PW_REALTIME_URL=http://localhost:8080
+                - *npm-ci
+                - wait_for 8080
+                - npx playwright test --project=realtime --reporter=line,junit
               artifacts: [playwright-report/**]
 
           - step:

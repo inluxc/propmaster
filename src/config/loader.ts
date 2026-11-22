@@ -387,6 +387,22 @@ export class ConfigLoader {
             'PW_GRPC_TLS_KEY': (cfg, val) => setGrpcTls(cfg, { key: val }),
             'PW_GRPC_TLS_SERVER_NAME': (cfg, val) => setGrpcTls(cfg, { serverName: val }),
             'PW_GRPC_TLS_SKIP_VERIFY': (cfg, val) => setGrpcTls(cfg, { insecureSkipVerify: val.toLowerCase() === 'true' }),
+            'PW_REALTIME_URL': (cfg, val) => {
+                cfg.realtime ??= {};
+                cfg.realtime.url = val;
+            },
+            'PW_REALTIME_AUTH_TOKEN': (cfg, val) => {
+                cfg.realtime ??= {};
+                cfg.realtime.authToken = val;
+            },
+            'PW_REALTIME_TIMEOUT': (cfg, val) => {
+                cfg.realtime ??= {};
+                cfg.realtime.timeout = parseInt(val, 10);
+            },
+            'PW_REALTIME_CONNECT_TIMEOUT': (cfg, val) => {
+                cfg.realtime ??= {};
+                cfg.realtime.connectTimeout = parseInt(val, 10);
+            },
             'PW_AMQP_URL': (cfg, val) => {
                 cfg.amqp ??= {};
                 cfg.amqp.url = val;

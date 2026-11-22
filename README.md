@@ -4,7 +4,7 @@
 
 > *In theater, the **prop master** sources every prop, sets it out before the scene, and collects it afterwards, so each actor finds exactly what they need at the moment they need it. The audience never sees them, but without them, the show doesn't happen.*
 
-**Propmaster** does the same for your [Playwright](https://playwright.dev/) tests. It sets up the infrastructure fixtures — API clients (REST, GraphQL, gRPC), databases, message queues, caches, mobile devices, OTP — so your tests can focus on the performance itself.
+**Propmaster** does the same for your [Playwright](https://playwright.dev/) tests. It sets up the infrastructure fixtures — API clients (REST, GraphQL, gRPC, WebSocket/SSE), databases, message queues, caches, mobile devices, OTP — so your tests can focus on the performance itself.
 
 ---
 
@@ -27,6 +27,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files; `ajv` and `ajv-formats` for contract checks) |
 | `graphqlClient` | `graphql-request graphql` |
 | `grpcClient` | `@grpc/grpc-js @grpc/proto-loader` |
+| `realtimeClient` | `ws` (WebSocket; SSE needs nothing) |
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
@@ -104,6 +105,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `grpcClient` | `GrpcClient` | gRPC unary and streaming calls from .proto files or server reflection, with status codes, metadata, deadlines and TLS | [Setup & Usage](docs/grpc-fixture.md) |
+| `realtimeClient` | `RealtimeClient` | WebSocket and SSE: connect, send, wait for a matching message, the HTTP status of a refused connection | [Setup & Usage](docs/realtime-fixture.md) |
 | `otpClient` | `OtpClient` | TOTP/HOTP generation and verification for 2FA testing | [Setup & Usage](docs/otp-fixture.md) |
 | `inboxClient` | `InboxClient` | Reads the email your app sends (Mailpit): codes, verification and reset links | [Setup & Usage](docs/inbox-fixture.md) |
 | `mockServer` | `MockServer` | Stubs the third-party APIs your backend calls (WireMock) and verifies the calls it made | [Setup & Usage](docs/mock-server-fixture.md) |
@@ -188,6 +190,27 @@ test.describe('Orders service', () => {
     const updates = await grpcClient.serverStream('orders.v1.Orders/WatchOrder', { id: order.id }, { limit: 2 });
     expect(updates).toHaveLength(2);
   });
+});
+```
+
+### WebSocket & SSE Client
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test('an order update reaches the live feed', async ({ realtimeClient, openApiClient }) => {
+  const ws = await realtimeClient.connect('/live');             // relative to PW_REALTIME_URL
+  await ws.send({ op: 'subscribe', orderId });
+  await ws.waitForMessage({ op: 'subscribed', orderId });         // a JSON subset
+
+  await (openApiClient.client as any).shipOrder({ id: orderId });
+  const update = await ws.waitForMessage({ type: 'order.shipped', orderId });
+  expect(update.json()).toMatchObject({ status: 'shipped' });
+
+  const sse = await realtimeClient.subscribe('/orders/events');
+  await sse.waitForMessage({ orderId }, { event: 'order.shipped' });
+
+  await expect(realtimeClient.connect('/live', { auth: false })).rejects.toMatchObject({ status: 401 });
 });
 ```
 
@@ -466,6 +489,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_AWS_ENDPOINT` / `PW_AWS_REGION` / `PW_AWS_S3_BUCKET` | AWS emulator URL (Moto, LocalStack), region and default bucket; credentials from `PW_AWS_ACCESS_KEY_ID`/`PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` or the standard AWS chain |
 | `PW_SEARCH_URL` / `PW_SEARCH_USERNAME` / `PW_SEARCH_PASSWORD` / `PW_SEARCH_API_KEY` | Elasticsearch / OpenSearch cluster |
 | `PW_GRPC_ADDRESS` / `PW_GRPC_PROTO_FILES` / `PW_GRPC_AUTH_TOKEN` | gRPC server (`grpcs://` for TLS), its .proto files (leave out for server reflection) and token; TLS files in `PW_GRPC_TLS_CA`/`_CERT`/`_KEY` |
+| `PW_REALTIME_URL` / `PW_REALTIME_AUTH_TOKEN` | Base URL for WebSocket and SSE connections (http(s) becomes ws(s)) and bearer token |
 | `PW_REDIS_HOST` / `PW_REDIS_PORT` / `PW_REDIS_PASSWORD` | Redis connection |
 | `PW_REDIS_KEY_PREFIX` | Key prefix for test isolation |
 | `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
@@ -555,7 +579,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 

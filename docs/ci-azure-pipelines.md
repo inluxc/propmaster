@@ -131,6 +131,8 @@ resources:
     - container: grpcbin_svc
       image: moul/grpcbin:latest
       options: --health-cmd "nc -z localhost 9000" --health-interval 2s --health-retries 15
+    - container: echo_svc
+      image: jmalloc/echo-server:v0.3.7   # no shell, so no health check: it serves as soon as it runs
 
 pool:
   vmImage: ubuntu-latest
@@ -249,6 +251,17 @@ jobs:
       - template: ci/playwright-steps.yml
         parameters:
           projects: --project=grpc
+
+  - job: realtime
+    container: node
+    services:
+      echo-server: echo_svc
+    variables:
+      PW_REALTIME_URL: http://echo-server:8080
+    steps:
+      - template: ci/playwright-steps.yml
+        parameters:
+          projects: --project=realtime
 
   - job: browser
     container: playwright

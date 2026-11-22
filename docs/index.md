@@ -21,8 +21,8 @@ hero:
 
 features:
   - icon: 🔌
-    title: OpenAPI, GraphQL & gRPC
-    details: A typed HTTP client generated from your OpenAPI spec, a GraphQL client, and gRPC calls from .proto files or server reflection, with status codes for error cases.
+    title: OpenAPI, GraphQL, gRPC & WebSocket
+    details: A typed HTTP client generated from your OpenAPI spec, a GraphQL client, gRPC calls from .proto files or server reflection, and WebSocket and SSE connections, with status codes for error cases.
     link: /openapi-fixture
     linkText: API fixtures
   - icon: 🗄️

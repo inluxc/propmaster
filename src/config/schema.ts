@@ -237,6 +237,27 @@ export interface GrpcFixtureConfig {
 }
 
 /**
+ * Configuration for the realtime fixture (`realtimeClient`): WebSocket and
+ * Server-Sent Events.
+ */
+export interface RealtimeFixtureConfig {
+    /**
+     * Base URL that relative URLs resolve against, e.g. `http://localhost:8080`.
+     * `connect()` switches http(s) to ws(s) and `subscribe()` switches back, so
+     * one URL serves both.
+     */
+    url?: string;
+    /** Headers sent on every connection. */
+    headers?: Record<string, string>;
+    /** Bearer token, sent as `Authorization: Bearer <token>` on every connection. */
+    authToken?: string;
+    /** Default wait for a message, in ms (default: 10000). */
+    timeout?: number;
+    /** Default wait for a connection to open, in ms (default: 10000). */
+    connectTimeout?: number;
+}
+
+/**
  * Configuration for the Redis integration fixture.
  */
 export interface RedisFixtureConfig {
@@ -406,7 +427,7 @@ export interface AuthConfig {
     username?: string;
     password?: string;
     /** Clients that get `Authorization: Bearer <token>` automatically (default: all three). */
-    applyTo?: ('openapi' | 'graphql' | 'grpc')[];
+    applyTo?: ('openapi' | 'graphql' | 'grpc' | 'realtime')[];
     /** Folder for saved browser login state (default: `.auth`). */
     stateDir?: string;
 }
@@ -498,6 +519,8 @@ export interface FrameworkConfig {
     search?: SearchFixtureConfig;
     /** gRPC fixture configuration. */
     grpc?: GrpcFixtureConfig;
+    /** Realtime (WebSocket / SSE) fixture configuration. */
+    realtime?: RealtimeFixtureConfig;
     /** Redis fixture configuration. */
     redis?: RedisFixtureConfig;
     /** MongoDB fixture configuration. */

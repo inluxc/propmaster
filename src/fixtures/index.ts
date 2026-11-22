@@ -29,6 +29,7 @@ import type {
     AwsFixtureConfig,
     SearchFixtureConfig,
     GrpcFixtureConfig,
+    RealtimeFixtureConfig,
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -47,6 +48,20 @@ import { s3Fixture, type S3Client } from './s3.fixture.js';
 import { sqsFixture, type SqsClient } from './sqs.fixture.js';
 import { searchFixture, type SearchClient } from './search.fixture.js';
 import { grpcFixture, type GrpcClient } from './grpc.fixture.js';
+export type {
+    RealtimeClient,
+    WebSocketConnection,
+    WebSocketMessage,
+    SseConnection,
+    SseEvent,
+    MessageMatcher,
+    RealtimeWaitOptions,
+    SseWaitOptions,
+    WebSocketConnectOptions,
+    SseSubscribeOptions,
+    CloseInfo,
+} from './realtime.fixture.js';
+import { realtimeFixture, type RealtimeClient } from './realtime.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
@@ -76,6 +91,7 @@ export interface ConfigOptions {
     aws: AwsFixtureConfig | undefined;
     search: SearchFixtureConfig | undefined;
     grpc: GrpcFixtureConfig | undefined;
+    realtime: RealtimeFixtureConfig | undefined;
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
@@ -133,6 +149,8 @@ export interface FixtureTypes {
     graphqlClient: GraphQLClient;
     /** gRPC: unary and streaming calls from .proto files or server reflection, with metadata and deadlines. */
     grpcClient: GrpcClient;
+    /** WebSocket and SSE: connect, send, wait for a message, read what arrived. */
+    realtimeClient: RealtimeClient;
     appiumConfig: AppiumFixtureConfig;
     appiumDriver: AppiumDriver;
     gadsHub: GadsHubClient;
@@ -157,6 +175,7 @@ const configOptionFixtures = {
     aws: [undefined as AwsFixtureConfig | undefined, { option: true }],
     search: [undefined as SearchFixtureConfig | undefined, { option: true }],
     grpc: [undefined as GrpcFixtureConfig | undefined, { option: true }],
+    realtime: [undefined as RealtimeFixtureConfig | undefined, { option: true }],
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
@@ -478,6 +497,7 @@ const allFixtures = {
     ...sqsFixture,
     ...searchFixture,
     ...grpcFixture,
+    ...realtimeFixture,
     ...redisConfigFixture,
     ...redisFixture,
     ...mongoDbFixture,

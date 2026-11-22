@@ -205,6 +205,18 @@ jobs:
           setup:
             - wait-for: { port: 9000 }
 
+  realtime:
+    docker:
+      - image: node:24
+        environment:
+          PW_REALTIME_URL: http://localhost:8080
+      - image: jmalloc/echo-server:v0.3.7
+    steps:
+      - playwright:
+          projects: --project=realtime
+          setup:
+            - wait-for: { port: 8080 }
+
   browser:
     docker:
       - image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test
@@ -217,7 +229,7 @@ jobs:
 
 workflows:
   tests:
-    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, search, grpc, browser]
+    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, search, grpc, realtime, browser]
 ```
 
 `node:24` and the Playwright image both include `git` and `ssh`, which `checkout` needs. CircleCI's `cimg/node` images work too.

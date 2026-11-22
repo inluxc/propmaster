@@ -24,7 +24,7 @@ import { TEST_TYPES, configSnippet, typeInfo, type TestType } from './layout.js'
 const MOBILE = new Set(['appiumDriver', 'gadsHub']);
 const E2E = new Set(['page', 'context', 'browser', 'browserName']);
 const INTEGRATION = new Set(['databaseClient', 'kafkaClient', 'amqpClient', 's3Client', 'sqsClient', 'searchClient', 'redisClient', 'mongoDbClient', 'neo4jClient']);
-const API = new Set(['openApiClient', 'graphqlClient', 'grpcClient', 'request']);
+const API = new Set(['openApiClient', 'graphqlClient', 'grpcClient', 'realtimeClient', 'request']);
 /** Fixtures that say nothing about the test type: options, configs, OTP. */
 const NEUTRAL = new Set([
     'otpClient',
@@ -40,6 +40,7 @@ const NEUTRAL = new Set([
     'neo4j',
     'graphql',
     'grpc',
+    'realtime',
     'otp',
     'appium',
 ]);

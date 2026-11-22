@@ -61,6 +61,7 @@ export default defineConfig({
                     { text: 'Database', link: '/database-fixture' },
                     { text: 'GraphQL', link: '/graphql-fixture' },
                     { text: 'gRPC', link: '/grpc-fixture' },
+                    { text: 'WebSocket & SSE', link: '/realtime-fixture' },
                     { text: 'Kafka', link: '/kafka-fixture' },
                     { text: 'RabbitMQ (AMQP)', link: '/amqp-fixture' },
                     { text: 'AWS (S3, SQS, SNS)', link: '/aws-fixture' },
