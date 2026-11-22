@@ -107,6 +107,10 @@ test.describe('containers — specs', () => {
     test('Neo4j needs an 8+ character password', () => {
         expect(neo4jSpec({ uri: '', username: '', password: '' }, {}).password).toBe('testpassword');
         expect(() => neo4jSpec({ uri: '', username: 'neo4j', password: 'short' }, {})).toThrow(/8 characters/);
+        // The health check asks the HTTP port: no cypher-shell JVM per check, no password in `docker inspect`
+        const { healthCheck } = neo4jSpec({ uri: '', username: 'neo4j', password: 'secret-pass' }, {}).spec;
+        expect(healthCheck).toContain('127.0.0.1:7474');
+        expect(healthCheck).not.toMatch(/cypher-shell|secret-pass/);
     });
 
     test('Kafka advertises the host port and health-checks an internal listener', () => {

@@ -231,6 +231,14 @@ export function mongoDbSpec(config: MongoDbFixtureConfig, options: ContainerOpti
     };
 }
 
+/**
+ * Neo4j is ready when its HTTP interface answers: it opens last, after Bolt and
+ * the databases. Not `cypher-shell`: that starts a JVM per check, which takes
+ * over the 5 s check timeout on a busy CI runner, so the container never turns
+ * healthy. The image has no curl or wget, but it has Perl.
+ */
+const NEO4J_HEALTH_CHECK = `perl -MIO::Socket::INET -e '$s = IO::Socket::INET->new(PeerAddr => "127.0.0.1:7474", Timeout => 2) or exit 1; print $s "GET / HTTP/1.0\\r\\n\\r\\n"; exit((<$s> // "") =~ m{^HTTP/\\S+ 200} ? 0 : 1)'`;
+
 export function neo4jSpec(config: Neo4jFixtureConfig, options: ContainerOptions): { spec: ContainerSpec; password: string } {
     const password = config.password || DEFAULT_CREDENTIALS.neo4jPassword;
     if (password.length < 8) {
@@ -241,7 +249,7 @@ export function neo4jSpec(config: Neo4jFixtureConfig, options: ContainerOptions)
             ...baseSpec('neo4j', 'neo4jClient', options),
             env: { NEO4J_AUTH: `neo4j/${password}` },
             port: 7687,
-            healthCheck: `cypher-shell -u neo4j -p ${quote(password)} 'RETURN 1'`,
+            healthCheck: NEO4J_HEALTH_CHECK,
         },
         password,
     };
