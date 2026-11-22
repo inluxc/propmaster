@@ -50,6 +50,18 @@ export type {
     SnsWaitOptions,
     AwsMessageAttributes,
     AwsBody,
+    SearchClient,
+    SearchQuery,
+    SearchOptions,
+    SearchResult,
+    SearchHit,
+    SearchWaitOptions,
+    IndexOptions,
+    IndexManyOptions,
+    IndexResult,
+    CreateIndexOptions,
+    SearchEngineInfo,
+    SearchRequestOptions,
     RedisClient,
     MongoDbClient,
     Neo4jClient,
@@ -89,6 +101,7 @@ export type {
     KafkaFixtureConfig,
     AmqpFixtureConfig,
     AwsFixtureConfig,
+    SearchFixtureConfig,
     RedisFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
@@ -117,6 +130,9 @@ export { createAmqpClient } from './fixtures/amqp.fixture.js';
 // AWS clients outside the fixtures (e.g. a global setup that creates buckets and queues)
 export { createS3Client } from './fixtures/s3.fixture.js';
 export { createSqsClient } from './fixtures/sqs.fixture.js';
+
+// Search client outside the fixture (e.g. a global setup that creates index templates)
+export { createSearchClient } from './fixtures/search.fixture.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
 export { startAppiumSession, createGadsHubClient, gadsSessionInfo } from './fixtures/appium.fixture.js';

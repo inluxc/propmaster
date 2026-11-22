@@ -575,6 +575,95 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-search-elasticsearch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      elasticsearch:
+        image: elasticsearch:9.5.5
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        options: >-
+          --health-cmd "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null"
+          --health-interval 3s
+          --health-timeout 10s
+          --health-retries 40
+    env:
+      CI: true
+      PW_SEARCH_URL: http://elasticsearch:9200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_SEARCH_URL
+      - name: Run search integration tests against Elasticsearch
+        run: npx playwright test --project=integration-search
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-search-elasticsearch
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-search-elasticsearch
+          path: test-results/
+          retention-days: 7
+
+  test-search-opensearch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:3.10.0
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+          DISABLE_SECURITY_PLUGIN: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        options: >-
+          --health-cmd "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null"
+          --health-interval 3s
+          --health-timeout 10s
+          --health-retries 40
+    env:
+      CI: true
+      PW_SEARCH_URL: http://opensearch:9200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_SEARCH_URL
+      - name: Run search integration tests against OpenSearch
+        run: npx playwright test --project=integration-search
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-search-opensearch
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-search-opensearch
+          path: test-results/
+          retention-days: 7
+
   test-openapi:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -668,6 +757,7 @@ jobs:
       PW_AMQP_CONTAINER: "true"
       PW_AWS_CONTAINER: "true"
       PW_AWS_S3_BUCKET: propmaster-examples
+      PW_SEARCH_CONTAINER: "true"
       PW_INBOX_CONTAINER: "true"
       PW_MOCK_CONTAINER: "true"
     steps:

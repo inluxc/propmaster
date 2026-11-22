@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), OTP and Appium/GADS.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
         "propmaster": "dist/src/cli/init.js"
@@ -223,7 +223,9 @@
         "s3",
         "sqs",
         "sns",
-        "localstack"
+        "localstack",
+        "elasticsearch",
+        "opensearch"
     ],
     "author": "Inluxc",
     "license": "MIT",

@@ -28,6 +28,9 @@
                     "bucket": "propmaster-examples"
                 }
             },
+            "search": {
+                "url": "http://localhost:9200"
+            },
             "redis": {
                 "host": "localhost",
                 "port": 6379

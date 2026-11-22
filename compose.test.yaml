@@ -116,6 +116,35 @@ services:
       interval: 2s
       retries: 15
 
+  elasticsearch:
+    # Single node, security off (plain HTTP, no password): PW_SEARCH_URL=http://localhost:9200
+    image: elasticsearch:9.5.5
+    ports: ["127.0.0.1:9200:9200"]
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null"]
+      interval: 3s
+      retries: 40
+
+  opensearch:
+    # Same API on 9201: PW_SEARCH_URL=http://localhost:9201
+    image: opensearchproject/opensearch:3.10.0
+    ports: ["127.0.0.1:9201:9200"]
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null"]
+      interval: 3s
+      retries: 40
+
   mailpit:
     image: axllent/mailpit:latest
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]   # API/UI, SMTP

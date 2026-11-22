@@ -174,6 +174,24 @@ jobs:
           setup:
             - wait-for: { port: 5000 }
 
+  search:
+    docker:
+      - image: node:24
+        environment:
+          PW_SEARCH_URL: http://localhost:9200
+      - image: elasticsearch:9.5.5
+        environment:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          cluster.routing.allocation.disk.threshold_enabled: "false"
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+    resource_class: large
+    steps:
+      - playwright:
+          projects: --project=integration-search
+          setup:
+            - wait-for: { port: 9200 }
+
   browser:
     docker:
       - image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test
@@ -186,7 +204,7 @@ jobs:
 
 workflows:
   tests:
-    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, browser]
+    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, search, browser]
 ```
 
 `node:24` and the Playwright image both include `git` and `ssh`, which `checkout` needs. CircleCI's `cimg/node` images work too.

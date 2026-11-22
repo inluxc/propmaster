@@ -24,6 +24,7 @@ import type {
     KafkaFixtureConfig,
     AmqpFixtureConfig,
     AwsFixtureConfig,
+    SearchFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
     RedisFixtureConfig,
@@ -35,7 +36,7 @@ import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'mailpit' | 'wiremock';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'elasticsearch' | 'opensearch' | 'mailpit' | 'wiremock';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -48,6 +49,8 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     kafka: 'apache/kafka:latest',
     rabbitmq: 'rabbitmq:4',
     moto: 'motoserver/moto:5.2.5',
+    elasticsearch: 'elasticsearch:9.5.5',
+    opensearch: 'opensearchproject/opensearch:3.10.0',
     mailpit: 'axllent/mailpit:latest',
     wiremock: 'wiremock/wiremock:3.13.2',
 };
@@ -61,7 +64,7 @@ export const DEFAULT_CREDENTIALS = {
     neo4jPassword: 'testpassword',
 } as const;
 
-const SLOW: ReadonlySet<ContainerKind> = new Set(['mssql', 'neo4j']);
+const SLOW: ReadonlySet<ContainerKind> = new Set(['mssql', 'neo4j', 'elasticsearch', 'opensearch']);
 const SQLCMD = '/opt/mssql-tools18/bin/sqlcmd';
 
 /** `true` → {}, options → options, false/undefined → null. */
@@ -305,6 +308,29 @@ export function motoSpec(options: ContainerOptions): ContainerSpec {
     };
 }
 
+/**
+ * Elasticsearch or OpenSearch, single node with security off (plain HTTP, no
+ * password). An image whose name contains `opensearch` starts OpenSearch; the
+ * bare names `elasticsearch` and `opensearch` pick the default image of each.
+ */
+export function searchSpec(options: ContainerOptions): ContainerSpec {
+    const named = options.image === 'opensearch' || options.image === 'elasticsearch' ? options.image : undefined;
+    const kind: ContainerKind = named ?? (options.image && /opensearch/i.test(options.image) ? 'opensearch' : 'elasticsearch');
+    const common = {
+        'discovery.type': 'single-node',
+        // Disk watermarks would turn indices read-only on a full CI disk.
+        'cluster.routing.allocation.disk.threshold_enabled': 'false',
+    };
+    return {
+        ...baseSpec(kind, 'searchClient', { ...options, image: named ? undefined : options.image }),
+        env: kind === 'opensearch'
+            ? { ...common, DISABLE_SECURITY_PLUGIN: 'true', DISABLE_INSTALL_DEMO_CONFIG: 'true', OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m' }
+            : { ...common, 'xpack.security.enabled': 'false', ES_JAVA_OPTS: '-Xms512m -Xmx512m' },
+        port: 9200,
+        healthCheck: "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null",
+    };
+}
+
 /** Mailpit: the API/UI on 8025 for the fixture, SMTP on 1025 for the app under test. */
 export function mailpitSpec(options: ContainerOptions): ContainerSpec {
     return {
@@ -475,6 +501,14 @@ export class ContainerManager {
             profile: undefined,
             container: false,
         };
+    }
+
+    /** Elasticsearch / OpenSearch: `url` points at the container, without credentials (security is off). */
+    async search(config: SearchFixtureConfig): Promise<SearchFixtureConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const started = await this.ensure(searchSpec(options));
+        return { ...config, url: `http://${started.host}:${started.port}`, username: undefined, password: undefined, apiKey: undefined, container: false };
     }
 
     /** Mailpit: `url` points at its API, `smtpHost`/`smtpPort` at its SMTP server. */

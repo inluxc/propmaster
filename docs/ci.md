@@ -48,6 +48,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
+| `test-search-elasticsearch`, `test-search-opensearch` | `integration-search` | `elasticsearch:9.5.5`, `opensearchproject/opensearch:3.10.0` | Search fixture, once per engine |
 | `test-inbox` | `integration-inbox` | `axllent/mailpit:latest` | Inbox fixture (email) |
 | `test-mocks` | `integration-mocks` | `wiremock/wiremock:3.13.2` | Mock-server fixture (third-party APIs) |
 | `test-openapi` | `openapi` | Prism mock server (started in a step) | OpenAPI fixture |
@@ -312,6 +313,28 @@ env:
 ```
 
 Against a real test account, leave out the service and `PW_AWS_ENDPOINT`, and give the job AWS credentials (OIDC with `aws-actions/configure-aws-credentials` is the usual way on GitHub).
+
+### Elasticsearch / OpenSearch
+
+A single node with security off: plain HTTP, no password. The disk-threshold setting stops a nearly full runner disk from turning the indices read-only:
+
+```yaml
+services:
+  elasticsearch:
+    image: elasticsearch:9.5.5
+    env:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    options: >-
+      --health-cmd "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null"
+      --health-interval 3s --health-timeout 10s --health-retries 40
+env:
+  PW_SEARCH_URL: http://elasticsearch:9200
+```
+
+For OpenSearch, use `opensearchproject/opensearch:3.10.0` with `DISABLE_SECURITY_PLUGIN: "true"`, `DISABLE_INSTALL_DEMO_CONFIG: "true"` and `OPENSEARCH_JAVA_OPTS` instead of the two `xpack`/`ES_` settings (each engine refuses the other's settings at start-up). This repo runs the example tests against both.
 
 ### OpenAPI against a mock server
 

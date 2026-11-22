@@ -182,6 +182,21 @@ pipeline {
                     }
                 }
 
+                stage('Search') {
+                    agent { label 'docker' }
+                    steps {
+                        script {
+                            withService(image: 'elasticsearch:9.5.5', alias: 'elasticsearch',
+                                        args: '-e discovery.type=single-node -e xpack.security.enabled=false -e cluster.routing.allocation.disk.threshold_enabled=false -e ES_JAVA_OPTS="-Xms512m -Xmx512m"',
+                                        ready: "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' > /dev/null") {
+                                withEnv(['PW_SEARCH_URL=http://elasticsearch:9200']) {
+                                    sh 'npx playwright test --project=integration-search --reporter=line,junit'
+                                }
+                            }
+                        }
+                    }
+                }
+
                 stage('Browsers') {
                     agent {
                         docker {
