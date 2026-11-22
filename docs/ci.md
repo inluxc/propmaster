@@ -405,7 +405,8 @@ steps:
   - uses: actions/checkout@v4
   - uses: ./.github/actions/npm-install
   - name: Start Prism mock server
-    run: npx prism mock ./openapi.yaml --port 4010 --host 0.0.0.0 --errors false &
+    # To a file: the step's output pipe closes when the step ends, and Prism, which logs every request, dies writing to it
+    run: nohup npx prism mock ./openapi.yaml --port 4010 --host 0.0.0.0 --errors false > /tmp/prism.log 2>&1 &
   - name: Wait for mock server
     run: |
       for i in $(seq 1 60); do
