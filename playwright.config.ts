@@ -8,8 +8,11 @@ const config = new ConfigLoader().load();
 export default defineConfig<ConfigOptions>({
     testDir: './tests',
     timeout: 30_000,
-    retries: 0,
-    reporter: [['list'], ['html', { open: 'never' }]],
+    // One retry in CI: a test that passes on it is flaky, and the history and job summary say so
+    retries: process.env.CI ? 1 : 0,
+    // The Propmaster reporter adds each run to .propmaster/test-history.json (`npx propmaster flaky`)
+    // and applies quarantine.json. In a project using the package: ['@inluxc/propmaster/reporter'].
+    reporter: [['list'], ['html', { open: 'never' }], ['./src/reporter/index.ts']],
     use: {
         trace: 'retain-on-failure',
     },

@@ -3106,6 +3106,48 @@ test.describe('Cassandra — Orders', () => {
 
 ---
 
+## Skill 29: Handle a Flaky Test (History and Quarantine)
+
+**When to use:** A test fails sometimes and passes other times, or CI says it was "flaky" (it passed on the retry). You want to know how unstable it is, fix it, and, only if the fix takes a while, stop it from blocking merges without hiding it.
+
+**Steps:**
+
+1. Look at its history: `npm run flaky` (in a project using the package, `npx propmaster flaky`), or `--json` to read it as data. The row shows the flake rate and the last outcomes (`✓` passed, `~` flaky, `✗` failed). A test marked `fails` never passed in the window: it's broken, not flaky, so fix it as a normal failure.
+2. Read the failing attempts in the HTML report or the trace (`trace: 'retain-on-failure'`). Common causes, and their fixes:
+   - **Waiting on something asynchronous with a single read**, e.g. `get()` or `query()` right after an action. Use the fixture's `waitFor…` (`waitForItem`, `waitForRow`, `waitForMessage`, `waitForObject`, `waitForDocument`), or `expect.poll`.
+   - **Data shared with other tests or workers**, such as a fixed email, ID or key. Use `testData.unique()` or a factory.
+   - **A `sleep` that's sometimes too short.** Wait for the condition instead.
+   - **Order between tests**, where one test relies on another's data. Create the data in the test.
+3. Fix the cause. Don't raise `retries` for one test, wrap it in a loop, or skip it.
+4. If the fix needs more time (it depends on another team, or on an infrastructure change), quarantine it. Add an entry to `quarantine.json` next to `playwright.config.ts`, with an `owner`, an `issue` and the date. The test keeps running and reporting, and gets a `quarantined` annotation, but its failure no longer fails the build. Other failures still do.
+5. Run `npm run lint:tests`: it checks the file and warns about entries older than `maxAgeDays` (default 30).
+6. When the test is fixed, remove its entry. The reporter prints "quarantined but passed this run" each time it passes.
+
+**Template:**
+
+```json
+{
+    "maxAgeDays": 30,
+    "tests": [
+        {
+            "id": "TC-API-NNN",
+            "owner": "payments-team",
+            "issue": "https://github.com/acme/shop/issues/42",
+            "since": "2026-11-20",
+            "reason": "the payment mock sometimes answers after the 5 s timeout"
+        }
+    ]
+}
+```
+
+**Key points:**
+- The history needs retries to tell "flaky" from "failed": `retries: process.env.CI ? 1 : 0` in `playwright.config.ts`. It also needs the file carried between CI runs (a cache restored before the tests and saved with `if: always()`; see [docs/flaky-tests.md](docs/flaky-tests.md)).
+- History and quarantine are keyed on the TestCaseID. Renaming a test keeps its history; changing its ID starts a new one.
+- Quarantine works only through the Propmaster reporter (`['@inluxc/propmaster/reporter']` in the config). Without it, a quarantined test fails the run as usual.
+- Never quarantine a new test to get it merged, or a test without an issue that tracks the fix.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -3118,6 +3160,7 @@ test.describe('Cassandra — Orders', () => {
 | Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
 | Test what a backend stores in DynamoDB | Skill 27 (DynamoDB) |
 | Test what a backend stores in Cassandra / ScyllaDB | Skill 28 (Cassandra) |
+| A test fails only sometimes, or CI calls it flaky | Skill 29 (Flaky tests) |
 | Test what reaches a search index, rankings or aggregations | Skill 24 (Search) |
 | Test caching or pub/sub | Skill 4 (Redis) |
 | Test a native mobile app (Appium) | Skill 5 (Appium) |

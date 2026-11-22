@@ -35,6 +35,11 @@
             "types": "./dist/src/errors.d.ts",
             "import": "./dist/src/errors.js"
         },
+        "./reporter": {
+            "types": "./dist/src/reporter/index.d.ts",
+            "import": "./dist/src/reporter/index.js",
+            "default": "./dist/src/reporter/index.js"
+        },
         "./cli": {
             "types": "./dist/src/cli/init.d.ts",
             "import": "./dist/src/cli/init.js"
@@ -58,6 +63,7 @@
         "typecheck": "tsc --noEmit",
         "lint:tests": "tsx src/cli/init.ts check",
         "next-id": "tsx src/cli/init.ts next-id",
+        "flaky": "tsx src/cli/init.ts flaky",
         "verify": "npm run typecheck && npm run lint:tests && npx playwright test --project=unit-tests --project=property-tests",
         "docs:dev": "npm --prefix docs ci && npm --prefix docs run dev",
         "docs:build": "npm --prefix docs ci && npm --prefix docs run build"

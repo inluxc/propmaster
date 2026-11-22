@@ -1,0 +1,40 @@
+name: Test history
+description: >-
+  Carries this job's test history (.propmaster/test-history.json, written by
+  the Propmaster reporter) from run to run. Use it once before the tests to
+  restore the history, and once after them with save: true and if: always(),
+  so failing runs are kept too. Saving also writes the job's flake ranking to
+  the job summary.
+inputs:
+  save:
+    description: "false: restore the history; true: save it and summarise it."
+    default: "false"
+  name:
+    description: One history per job (and matrix entry). Defaults to the job's ID.
+    default: ${{ github.job }}
+runs:
+  using: composite
+  steps:
+    - name: Restore the test history
+      if: inputs.save != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: .propmaster/test-history.json
+        key: test-history-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: test-history-${{ inputs.name }}-
+    - name: Save the test history
+      if: inputs.save == 'true' && hashFiles('.propmaster/test-history.json') != ''
+      uses: actions/cache/save@v4
+      with:
+        path: .propmaster/test-history.json
+        key: test-history-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Summarise flaky tests
+      if: inputs.save == 'true' && hashFiles('.propmaster/test-history.json') != ''
+      shell: bash
+      run: |
+        {
+          echo "### Flaky tests in ${{ inputs.name }} (test history)"
+          echo '```'
+          npx tsx src/cli/init.ts flaky --limit 10
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"

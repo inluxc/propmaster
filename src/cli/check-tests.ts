@@ -20,6 +20,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { loadQuarantine, quarantinePath, quarantineWarnings } from '../reporter/quarantine.js';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -262,7 +263,7 @@ export function codeBlocks(md: string): { code: string; lineOffset: number }[] {
 
 // ─── Checks ─────────────────────────────────────────────────────────────────
 
-export type Rule = 'tc-id' | 'tc-tag' | 'tc-unique' | 'test-step' | 'import';
+export type Rule = 'tc-id' | 'tc-tag' | 'tc-unique' | 'test-step' | 'import' | 'quarantine';
 
 export interface Violation {
     file: string;
@@ -474,10 +475,33 @@ export function nextIds(category: string, ids: IdEntry[], count = 1): string[] {
 
 // ─── CLI commands ───────────────────────────────────────────────────────────
 
+/**
+ * The quarantine file's problems (violations: it's invalid) and warnings
+ * (entries past their age, IDs no test has). No file: neither.
+ */
+export function checkQuarantine(root: string, ids: IdEntry[], now: Date = new Date()): { violations: Violation[]; warnings: string[] } {
+    const file = quarantinePath(root);
+    const shown = relative(root, file).split(sep).join('/') || file;
+    try {
+        const quarantine = loadQuarantine(file);
+        const known = new Set(ids.filter((e) => !e.reserved).map((e) => e.id));
+        return { violations: [], warnings: quarantineWarnings(quarantine, known, now).map((w) => `${shown}: ${w}`) };
+    } catch (error) {
+        return {
+            violations: [{ file: shown, line: 1, rule: 'quarantine', message: (error as Error).message.replace(`${file}:\n  `, '').replace(`${file} `, '') }],
+            warnings: [],
+        };
+    }
+}
+
 /** `propmaster check [--json] [--list-ids] [--root <dir>]`. Returns the exit code. */
 export function runCheck(argv: string[]): number {
     const root = rootFrom(argv);
-    const { violations, ids } = collect(root);
+    const collected = collect(root);
+    const { ids } = collected;
+    const quarantine = checkQuarantine(root, ids);
+    const violations = [...collected.violations, ...quarantine.violations];
+    const { warnings } = quarantine;
 
     if (argv.includes('--list-ids')) {
         const sorted = [...ids].sort((a, b) => a.category.localeCompare(b.category) || a.num - b.num);
@@ -486,10 +510,11 @@ export function runCheck(argv: string[]): number {
     }
 
     if (argv.includes('--json')) {
-        console.log(JSON.stringify({ ok: violations.length === 0, violations }, null, 2));
+        console.log(JSON.stringify({ ok: violations.length === 0, violations, warnings }, null, 2));
         return violations.length ? 1 : 0;
     }
 
+    for (const w of warnings) console.log(`⚠ ${w}`);
     if (violations.length === 0) {
         const inUse = new Set(ids.filter((e) => !e.reserved).map((e) => e.id)).size;
         console.log(`✓ Test conventions OK (${inUse} TestCaseIDs in use)`);

@@ -20,7 +20,9 @@
  */
 
 import { test as base } from '@playwright/test';
-import type { Fixtures } from '@playwright/test';
+import type { Fixtures, TestInfo } from '@playwright/test';
+import { dirname } from 'node:path';
+import { describeEntry, quarantineEntryFor } from '../reporter/quarantine.js';
 import type {
     OpenApiFixtureConfig,
     DatabaseFixtureConfig,
@@ -166,6 +168,8 @@ export interface FixtureTypes {
     dataCleanup: CleanupRegistry;
     /** Factories, unique values and custom cleanups for the test's data. */
     testData: TestData;
+    /** Automatic: adds a `quarantined` annotation (owner, issue, since) to a test listed in quarantine.json. */
+    quarantineAnnotation: void;
 }
 
 /**
@@ -420,6 +424,23 @@ const mockConfigFixture = {
 };
 
 /**
+ * Quarantine: a test listed in quarantine.json gets a `quarantined`
+ * annotation, so every report shows who owns the fix. Whether its failure
+ * fails the run is the Propmaster reporter's decision.
+ */
+const quarantineFixtures = {
+    quarantineAnnotation: [
+        async ({}, use: () => Promise<void>, testInfo: TestInfo) => {
+            const root = testInfo.config.configFile ? dirname(testInfo.config.configFile) : testInfo.config.rootDir;
+            const entry = quarantineEntryFor(root, testInfo.title, testInfo.tags);
+            if (entry) testInfo.annotations.push({ type: 'quarantined', description: describeEntry(entry) });
+            await use();
+        },
+        { auto: true },
+    ],
+};
+
+/**
  * Test data: `dataCleanup` is the per-test undo stack the client fixtures
  * record their inserts in, run before they disconnect. `testData` adds
  * factories and unique values on top. Neither connects to anything.
@@ -524,6 +545,7 @@ const allFixtures = {
     ...appiumConfigFixture,
     ...appiumFixture,
     ...testDataFixtures,
+    ...quarantineFixtures,
 };
 
 /**

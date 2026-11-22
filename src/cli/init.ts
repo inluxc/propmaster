@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runCheck, runNextId } from './check-tests.js';
+import { runFlaky } from './flaky.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
 import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
@@ -637,6 +638,7 @@ const HELP = `
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
+    npx propmaster flaky [--history <file|dir>] [--runs <n>] [--limit <n>] [--json]
     npx propmaster generate openapi [--tag <tag>] [--operation <id>] [--dry-run] [--prism]
     npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
 
@@ -656,9 +658,14 @@ const HELP = `
               { tag: ['@TC-XXX-NNN'] }, unique IDs, test.step() bodies, and
               no value imports of @playwright/test in test files.
               Exits 1 on violations. --json for machine-readable output,
-              --list-ids to print every TestCaseID in use.
+              --list-ids to print every TestCaseID in use. Also checks
+              quarantine.json, and warns about entries older than its
+              maxAgeDays and IDs no test has.
     next-id   Print the next free TestCaseID(s) for a category, e.g.
               \`propmaster next-id API 3\` → TC-API-005, TC-API-006, TC-API-007
+    flaky     Rank tests by flake rate over the last runs in the test history
+              the Propmaster reporter writes (.propmaster/test-history.json).
+              \`propmaster flaky --help\` for details.
     generate  Scaffold API tests from the OpenAPI spec into tests/api: one file
               per tag, a test per operation and documented status code, with
               real TestCaseIDs and test.step() blocks. Never overwrites a file;
@@ -858,6 +865,7 @@ function main(): number {
 
     if (command === 'check') return runCheck(args.slice(1));
     if (command === 'next-id') return runNextId(args.slice(1));
+    if (command === 'flaky') return runFlaky(args.slice(1));
     if (command === 'organize') return runOrganize(args.slice(1));
     if (command === 'auth-setup') return runAuthSetup(args.slice(1));
     if (command !== 'init') {

@@ -44,7 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - run: npx playwright test --project=property-tests --project=unit-tests --project=otp
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -75,12 +80,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
         run: node .github/scripts/create-test-schema.js
       - name: Run PostgreSQL integration tests
         run: npx playwright test --project=integration-database
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -126,12 +136,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
         run: node .github/scripts/create-test-schema.js
       - name: Run MySQL integration tests
         run: npx playwright test --project=integration-database
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -177,12 +192,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_DB_TYPE PW_DB_HOST PW_DB_PORT PW_DB_NAME PW_DB_USERNAME PW_DB_PASSWORD
       - name: Create test schema
         run: node .github/scripts/create-test-schema.js
       - name: Run MSSQL integration tests
         run: npx playwright test --project=integration-database
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -209,12 +229,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Create SQLite database with schema
         run: |
           mkdir -p tmp
           node .github/scripts/create-test-schema.js
       - name: Run SQLite integration tests
         run: npx playwright test --project=integration-database
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -252,10 +277,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_REDIS_HOST PW_REDIS_PORT PW_REDIS_KEY_PREFIX
       - name: Run Redis integration tests
         run: npx playwright test --project=integration-redis
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -295,10 +325,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_NEO4J_URI PW_NEO4J_USERNAME PW_NEO4J_PASSWORD
       - name: Run Neo4j integration tests
         run: npx playwright test --project=integration-neo4j
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -339,10 +374,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_CASSANDRA_CONTACT_POINTS PW_CASSANDRA_KEYSPACE
       - name: Run Cassandra (ScyllaDB) integration tests
         run: npx playwright test --project=integration-cassandra
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -380,10 +420,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_MONGODB_HOST PW_MONGODB_PORT PW_MONGODB_DATABASE
       - name: Run MongoDB integration tests
         run: npx playwright test --project=integration-mongodb
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -419,8 +464,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Run inbox (Mailpit) tests
         run: npx playwright test --project=integration-inbox
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -447,8 +497,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Run OAuth token tests
         run: npx playwright test --project=integration-auth
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -475,8 +530,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Run mock-server (WireMock) tests
         run: npx playwright test --project=integration-mocks
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -517,10 +577,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_KAFKA_BROKERS
       - name: Run Kafka integration tests
         run: npx playwright test --project=integration-kafka
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -559,10 +624,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_AMQP_URL
       - name: Run RabbitMQ integration tests
         run: npx playwright test --project=integration-amqp
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -600,10 +670,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_AWS_ENDPOINT PW_AWS_S3_BUCKET
       - name: Run AWS (S3, SQS, SNS) integration tests
         run: npx playwright test --project=integration-aws
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -640,10 +715,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_AWS_ENDPOINT
       - name: Run DynamoDB integration tests
         run: npx playwright test --project=integration-dynamodb
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -684,10 +764,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_SEARCH_URL
       - name: Run search integration tests against Elasticsearch
         run: npx playwright test --project=integration-search
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -729,10 +814,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_SEARCH_URL
       - name: Run search integration tests against OpenSearch
         run: npx playwright test --project=integration-search
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -768,10 +858,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_GRPC_ADDRESS
       - name: Run gRPC tests
         run: npx playwright test --project=grpc
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -802,12 +897,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Validate environment variables
         run: bash .github/scripts/validate-env.sh PW_REALTIME_URL
       - name: Wait for echo-server
         run: node -e "const t=Date.now();(async()=>{for(;;){try{await fetch(process.env.PW_REALTIME_URL);return}catch{if(Date.now()-t>30000)throw new Error('echo-server is not up');await new Promise(r=>setTimeout(r,500))}}})()"
       - name: Run realtime (WebSocket / SSE) tests
         run: npx playwright test --project=realtime
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -838,6 +938,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
       - name: Download OpenAPI spec locally
         run: curl -s https://petstore.swagger.io/v2/swagger.json -o /tmp/petstore-spec.json
       # Prism logs every request. Its output goes to a file: this step's own
@@ -871,6 +972,10 @@ jobs:
         run: npm run lint:tests && npm run typecheck
       - name: Run the generated tests against Prism
         run: npx playwright test --project=openapi-generated
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Show the Prism log
         if: failure()
         run: tail -n 200 /tmp/prism.log || true
@@ -933,8 +1038,16 @@ jobs:
         with:
           node-version: "24"
       - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
+        with:
+          name: ${{ github.job }}-${{ matrix.db }}
       - name: Run integration tests against Testcontainers
         run: npx playwright test ${{ matrix.projects }}
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
+          name: ${{ github.job }}-${{ matrix.db }}
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -959,8 +1072,13 @@ jobs:
       - uses: ./.github/actions/npm-install
         with:
           ignore-scripts: "true"
+      - uses: ./.github/actions/test-history
       - name: Run browser tests
         run: npx playwright test --project=browser-chromium --project=browser-firefox --project=browser-webkit --project=auth-browser
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
       - name: Upload HTML report
         if: failure()
         uses: actions/upload-artifact@v4

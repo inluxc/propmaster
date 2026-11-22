@@ -113,6 +113,19 @@ test-redis:
     ignore-scripts: "true"
 ```
 
+### Test history
+
+[`.github/actions/test-history`](../.github/actions/test-history/action.yml) carries each job's [test history](./flaky-tests) from run to run. Every job that runs Playwright uses it twice: before the tests it restores the history from the cache, and afterwards (with `if: always()`) it saves the history and writes the job's flake ranking to the job summary. CI runs with one retry, so a test that passes on it shows up as flaky:
+
+```yaml
+- uses: ./.github/actions/test-history
+- run: npx playwright test --project=integration-redis
+- uses: ./.github/actions/test-history
+  if: always()
+  with:
+    save: true
+```
+
 ---
 
 ## Using This in Your Own Project
