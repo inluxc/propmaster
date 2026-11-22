@@ -227,7 +227,7 @@ jobs:
     steps:
       - template: ci/playwright-steps.yml
         parameters:
-          projects: --project=integration-aws
+          projects: --project=integration-aws --project=integration-dynamodb
 
   - job: search
     container: node

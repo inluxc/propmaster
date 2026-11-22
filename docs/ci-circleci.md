@@ -170,7 +170,7 @@ jobs:
       - image: motoserver/moto:5.2.5
     steps:
       - playwright:
-          projects: --project=integration-aws
+          projects: --project=integration-aws --project=integration-dynamodb
           setup:
             - wait-for: { port: 5000 }
 

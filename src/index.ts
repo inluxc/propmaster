@@ -50,6 +50,25 @@ export type {
     SnsWaitOptions,
     AwsMessageAttributes,
     AwsBody,
+    DynamoDbClient,
+    DynamoItem,
+    DynamoKey,
+    DynamoComparison,
+    DynamoConditions,
+    DynamoExpression,
+    DynamoPutOptions,
+    DynamoUpdateOptions,
+    DynamoDeleteOptions,
+    DynamoGetOptions,
+    DynamoQueryOptions,
+    DynamoScanOptions,
+    DynamoWaitOptions,
+    DynamoWaitForItemOptions,
+    DynamoWaitForQueryOptions,
+    DynamoTableDefinition,
+    DynamoKeyDefinition,
+    DynamoKeyType,
+    DynamoTableKey,
     SearchClient,
     SearchQuery,
     SearchOptions,
@@ -151,6 +170,7 @@ export { createAmqpClient } from './fixtures/amqp.fixture.js';
 // AWS clients outside the fixtures (e.g. a global setup that creates buckets and queues)
 export { createS3Client } from './fixtures/s3.fixture.js';
 export { createSqsClient } from './fixtures/sqs.fixture.js';
+export { createDynamoDbClient } from './fixtures/dynamodb.fixture.js';
 
 // Search client outside the fixture (e.g. a global setup that creates index templates)
 export { createSearchClient } from './fixtures/search.fixture.js';

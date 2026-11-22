@@ -35,6 +35,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
 | `sqsClient` | `@aws-sdk/client-sqs` (`@aws-sdk/client-sns` too, for topics) |
+| `dynamoDbClient` | `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` |
 | `searchClient` | nothing (uses `fetch`); needs Elasticsearch or OpenSearch |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
@@ -99,6 +100,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: publish, listen on an exchange, consume, purge | [Setup & Usage](docs/amqp-fixture.md) |
 | `s3Client` | `S3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [Setup & Usage](docs/aws-fixture.md) |
 | `sqsClient` | `SqsClient` | SQS send/receive/purge, SNS publish and listen on a topic | [Setup & Usage](docs/aws-fixture.md) |
+| `dynamoDbClient` | `DynamoDbClient` | DynamoDB items as plain objects: put/get/update/query/scan, wait for an item; writes undone after the test | [Setup & Usage](docs/dynamodb-fixture.md) |
 | `searchClient` | `SearchClient` | Elasticsearch / OpenSearch: index, search, count, wait for documents under a per-test index prefix | [Setup & Usage](docs/search-fixture.md) |
 | `redisClient` | `RedisClient` | Redis client with pub/sub | [Setup & Usage](docs/redis-fixture.md) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
@@ -306,6 +308,23 @@ test.describe('Exports', () => {
 
 Runs on Moto (`docker compose -f compose.test.yaml up -d --wait moto`), LocalStack or a real test account.
 
+### DynamoDB Client
+
+```typescript
+test('placing an order stores it', async ({ dynamoDbClient, openApiClient, testData }) => {
+  const customerId = testData.unique('customer');
+  const { data } = await (openApiClient.client as any).placeOrder(null, { customerId, sku: 'A-1' });
+
+  // Plain objects in and out; conditions too. Polls until the app has written it.
+  const order = await dynamoDbClient.waitForItem('orders', { customerId, orderedAt: data.orderedAt });
+  expect(order).toMatchObject({ status: 'open' });
+  const open = await dynamoDbClient.query('orders', { status: 'open' }, { index: 'byStatus', filter: { customerId } });
+  expect(open).toHaveLength(1);
+
+  await dynamoDbClient.put('settings', { tenant: customerId, plan: 'pro' });   // deleted again after the test
+});
+```
+
 ### Search Client (Elasticsearch, OpenSearch)
 
 ```typescript
@@ -487,6 +506,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`), or `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST` |
 | `PW_AWS_ENDPOINT` / `PW_AWS_REGION` / `PW_AWS_S3_BUCKET` | AWS emulator URL (Moto, LocalStack), region and default bucket; credentials from `PW_AWS_ACCESS_KEY_ID`/`PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` or the standard AWS chain |
+| `PW_AWS_DYNAMODB_TABLE_PREFIX` | Root of the per-test table names from `dynamoDbClient.tableName()` (default `propmaster-tests-`) |
 | `PW_SEARCH_URL` / `PW_SEARCH_USERNAME` / `PW_SEARCH_PASSWORD` / `PW_SEARCH_API_KEY` | Elasticsearch / OpenSearch cluster |
 | `PW_GRPC_ADDRESS` / `PW_GRPC_PROTO_FILES` / `PW_GRPC_AUTH_TOKEN` | gRPC server (`grpcs://` for TLS), its .proto files (leave out for server reflection) and token; TLS files in `PW_GRPC_TLS_CA`/`_CERT`/`_KEY` |
 | `PW_REALTIME_URL` / `PW_REALTIME_AUTH_TOKEN` | Base URL for WebSocket and SSE connections (http(s) becomes ws(s)) and bearer token |
@@ -579,7 +599,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, DynamoDB, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 

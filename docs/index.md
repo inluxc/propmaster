@@ -36,8 +36,8 @@ features:
     link: /kafka-fixture
     linkText: Messaging fixtures
   - icon: ☁️
-    title: AWS (S3, SQS, SNS)
-    details: Wait for the files your app writes to S3, send and receive SQS messages, and listen on SNS topics. Runs on Moto, LocalStack or a real test account.
+    title: AWS (S3, SQS, SNS, DynamoDB)
+    details: Wait for the files your app writes to S3, send and receive SQS messages, listen on SNS topics, and read and write DynamoDB items as plain objects. Runs on Moto, LocalStack or a real test account.
     link: /aws-fixture
     linkText: AWS fixtures
   - icon: 🔎

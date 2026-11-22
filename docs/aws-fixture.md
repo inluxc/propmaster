@@ -1,6 +1,6 @@
 # AWS Fixtures (S3, SQS, SNS)
 
-Two fixtures test what a backend does with AWS. `s3Client` checks the files it writes to S3. `sqsClient` checks the messages it sends to SQS queues and publishes to SNS topics. Both run against an emulator ([Moto](https://github.com/getmoto/moto) or [LocalStack](https://www.localstack.cloud/)) or a real test account. One `aws` config serves both.
+Two fixtures test what a backend does with AWS. `s3Client` checks the files it writes to S3. `sqsClient` checks the messages it sends to SQS queues and publishes to SNS topics. Both run against an emulator ([Moto](https://github.com/getmoto/moto) or [LocalStack](https://www.localstack.cloud/)) or a real test account. One `aws` config serves both, and the [DynamoDB fixture](./dynamodb-fixture) too.
 
 ---
 

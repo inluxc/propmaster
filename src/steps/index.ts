@@ -29,6 +29,8 @@ export { AppiumSteps } from './appium.steps.js';
 export type { AppiumDriver } from './appium.steps.js';
 export { S3Steps, SqsSteps } from './aws.steps.js';
 export type { S3Client, S3Object, SqsClient, SqsMessage, SnsListener, SnsMessage } from './aws.steps.js';
+export { DynamoDbSteps } from './dynamodb.steps.js';
+export type { DynamoDbClient, DynamoItem, DynamoKey } from './dynamodb.steps.js';
 export { SearchSteps } from './search.steps.js';
 export type { SearchClient, SearchHit, SearchResult } from './search.steps.js';
 export { GrpcSteps } from './grpc.steps.js';

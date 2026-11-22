@@ -317,6 +317,10 @@ export class ConfigLoader {
                 cfg.aws ??= {};
                 cfg.aws.s3 = { ...cfg.aws.s3, prefix: val };
             },
+            'PW_AWS_DYNAMODB_TABLE_PREFIX': (cfg, val) => {
+                cfg.aws ??= {};
+                cfg.aws.dynamodb = { ...cfg.aws.dynamodb, tablePrefix: val };
+            },
             'PW_AWS_TIMEOUT': (cfg, val) => {
                 cfg.aws ??= {};
                 cfg.aws.timeout = parseInt(val, 10);

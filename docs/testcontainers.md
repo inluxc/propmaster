@@ -6,7 +6,7 @@ Turn on `container` for a backend and Stagehand starts it in a throwaway Docker 
 PW_DB_CONTAINER=true PW_KAFKA_CONTAINER=true npx playwright test --project=integration
 ```
 
-Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS), **Elasticsearch, OpenSearch**, **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
+Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS, DynamoDB), **Elasticsearch, OpenSearch**, **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
 
 ## Setup
 
@@ -26,7 +26,7 @@ Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, M
     PW_NEO4J_CONTAINER=true       # neo4jClient
     PW_KAFKA_CONTAINER=true       # kafkaClient
     PW_AMQP_CONTAINER=true        # amqpClient (RabbitMQ)
-    PW_AWS_CONTAINER=true         # s3Client and sqsClient (Moto, an AWS emulator)
+    PW_AWS_CONTAINER=true         # s3Client, sqsClient and dynamoDbClient (Moto, an AWS emulator)
     PW_SEARCH_CONTAINER=true      # searchClient (Elasticsearch; =opensearch for OpenSearch)
     PW_INBOX_CONTAINER=true       # inboxClient (Mailpit; inboxClient.smtp has its SMTP host and port)
     PW_MOCK_CONTAINER=true        # mockServer (WireMock; mockServer.url is its address)
