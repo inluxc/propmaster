@@ -314,6 +314,50 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-cassandra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      # ScyllaDB (CQL, like Cassandra). Services take no command, so one core
+      # comes from --cpuset-cpus: on every core, Seastar can fail its AIO check.
+      scylla:
+        image: scylladb/scylla:2026.3.6
+        ports:
+          - 9042:9042
+        options: >-
+          --cpuset-cpus 0
+          --health-cmd "cqlsh -e 'SELECT now() FROM system.local' > /dev/null"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 30
+    env:
+      CI: true
+      PW_CASSANDRA_CONTACT_POINTS: scylla
+      PW_CASSANDRA_KEYSPACE: propmaster_examples
+      PW_CASSANDRA_CREATE_KEYSPACE: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_CASSANDRA_CONTACT_POINTS PW_CASSANDRA_KEYSPACE
+      - name: Run Cassandra (ScyllaDB) integration tests
+        run: npx playwright test --project=integration-cassandra
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-cassandra
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-cassandra
+          path: test-results/
+          retention-days: 7
+
   test-mongodb:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -874,6 +918,8 @@ jobs:
       PW_REDIS_KEY_PREFIX: "test:ci-${{ github.run_id }}:"
       PW_MONGODB_CONTAINER: "true"
       PW_NEO4J_CONTAINER: "true"
+      PW_CASSANDRA_CONTAINER: "true"
+      PW_CASSANDRA_KEYSPACE: propmaster_examples
       PW_KAFKA_CONTAINER: "true"
       PW_AMQP_CONTAINER: "true"
       PW_AWS_CONTAINER: "true"

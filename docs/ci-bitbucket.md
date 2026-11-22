@@ -260,6 +260,17 @@ neo4j:
 # step: export PW_NEO4J_URI=bolt://localhost:7687 PW_NEO4J_USERNAME=neo4j PW_NEO4J_PASSWORD=testpassword; wait_for 7687
 ```
 
+```yaml [Cassandra]
+# Bitbucket services take no command, which ScyllaDB needs to run on one core: Apache Cassandra instead
+cassandra:
+  image: cassandra:5
+  memory: 2048
+  variables:
+    MAX_HEAP_SIZE: 512M
+    HEAP_NEWSIZE: 128M
+# step: size: 2x; export PW_CASSANDRA_CONTACT_POINTS=localhost PW_CASSANDRA_KEYSPACE=propmaster_examples PW_CASSANDRA_CREATE_KEYSPACE=true; wait_for 9042
+```
+
 :::
 
 ## Secrets

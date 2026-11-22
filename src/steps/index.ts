@@ -37,3 +37,5 @@ export { GrpcSteps } from './grpc.steps.js';
 export type { GrpcClient, GrpcResult, GrpcStatusName } from './grpc.steps.js';
 export { RealtimeSteps } from './realtime.steps.js';
 export type { RealtimeClient, WebSocketConnection, WebSocketMessage, SseConnection, SseEvent } from './realtime.steps.js';
+export { CassandraSteps } from './cassandra.steps.js';
+export type { CassandraClient, CassandraRow, CqlParams } from './cassandra.steps.js';

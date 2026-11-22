@@ -46,6 +46,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Cache:** ioredis (`ioredis ^6.0.0`)
 - **MongoDB:** mongodb (`mongodb ^7.x`)
 - **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
+- **Cassandra / ScyllaDB:** cassandra-driver (`cassandra-driver ^4.7.0`); ScyllaDB in compose/CI/containers
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
 - **gRPC:** @grpc/grpc-js + @grpc/proto-loader (`@grpc/grpc-js ^1.12`); .proto files or server reflection
 - **WebSocket / SSE:** ws (`ws ^8`) for WebSockets; SSE over the built-in `fetch`
@@ -86,6 +87,7 @@ src/
 │   ├── search.fixture.ts       # Elasticsearch / OpenSearch fixture (per-test index prefix, waitForDocument)
 │   ├── mongodb.fixture.ts      # MongoDB client fixture (CRUD + aggregation)
 │   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
+│   ├── cassandra.fixture.ts    # Cassandra / ScyllaDB fixture (parameterized CQL, plain rows, inserts undone, waitForRows, keyspaces)
 │   ├── redis.fixture.ts        # Redis client fixture
 │   ├── otp.fixture.ts          # OTP (TOTP/HOTP) fixture for 2FA/MFA testing
 │   └── appium.fixture.ts       # Appium fixture (WebdriverIO) with GADS device-farm preset
@@ -128,6 +130,7 @@ tests/
 │   ├── search.spec.ts
 │   ├── mongodb.spec.ts
 │   ├── neo4j.spec.ts
+│   ├── cassandra.spec.ts
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
 │   ├── appium.spec.ts
@@ -161,6 +164,7 @@ import { test, expect } from '../../src/fixtures';
 | Database | `*.spec.ts` | `tests/examples/` or custom dir |
 | MongoDB | `*.spec.ts` | `tests/examples/` or custom dir |
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
+| Cassandra / ScyllaDB | `*.spec.ts` | `tests/examples/` or custom dir |
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | RabbitMQ (AMQP) | `*.spec.ts` | `tests/examples/` or custom dir |
 | AWS (S3, SQS, SNS) | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -184,6 +188,7 @@ Request fixtures by name in the test function signature:
 | `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)`, `execute(sql, params?)` and `insert(table, rows, { key?, keep? })` (rows deleted after the test) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
+| `cassandraClient` | `CassandraClient` | Cassandra / ScyllaDB with parameterized CQL: `query<T>(cql, params?)` (plain rows), `execute` (`{ applied }` for LWTs), `batch`, `insert(table, rows, { ttl, ifNotExists, keep })` (undone: deleted or restored), `waitForRows` (`count`, `until`), `waitForRow`, `createKeyspace()` (per-test, dropped after), `useKeyspace`, `primaryKey` |
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: `publish`, `sendToQueue`, `listen(exchange, key)` (temporary queue, doesn't take the app's messages), `consume`, `purge`, `checkQueue`, `assertQueue`/`assertExchange`/`bindQueue` (removed after the test) |
 | `s3Client` | `S3Client` | S3: `prefix`/`key(name)` (per-test prefix, deleted after), `putObject` (undone: deleted or restored), `getObject` (`text()`, `json()`, `content`), `headObject`, `exists`, `listObjects`, `waitForObject`, `deleteObject`, `deletePrefix`, `createBucket` |
@@ -271,7 +276,7 @@ await databaseClient.insert('countries', seedRows, { keep: true }); // leave in 
 **Test Data (factories + automatic cleanup):**
 ```typescript
 // Data created through the clients is undone after the test, pass or fail, newest first:
-// databaseClient.insert, mongoDbClient.insertOne/insertMany, redisClient.set and dynamoDbClient.put/update (deleted or restored),
+// databaseClient.insert, mongoDbClient.insertOne/insertMany, redisClient.set, dynamoDbClient.put/update and cassandraClient.insert (deleted or restored),
 // neo4jClient.write with a `runId` param. Opt out per call with { keep: true }, or per project with use: { autoCleanup: false }.
 import { defineFactory } from '../../src';
 const user = defineFactory('user', (f) => ({ email: f.email('user'), name: `User ${f.seq}`, id: f.unique('usr') }));
@@ -428,6 +433,20 @@ await neo4jClient.executeInTransaction(async (tx) => {
 
 // Cleanup is automatic: writes with a `runId` param are detach-deleted after the test.
 // Use testData.runId (unique per test) as the runId; pass { keep: true } as a 3rd arg to keep the nodes.
+```
+
+**Cassandra / ScyllaDB Client:**
+```typescript
+// Always bound parameters (? or :name), never string-built CQL. Unqualified tables use cassandra.keyspace (PW_CASSANDRA_KEYSPACE).
+const orders = await cassandraClient.query<Order>('SELECT * FROM orders WHERE customer_id = ? AND ordered_at > ?', [customerId, since]);
+// Rows are plain: uuid/inet/date/decimal → string, bigint → number (bigint beyond 2^53), timestamp → Date, set/list → array, map → object
+await cassandraClient.insert('orders', { customer_id: customerId, ordered_at: new Date(), status: 'open' }); // undone after the test (deleted or restored)
+await cassandraClient.insert('sessions', rows, { ttl: 60 });                                     // every row needs its whole primary key
+const { applied } = await cassandraClient.execute('UPDATE accounts SET v = ? WHERE id = ? IF v = ?', [2, id, 1]); // false: LWT refused; not undone
+const order = await cassandraClient.waitForRow('SELECT * FROM orders WHERE customer_id = ?', [customerId], { until: (o) => o.status === 'shipped' }); // what the APP writes: poll
+await cassandraClient.waitForRows('SELECT * FROM order_events WHERE order_id = ?', [orderId], { count: 3 });
+const ks = await cassandraClient.createKeyspace();                                               // propmaster_t0_9f2a1c0b, dropped after the test
+await cassandraClient.execute(`CREATE TABLE ${ks}.scratch (id int PRIMARY KEY, v text)`);     // keyspace.table outside the session keyspace
 ```
 
 **GADS (device farm preset):**
@@ -604,6 +623,9 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_NEO4J_URI` | Neo4j URI (`bolt://host:7687` or `neo4j://host:7687`) |
 | `PW_NEO4J_USERNAME`, `PW_NEO4J_PASSWORD` | Neo4j credentials |
 | `PW_NEO4J_DATABASE` | Neo4j database (optional; server default) |
+| `PW_CASSANDRA_CONTACT_POINTS`, `PW_CASSANDRA_PORT`, `PW_CASSANDRA_LOCAL_DC` | Cassandra / ScyllaDB nodes (`host` or `host:port`, comma-separated; default `localhost`), port (9042), data center (`datacenter1`) |
+| `PW_CASSANDRA_KEYSPACE`, `PW_CASSANDRA_CREATE_KEYSPACE` | Keyspace for unqualified tables; `true` creates it when missing |
+| `PW_CASSANDRA_USERNAME`, `PW_CASSANDRA_PASSWORD`, `PW_CASSANDRA_CONSISTENCY`, `PW_CASSANDRA_TIMEOUT` | Credentials, default consistency (`localQuorum`, ...), default wait (ms) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
 | `PW_REALTIME_URL` | Base URL for WebSocket and SSE (`http://localhost:8080`); http(s) becomes ws(s) for WebSockets |
@@ -620,7 +642,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_APPIUM_NEW_COMMAND_TIMEOUT`, `PW_APPIUM_SESSION_TIMEOUT` | Idle timeout (s), session-create timeout (ms) |
 | `PW_GADS_CLIENT_SECRET` | Enables the GADS preset; client secret from GADS Admin → Client credentials |
 | `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
-| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER`, `PW_AWS_CONTAINER` (Moto), `PW_SEARCH_CONTAINER` (`true` = Elasticsearch, `opensearch` = OpenSearch) | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
+| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_CASSANDRA_CONTAINER` (ScyllaDB; `cassandra:5` for Cassandra), `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER`, `PW_AWS_CONTAINER` (Moto), `PW_SEARCH_CONTAINER` (`true` = Elasticsearch, `opensearch` = OpenSearch) | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
 | `PW_DB_CONTAINER_INIT` | Comma-separated SQL files run once in the database container (PostgreSQL, MySQL, MSSQL) |
 | `PW_MOCK_URL`, `PW_MOCK_ADMIN_URL`, `PW_MOCK_CONTAINER` | WireMock base/admin URL for `mockServer`, or start it in a container |
 | `PW_AUTH_ISSUER` / `PW_AUTH_TOKEN_URL` | OAuth/OIDC token endpoint (issuer uses discovery) for the auth helpers |
@@ -653,7 +675,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
-| `api-integration` | `**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `dynamoDbClient`, `searchClient`, `redisClient`, `mongoDbClient`, `neo4jClient` |
+| `api-integration` | `**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `dynamoDbClient`, `searchClient`, `redisClient`, `mongoDbClient`, `neo4jClient`, `cassandraClient` |
 | `integration-database` | `**/examples/database.spec.ts` | `databaseClient` |
 | `integration-kafka` | `**/examples/kafka.spec.ts` | `kafkaClient` |
 | `integration-amqp` | `**/examples/amqp.spec.ts` | `amqpClient` (needs RabbitMQ) |
@@ -663,6 +685,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-redis` | `**/examples/redis.spec.ts` | `redisClient` |
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
+| `integration-cassandra` | `**/examples/cassandra.spec.ts` | `cassandraClient` (needs ScyllaDB or Cassandra; `PW_CASSANDRA_KEYSPACE` + `PW_CASSANDRA_CREATE_KEYSPACE=true`) |
 | `otp` | `**/examples/otp.spec.ts` | `otpClient` |
 | `integration-inbox` | `**/examples/inbox.spec.ts` | `inboxClient` (needs Mailpit) |
 | `integration-mocks` | `**/examples/mock-server.spec.ts` | `mockServer` (needs WireMock) |
@@ -740,7 +763,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `DDB` (DynamoDB), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `RT` (WebSocket/SSE), `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `DDB` (DynamoDB), `CAS` (Cassandra/ScyllaDB), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `RT` (WebSocket/SSE), `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

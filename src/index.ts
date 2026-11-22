@@ -69,6 +69,15 @@ export type {
     DynamoKeyDefinition,
     DynamoKeyType,
     DynamoTableKey,
+    CassandraClient,
+    CassandraRow,
+    CqlParams,
+    CqlOptions,
+    CassandraInsertOptions,
+    CassandraWaitOptions,
+    CassandraWaitForRowOptions,
+    CassandraKeyspaceOptions,
+    CassandraPrimaryKey,
     SearchClient,
     SearchQuery,
     SearchOptions,
@@ -171,6 +180,9 @@ export { createAmqpClient } from './fixtures/amqp.fixture.js';
 export { createS3Client } from './fixtures/s3.fixture.js';
 export { createSqsClient } from './fixtures/sqs.fixture.js';
 export { createDynamoDbClient } from './fixtures/dynamodb.fixture.js';
+
+// Cassandra / ScyllaDB client outside the fixture (e.g. a global setup that creates the schema)
+export { createCassandraClient } from './fixtures/cassandra.fixture.js';
 
 // Search client outside the fixture (e.g. a global setup that creates index templates)
 export { createSearchClient } from './fixtures/search.fixture.js';

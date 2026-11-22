@@ -38,6 +38,11 @@
             "realtime": {
                 "url": "http://localhost:8091"
             },
+            "cassandra": {
+                "contactPoints": ["localhost"],
+                "keyspace": "propmaster_examples",
+                "createKeyspace": true
+            },
             "redis": {
                 "host": "localhost",
                 "port": 6379

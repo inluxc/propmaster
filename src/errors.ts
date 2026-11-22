@@ -86,7 +86,8 @@ export class FixtureOperationError extends FrameworkError {
             | 'index' | 'get' | 'search' | 'count' | 'deleteByQuery' | 'createIndex' | 'deleteIndex' | 'refresh' | 'request' | 'waitForDocument'
             | 'call' | 'serverStream' | 'clientStream' | 'bidiStream' | 'loadProtos' | 'reflection'
             | 'connect' | 'subscribe' | 'waitForClose'
-            | 'put' | 'update' | 'delete' | 'scan' | 'createTable' | 'deleteTable' | 'waitForItem',
+            | 'put' | 'update' | 'delete' | 'scan' | 'createTable' | 'deleteTable' | 'waitForItem'
+            | 'execute' | 'batch' | 'createKeyspace' | 'waitForRows',
         public readonly details: Record<string, unknown>,
         public readonly cause?: Error
     ) {

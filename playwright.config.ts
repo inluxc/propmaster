@@ -94,7 +94,7 @@ export default defineConfig<ConfigOptions>({
         },
         {
             name: 'api-integration',
-            testMatch: '**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j}.spec.ts',
+            testMatch: '**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra}.spec.ts',
             use: {
                 database: config.database,
                 kafka: config.kafka,
@@ -104,6 +104,7 @@ export default defineConfig<ConfigOptions>({
                 redis: config.redis,
                 mongodb: config.mongodb,
                 neo4j: config.neo4j,
+                cassandra: config.cassandra,
             },
         },
         {
@@ -167,6 +168,13 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/examples/neo4j.spec.ts',
             use: {
                 neo4j: config.neo4j,
+            },
+        },
+        {
+            name: 'integration-cassandra',
+            testMatch: '**/examples/cassandra.spec.ts',
+            use: {
+                cassandra: config.cassandra,
             },
         },
         {

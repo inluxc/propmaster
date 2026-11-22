@@ -45,6 +45,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-redis` | `integration-redis` | `redis:7` | Redis fixture |
 | `test-mongodb` | `integration-mongodb` | `mongo:7` | MongoDB fixture |
 | `test-neo4j` | `integration-neo4j` | `neo4j:5` | Neo4j fixture |
+| `test-cassandra` | `integration-cassandra` | `scylladb/scylla:2026.3.6` | Cassandra / ScyllaDB fixture |
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
@@ -252,6 +253,26 @@ env:
   PW_NEO4J_USERNAME: neo4j
   PW_NEO4J_PASSWORD: testpassword
 ```
+
+### Cassandra / ScyllaDB
+
+ScyllaDB is ready in seconds. Service containers take no command, so `--cpuset-cpus 0` gives it one core: on every core of a large machine, Seastar can fail its AIO check at startup. With `PW_CASSANDRA_CREATE_KEYSPACE` the keyspace is created on the first test:
+
+```yaml
+services:
+  scylla:
+    image: scylladb/scylla:2026.3.6
+    options: >-
+      --cpuset-cpus 0
+      --health-cmd "cqlsh -e 'SELECT now() FROM system.local' > /dev/null"
+      --health-interval 5s --health-timeout 10s --health-retries 30
+env:
+  PW_CASSANDRA_CONTACT_POINTS: scylla
+  PW_CASSANDRA_KEYSPACE: propmaster_examples
+  PW_CASSANDRA_CREATE_KEYSPACE: true
+```
+
+For Apache Cassandra, use `cassandra:5` with `MAX_HEAP_SIZE: 512M` and `HEAP_NEWSIZE: 128M` in `env`, and `--health-retries 60`: it needs about a minute.
 
 ### Kafka
 

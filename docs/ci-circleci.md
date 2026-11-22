@@ -242,6 +242,7 @@ Add a job like `redis` above with this service image:
 |---|---|---|---|
 | MySQL | `mysql:8.0`; `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | 3306 | `PW_DB_TYPE: mysql`, `PW_DB_HOST: localhost`, `PW_DB_PORT: "3306"`, name, user, password |
 | MSSQL | `mcr.microsoft.com/mssql/server:2022-latest`; `ACCEPT_EULA: "Y"`, `MSSQL_SA_PASSWORD` | 1433 (then `sleep 10`) | `PW_DB_TYPE: mssql`, `PW_DB_HOST: localhost`, `PW_DB_PORT: "1433"`, `PW_DB_NAME: master`, `PW_DB_USERNAME: sa`, `PW_DB_ENCRYPT: "false"`, `PW_DB_TRUST_SERVER_CERTIFICATE: "true"` |
+| Cassandra / ScyllaDB | `scylladb/scylla:2026.3.6`; `command: --smp 1 --memory 750M --overprovisioned 1 --developer-mode 1` | 9042 | `PW_CASSANDRA_CONTACT_POINTS: localhost`, `PW_CASSANDRA_KEYSPACE: propmaster_examples`, `PW_CASSANDRA_CREATE_KEYSPACE: "true"` |
 | Neo4j | `neo4j:5`; `NEO4J_AUTH: neo4j/testpassword` | 7687 | `PW_NEO4J_URI: bolt://localhost:7687`, `PW_NEO4J_USERNAME: neo4j`, `PW_NEO4J_PASSWORD: testpassword` |
 
 ## Secrets

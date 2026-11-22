@@ -71,6 +71,19 @@ services:
       interval: 5s
       retries: 30
 
+  # ScyllaDB for cassandraClient: CQL-compatible with Cassandra and ready in
+  # seconds. One core and 750 MB in developer mode, enough for tests.
+  scylla:
+    image: scylladb/scylla:2026.3.6
+    command: ["--smp", "1", "--memory", "750M", "--overprovisioned", "1", "--developer-mode", "1"]
+    ports: ["127.0.0.1:9042:9042"]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local' > /dev/null"]
+      interval: 5s
+      timeout: 10s
+      start_period: 10s
+      retries: 30
+
   kafka:
     image: apache/kafka:latest
     environment:

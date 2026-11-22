@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS, DynamoDB), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Cassandra/ScyllaDB, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS, DynamoDB), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
         "propmaster": "dist/src/cli/init.js"
@@ -76,6 +76,7 @@
         "ajv-formats": "^3.0.1",
         "amqplib": "^2.2.0",
         "better-sqlite3": "^13.2.0",
+        "cassandra-driver": "^4.7.0",
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
         "ioredis": "^6.0.0",
@@ -127,6 +128,9 @@
             "optional": true
         },
         "better-sqlite3": {
+            "optional": true
+        },
+        "cassandra-driver": {
             "optional": true
         },
         "graphql": {
@@ -196,6 +200,7 @@
         "ajv-formats": "^3.0.1",
         "amqplib": "^2.3.1",
         "better-sqlite3": "^13.2.0",
+        "cassandra-driver": "^4.10.0",
         "fast-check": "^4.10.3",
         "graphql": "^16.15.0",
         "graphql-request": "^7.4.0",
@@ -225,6 +230,8 @@
         "database",
         "mongodb",
         "neo4j",
+        "cassandra",
+        "scylladb",
         "kafka",
         "rabbitmq",
         "amqp",

@@ -33,6 +33,7 @@ import type {
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
+    CassandraFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
     AuthConfig,
@@ -66,6 +67,7 @@ import { realtimeFixture, type RealtimeClient } from './realtime.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
+import { cassandraFixture, type CassandraClient } from './cassandra.fixture.js';
 import { otpFixture, type OtpClient } from './otp.fixture.js';
 import { inboxFixture, type InboxClient } from './inbox.fixture.js';
 import { mockServerFixture, type MockServer } from './mock-server.fixture.js';
@@ -96,6 +98,7 @@ export interface ConfigOptions {
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
+    cassandra: CassandraFixtureConfig | undefined;
     otp: OtpFixtureConfig | undefined;
     inbox: InboxFixtureConfig | undefined;
     auth: AuthConfig | undefined;
@@ -134,6 +137,8 @@ export interface FixtureTypes {
     mongoDbClient: MongoDbClient;
     neo4jConfig: Neo4jFixtureConfig;
     neo4jClient: Neo4jClient;
+    /** Cassandra / ScyllaDB: parameterized CQL, rows as plain objects, inserts undone after the test. */
+    cassandraClient: CassandraClient;
     otpConfig: OtpFixtureConfig;
     otpClient: OtpClient;
     inboxConfig: InboxFixtureConfig;
@@ -182,6 +187,7 @@ const configOptionFixtures = {
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
+    cassandra: [undefined as CassandraFixtureConfig | undefined, { option: true }],
     otp: [undefined as OtpFixtureConfig | undefined, { option: true }],
     inbox: [undefined as InboxFixtureConfig | undefined, { option: true }],
     auth: [undefined as AuthConfig | undefined, { option: true }],
@@ -507,6 +513,7 @@ const allFixtures = {
     ...mongoDbFixture,
     ...neo4jConfigFixture,
     ...neo4jFixture,
+    ...cassandraFixture,
     ...otpConfigFixture,
     ...otpFixture,
     ...inboxConfigFixture,
@@ -579,6 +586,17 @@ export type {
     DynamoKeyType,
     DynamoTableKey,
 } from './dynamodb.fixture.js';
+export type {
+    CassandraClient,
+    CassandraRow,
+    CqlParams,
+    CqlOptions,
+    CassandraInsertOptions,
+    CassandraWaitOptions,
+    CassandraWaitForRowOptions,
+    CassandraKeyspaceOptions,
+    CassandraPrimaryKey,
+} from './cassandra.fixture.js';
 export type { AwsBody } from './aws.js';
 export type {
     SearchClient,

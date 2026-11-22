@@ -31,6 +31,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
+| `cassandraClient` | `cassandra-driver` |
 | `kafkaClient` | `kafkajs` |
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
@@ -105,6 +106,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `redisClient` | `RedisClient` | Redis client with pub/sub | [Setup & Usage](docs/redis-fixture.md) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
+| `cassandraClient` | `CassandraClient` | Cassandra / ScyllaDB: parameterized CQL, rows as plain objects, wait for a row; inserts undone after the test | [Setup & Usage](docs/cassandra-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `grpcClient` | `GrpcClient` | gRPC unary and streaming calls from .proto files or server reflection, with status codes, metadata, deadlines and TLS | [Setup & Usage](docs/grpc-fixture.md) |
 | `realtimeClient` | `RealtimeClient` | WebSocket and SSE: connect, send, wait for a matching message, the HTTP status of a refused connection | [Setup & Usage](docs/realtime-fixture.md) |
@@ -389,6 +391,23 @@ test.describe('Social Graph', () => {
 });
 ```
 
+### Cassandra / ScyllaDB Client
+
+```typescript
+test('placing an order stores it', async ({ cassandraClient, openApiClient, testData }) => {
+  const customerId = testData.unique('customer');
+  await (openApiClient.client as any).placeOrder(null, { customerId, sku: 'A-1' });
+
+  // Parameterized CQL; rows as plain objects. Polls until the app has written it.
+  const order = await cassandraClient.waitForRow('SELECT * FROM orders WHERE customer_id = ?', [customerId]);
+  expect(order).toMatchObject({ status: 'open' });
+
+  await cassandraClient.insert('settings', { tenant: customerId, plan: 'pro' });   // deleted again after the test
+});
+```
+
+Runs on ScyllaDB (`docker compose -f compose.test.yaml up -d --wait scylla`), Cassandra, or a test cluster.
+
 ### OTP Client (2FA/MFA Testing)
 
 ```typescript
@@ -515,6 +534,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
 | `PW_NEO4J_USERNAME` / `PW_NEO4J_PASSWORD` | Neo4j credentials |
 | `PW_NEO4J_DATABASE` | Neo4j database (default: server default) |
+| `PW_CASSANDRA_CONTACT_POINTS` / `PW_CASSANDRA_LOCAL_DC` / `PW_CASSANDRA_KEYSPACE` | Cassandra / ScyllaDB nodes, data center and keyspace (`PW_CASSANDRA_CREATE_KEYSPACE=true` creates it); `PW_CASSANDRA_USERNAME`/`PW_CASSANDRA_PASSWORD` |
 | `PW_APPIUM_SERVER_URL` | Appium server (or GADS hub) URL |
 | `PW_APPIUM_PLATFORM` / `PW_APPIUM_UDID` / `PW_APPIUM_DEVICE_NAME` | Device selection |
 | `PW_APPIUM_CAPABILITIES` | Extra capabilities as a JSON object |
@@ -599,7 +619,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, DynamoDB, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Cassandra/ScyllaDB, Kafka, RabbitMQ, AWS, DynamoDB, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 
