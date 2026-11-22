@@ -21,6 +21,7 @@ import {
     meetsMssqlPasswordPolicy,
     mongoDbSpec,
     neo4jSpec,
+    rabbitMqSpec,
     parseContainerEnv,
     redisSpec,
 } from '../../src/containers/container-manager';
@@ -111,6 +112,13 @@ test.describe('containers — specs', () => {
         const { healthCheck } = neo4jSpec({ uri: '', username: 'neo4j', password: 'secret-pass' }, {}).spec;
         expect(healthCheck).toContain('127.0.0.1:7474');
         expect(healthCheck).not.toMatch(/cypher-shell|secret-pass/);
+    });
+
+    test('RabbitMQ health check speaks AMQP instead of running the Erlang CLI', () => {
+        // The CLI, run as root before the broker made its Erlang cookie, crashes the broker
+        const { healthCheck } = rabbitMqSpec({}, {}).spec;
+        expect(healthCheck).toContain('/dev/tcp/127.0.0.1/5672');
+        expect(healthCheck).not.toContain('rabbitmq-diagnostics');
     });
 
     test('Kafka advertises the host port and health-checks an internal listener', () => {
