@@ -174,7 +174,7 @@ test.describe('amqp — RabbitMQ container', () => {
         expect(spec.fixture).toBe('amqpClient');
         expect(spec.env).toEqual({ RABBITMQ_DEFAULT_USER: 'testuser', RABBITMQ_DEFAULT_PASS: 'testpass', RABBITMQ_DEFAULT_VHOST: '/' });
         expect([username, password, vhost]).toEqual(['testuser', 'testpass', '/']);
-        expect(spec.healthCheck).toContain('check_port_connectivity');
+        expect(spec.healthCheck).toContain('/dev/tcp/127.0.0.1/5672'); // waits for the AMQP listener
     });
 
     test('creates the configured user and vhost, and takes an image', () => {
