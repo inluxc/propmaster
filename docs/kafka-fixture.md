@@ -1,13 +1,14 @@
 # Kafka Fixture
 
-The `kafkaClient` fixture provides Kafka producer and consumer capabilities for integration testing. It uses [KafkaJS](https://kafka.js.org/) under the hood and manages the full lifecycle of producer/consumer connections per test with unique consumer group IDs for message isolation.
+The `kafkaClient` fixture provides Kafka producer and consumer capabilities for integration testing. It runs on [KafkaJS](https://kafka.js.org/) by default, or on Confluent's [`@confluentinc/kafka-javascript`](https://github.com/confluentinc/confluent-kafka-javascript) (see [Choosing a driver](#choosing-a-driver)). It manages the producer and consumer connections per test, with a unique consumer group ID per test for message isolation.
 
 ---
 
 ## What It Does
 
-- Connects a Kafka producer and consumer per test
-- Generates unique consumer group IDs for test isolation
+- Connects a Kafka producer per test, and a consumer for each `consume()` call
+- Generates a unique consumer group ID per test, so tests don't take each other's messages
+- A second `consume()` in the same test goes on where the first one stopped: only the messages a call returned are committed
 - Supports SSL and SASL authentication
 - Provides `produce()` and `consume()` methods with configurable timeouts
 - Handles graceful disconnection with timeout-based force-close
@@ -22,7 +23,22 @@ The driver is an optional peer dependency. Install it in your project:
 
 ```bash
 npm install --save-dev kafkajs
+# or, for the Confluent driver
+npm install --save-dev @confluentinc/kafka-javascript
 ```
+
+### Choosing a driver
+
+| | `kafkajs` (default) | `confluent` |
+|---|---|---|
+| Package | `kafkajs` | `@confluentinc/kafka-javascript` |
+| Maintained | Last release February 2023 | Maintained by Confluent |
+| Under the hood | Pure JavaScript | [librdkafka](https://github.com/confluentinc/librdkafka) (native) |
+| Install | Nothing to build, 2 MB | ~30 MB. Its install script downloads a prebuilt binary from GitHub (Node 18–24 on Linux, macOS and Windows x64), and builds librdkafka from source when there is none for the platform |
+
+Pick Confluent's with `driver: 'confluent'` in the config, or `PW_KAFKA_DRIVER=confluent`. Tests don't change: `produce()`, `consume()`, the options and the errors are the same on both, and this repository's CI runs the Kafka suite on each.
+
+Confluent's client needs its install script to run. It doesn't load (`Could not locate the bindings file`) when it was installed with `--ignore-scripts`, with pnpm 10 or Bun without allowing its scripts (`pnpm approve-builds`, `trustedDependencies`), or where GitHub downloads are blocked and there's no compiler to fall back on. Stay on kafkajs in those setups.
 
 ### Run it in a container
 
@@ -36,6 +52,7 @@ No Kafka broker to connect to? Set `PW_KAFKA_CONTAINER=true` (or `container: tru
 | `PW_KAFKA_CLIENT_ID` | No | Client identifier (default: `playwright-test`) |
 | `PW_KAFKA_SSL` | No | Enable SSL (`true`/`false`) |
 | `PW_KAFKA_DISCONNECT_TIMEOUT` | No | Disconnect timeout in ms (default: `5000`) |
+| `PW_KAFKA_DRIVER` | No | `kafkajs` (default) or `confluent` |
 
 ### Configuration via `environments.json`
 
@@ -90,6 +107,7 @@ export default defineConfig({
 | `ssl` | `boolean` | `false` | Enable SSL for broker connections |
 | `sasl` | `SASLOptions` | — | SASL authentication options |
 | `disconnectTimeout` | `number` | `5000` | Timeout in ms for disconnect operations |
+| `driver` | `'kafkajs' \| 'confluent'` | `'kafkajs'` | The client library |
 
 #### SASL Options
 
@@ -177,9 +195,9 @@ interface KafkaMessage {
 
 ## Lifecycle
 
-1. **Setup** — Creates Kafka instance, connects producer, creates consumer with unique group ID, connects consumer
-2. **Use** — Provides `kafkaClient` to the test
-3. **Teardown** — Disconnects producer and consumer within the configured timeout (force-closes if exceeded)
+1. **Setup** — Connects the producer and an admin client (for topic lookups) on the configured driver.
+2. **Use** — Provides `kafkaClient` to the test. Each `consume()` connects a consumer in the test's group, reads, commits the offsets of the messages it returns, and disconnects.
+3. **Teardown** — Disconnects everything within `disconnectTimeout`, then gives up.
 
 ---
 
@@ -187,7 +205,8 @@ interface KafkaMessage {
 
 | Error | When |
 |-------|------|
-| `FixtureInitError` | Producer or consumer connection failure |
-| `FixtureOperationError` | Message production failure |
+| `FixtureInitError` | The brokers can't be reached (the message names the brokers and the driver) |
+| `FixtureOperationError` | A message can't be produced, or a consumer can't connect to a topic that exists |
+| `MissingPackageError` | The driver's package isn't installed |
 
 The `consume()` method returns an empty array (rather than throwing) if the timeout expires with no messages or if the topic does not exist.

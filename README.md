@@ -32,7 +32,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
 | `cassandraClient` | `cassandra-driver` |
-| `kafkaClient` | `kafkajs` |
+| `kafkaClient` | `kafkajs` (or `@confluentinc/kafka-javascript` with `PW_KAFKA_DRIVER=confluent`) |
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
 | `sqsClient` | `@aws-sdk/client-sqs` (`@aws-sdk/client-sns` too, for topics) |
@@ -523,6 +523,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_DB_HOST` / `PW_DB_PORT` / `PW_DB_NAME` | Database connection |
 | `PW_DB_USERNAME` / `PW_DB_PASSWORD` | Database credentials |
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
+| `PW_KAFKA_DRIVER` | `kafkajs` (default) or `confluent` (Confluent's librdkafka client) |
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`), or `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST` |
 | `PW_AWS_ENDPOINT` / `PW_AWS_REGION` / `PW_AWS_S3_BUCKET` | AWS emulator URL (Moto, LocalStack), region and default bucket; credentials from `PW_AWS_ACCESS_KEY_ID`/`PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` or the standard AWS chain |
 | `PW_AWS_DYNAMODB_TABLE_PREFIX` | Root of the per-test table names from `dynamoDbClient.tableName()` (default `propmaster-tests-`) |

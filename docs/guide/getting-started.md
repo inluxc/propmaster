@@ -25,7 +25,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
 | `cassandraClient` | `cassandra-driver` |
-| `kafkaClient` | `kafkajs` |
+| `kafkaClient` | `kafkajs` (or `@confluentinc/kafka-javascript` with `PW_KAFKA_DRIVER=confluent`) |
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
 | `sqsClient` | `@aws-sdk/client-sqs` (and `@aws-sdk/client-sns` for topics) |

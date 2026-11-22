@@ -105,6 +105,11 @@ export interface KafkaFixtureConfig {
     sasl?: SASLOptions;
     /** Timeout in ms for disconnect operations (default: 5000). */
     disconnectTimeout?: number;
+    /**
+     * The client library: `kafkajs` (default) or `confluent`
+     * (@confluentinc/kafka-javascript, librdkafka). Same behaviour in tests.
+     */
+    driver?: 'kafkajs' | 'confluent';
     /** Start this backend in a Docker container for the run (see ContainerOptions). */
     container?: ContainerSetting;
 }
