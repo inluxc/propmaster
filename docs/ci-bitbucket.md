@@ -55,6 +55,14 @@ definitions:
         RABBITMQ_DEFAULT_PASS: testpass
     moto:
       image: motoserver/moto:5.2.5
+    elasticsearch:
+      image: elasticsearch:9.5.5
+      memory: 2048
+      variables:
+        discovery.type: single-node
+        xpack.security.enabled: "false"
+        cluster.routing.allocation.disk.threshold_enabled: "false"
+        ES_JAVA_OPTS: -Xms512m -Xmx512m
 
 
 pipelines:
@@ -155,6 +163,19 @@ pipelines:
                 - *npm-ci
                 - wait_for 5000
                 - npx playwright test --project=integration-aws --reporter=line,junit
+              artifacts: [playwright-report/**]
+
+          - step:
+              name: Elasticsearch
+              caches: [npm]
+              services: [elasticsearch]
+              script:
+                - *wait-for
+                - *junit
+                - export PW_SEARCH_URL=http://localhost:9200
+                - *npm-ci
+                - wait_for 9200
+                - npx playwright test --project=integration-search --reporter=line,junit
               artifacts: [playwright-report/**]
 
           - step:

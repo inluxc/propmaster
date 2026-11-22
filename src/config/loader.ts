@@ -325,6 +325,34 @@ export class ConfigLoader {
                 cfg.aws ??= {};
                 cfg.aws.container = parseContainerEnv(val);
             },
+            'PW_SEARCH_URL': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.url = val;
+            },
+            'PW_SEARCH_USERNAME': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.username = val;
+            },
+            'PW_SEARCH_PASSWORD': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.password = val;
+            },
+            'PW_SEARCH_API_KEY': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.apiKey = val;
+            },
+            'PW_SEARCH_INDEX_PREFIX': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.indexPrefix = val;
+            },
+            'PW_SEARCH_TIMEOUT': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.timeout = parseInt(val, 10);
+            },
+            'PW_SEARCH_CONTAINER': (cfg, val) => {
+                cfg.search ??= {};
+                cfg.search.container = parseContainerEnv(val);
+            },
             'PW_AMQP_URL': (cfg, val) => {
                 cfg.amqp ??= {};
                 cfg.amqp.url = val;

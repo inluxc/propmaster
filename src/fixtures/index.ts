@@ -27,6 +27,7 @@ import type {
     KafkaFixtureConfig,
     AmqpFixtureConfig,
     AwsFixtureConfig,
+    SearchFixtureConfig,
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -43,6 +44,7 @@ import { kafkaFixture, type KafkaClient } from './kafka.fixture.js';
 import { amqpFixture, type AmqpClient } from './amqp.fixture.js';
 import { s3Fixture, type S3Client } from './s3.fixture.js';
 import { sqsFixture, type SqsClient } from './sqs.fixture.js';
+import { searchFixture, type SearchClient } from './search.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
@@ -70,6 +72,7 @@ export interface ConfigOptions {
     kafka: KafkaFixtureConfig | undefined;
     amqp: AmqpFixtureConfig | undefined;
     aws: AwsFixtureConfig | undefined;
+    search: SearchFixtureConfig | undefined;
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
@@ -102,6 +105,8 @@ export interface FixtureTypes {
     s3Client: S3Client;
     /** SQS and SNS: send, receive, purge, publish to a topic, listen on a topic. */
     sqsClient: SqsClient;
+    /** Elasticsearch / OpenSearch: index, search, count and wait for documents under a per-test index prefix. */
+    searchClient: SearchClient;
     redisConfig: RedisFixtureConfig;
     redisClient: RedisClient;
     mongoDbClient: MongoDbClient;
@@ -145,6 +150,7 @@ const configOptionFixtures = {
     kafka: [undefined as KafkaFixtureConfig | undefined, { option: true }],
     amqp: [undefined as AmqpFixtureConfig | undefined, { option: true }],
     aws: [undefined as AwsFixtureConfig | undefined, { option: true }],
+    search: [undefined as SearchFixtureConfig | undefined, { option: true }],
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
@@ -464,6 +470,7 @@ const allFixtures = {
     ...amqpFixture,
     ...s3Fixture,
     ...sqsFixture,
+    ...searchFixture,
     ...redisConfigFixture,
     ...redisFixture,
     ...mongoDbFixture,
@@ -521,6 +528,21 @@ export type {
     AwsMessageAttributes,
 } from './sqs.fixture.js';
 export type { AwsBody } from './aws.js';
+export type {
+    SearchClient,
+    SearchQuery,
+    SearchOptions,
+    SearchResult,
+    SearchHit,
+    SearchWaitOptions,
+    IndexOptions,
+    IndexManyOptions,
+    IndexResult,
+    CreateIndexOptions,
+    SearchEngineInfo,
+    SearchRequestOptions,
+    Refresh,
+} from './search.fixture.js';
 export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';
 export type { MockServer, RequestMatch, StubResponse, RecordedRequest, Stub } from './mock-server.fixture.js';
 export type { RedisClient } from './redis.fixture.js';

@@ -6,7 +6,7 @@ Turn on `container` for a backend and Stagehand starts it in a throwaway Docker 
 PW_DB_CONTAINER=true PW_KAFKA_CONTAINER=true npx playwright test --project=integration
 ```
 
-Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS), **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
+Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS), **Elasticsearch, OpenSearch**, **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
 
 ## Setup
 
@@ -27,6 +27,7 @@ Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, M
     PW_KAFKA_CONTAINER=true       # kafkaClient
     PW_AMQP_CONTAINER=true        # amqpClient (RabbitMQ)
     PW_AWS_CONTAINER=true         # s3Client and sqsClient (Moto, an AWS emulator)
+    PW_SEARCH_CONTAINER=true      # searchClient (Elasticsearch; =opensearch for OpenSearch)
     PW_INBOX_CONTAINER=true       # inboxClient (Mailpit; inboxClient.smtp has its SMTP host and port)
     PW_MOCK_CONTAINER=true        # mockServer (WireMock; mockServer.url is its address)
     ```
@@ -79,6 +80,8 @@ With 4 workers, a backend runs in 4 containers, one per worker, so tests in diff
 | Kafka | `apache/kafka:latest` | Single KRaft broker, no auth |
 | RabbitMQ | `rabbitmq:4` | The config's `username`/`password`/`vhost`, or `testuser`/`testpass` on `/` |
 | Moto (AWS) | `motoserver/moto:5.2.5` | Credentials `test`/`test`, region `us-east-1` unless the config sets one. Moto rather than LocalStack, whose image needs an auth token |
+| Elasticsearch | `elasticsearch:9.5.5` | Single node, security off (no password) |
+| OpenSearch | `opensearchproject/opensearch:3.10.0` | `PW_SEARCH_CONTAINER=opensearch` or an `opensearchproject/opensearch` image. Single node, security plugin off |
 | WireMock | `wiremock/wiremock:3.13.2` | No auth; stubs and admin API on one port, `mockServer.url` |
 | Mailpit | `axllent/mailpit:latest` | No auth; SMTP on a second mapped port, exposed as `inboxClient.smtp` |
 

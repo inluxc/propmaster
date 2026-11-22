@@ -33,6 +33,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
 | `sqsClient` | `@aws-sdk/client-sqs` (`@aws-sdk/client-sns` too, for topics) |
+| `searchClient` | nothing (uses `fetch`); needs Elasticsearch or OpenSearch |
 | `redisClient` | `ioredis` |
 | `otpClient` | `otplib` |
 | `inboxClient` | nothing (uses `fetch`); needs a [Mailpit](https://mailpit.axllent.org/) server |
@@ -96,6 +97,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: publish, listen on an exchange, consume, purge | [Setup & Usage](docs/amqp-fixture.md) |
 | `s3Client` | `S3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [Setup & Usage](docs/aws-fixture.md) |
 | `sqsClient` | `SqsClient` | SQS send/receive/purge, SNS publish and listen on a topic | [Setup & Usage](docs/aws-fixture.md) |
+| `searchClient` | `SearchClient` | Elasticsearch / OpenSearch: index, search, count, wait for documents under a per-test index prefix | [Setup & Usage](docs/search-fixture.md) |
 | `redisClient` | `RedisClient` | Redis client with pub/sub | [Setup & Usage](docs/redis-fixture.md) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
@@ -259,6 +261,25 @@ test.describe('Exports', () => {
 
 Runs on Moto (`docker compose -f compose.test.yaml up -d --wait moto`), LocalStack or a real test account.
 
+### Search Client (Elasticsearch, OpenSearch)
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test.describe('Catalogue search', () => {
+  test('a new product becomes searchable', async ({ searchClient, openApiClient }) => {
+    const sku = `sku-${Date.now()}`;
+    await (openApiClient.client as any).createProduct(null, { sku, title: 'Trail running shoes' });
+
+    // Indexing is eventually consistent: poll instead of sleeping
+    const hit = await searchClient.waitForDocument('products', { term: { sku } });
+    expect(hit.source).toMatchObject({ title: 'Trail running shoes' });
+  });
+});
+```
+
+Indices from `searchClient.indexName()` are the test's own and deleted afterwards; writes to other indices are undone.
+
 ### Redis Client
 
 ```typescript
@@ -421,6 +442,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
 | `PW_AMQP_URL` | RabbitMQ / AMQP broker URL (`amqp://user:pass@host:5672/vhost`), or `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST` |
 | `PW_AWS_ENDPOINT` / `PW_AWS_REGION` / `PW_AWS_S3_BUCKET` | AWS emulator URL (Moto, LocalStack), region and default bucket; credentials from `PW_AWS_ACCESS_KEY_ID`/`PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` or the standard AWS chain |
+| `PW_SEARCH_URL` / `PW_SEARCH_USERNAME` / `PW_SEARCH_PASSWORD` / `PW_SEARCH_API_KEY` | Elasticsearch / OpenSearch cluster |
 | `PW_REDIS_HOST` / `PW_REDIS_PORT` / `PW_REDIS_PASSWORD` | Redis connection |
 | `PW_REDIS_KEY_PREFIX` | Key prefix for test isolation |
 | `PW_NEO4J_URI` | Neo4j connection URI (`bolt://` or `neo4j://`) |
@@ -510,7 +532,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, AWS, Elasticsearch, OpenSearch, OpenAPI, GraphQL, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 

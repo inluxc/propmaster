@@ -82,7 +82,8 @@ export class FixtureOperationError extends FrameworkError {
         public readonly fixtureName: string,
         public readonly operation: 'query' | 'produce' | 'consume' | 'find' | 'findOne' | 'insertOne' | 'insertMany' | 'updateOne' | 'updateMany' | 'deleteOne' | 'deleteMany' | 'aggregate' | 'run' | 'write' | 'transaction' | 'command' | 'release' | 'waitForMessage' | 'extractCode' | 'extractLink' | 'send' | 'stub' | 'verify' | 'insert' | 'build' | 'cleanup'
             | 'publish' | 'sendToQueue' | 'listen' | 'purge' | 'checkQueue' | 'exchangeExists' | 'assertQueue' | 'assertExchange' | 'bindQueue' | 'json'
-            | 'putObject' | 'getObject' | 'headObject' | 'listObjects' | 'deleteObject' | 'createBucket' | 'receive' | 'createQueue' | 'createTopic' | 'waitForObject',
+            | 'putObject' | 'getObject' | 'headObject' | 'listObjects' | 'deleteObject' | 'createBucket' | 'receive' | 'createQueue' | 'createTopic' | 'waitForObject'
+            | 'index' | 'get' | 'search' | 'count' | 'deleteByQuery' | 'createIndex' | 'deleteIndex' | 'refresh' | 'request' | 'waitForDocument',
         public readonly details: Record<string, unknown>,
         public readonly cause?: Error
     ) {

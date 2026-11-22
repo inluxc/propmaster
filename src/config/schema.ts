@@ -167,6 +167,31 @@ export interface AwsFixtureConfig {
 }
 
 /**
+ * Configuration for the search fixture (`searchClient`): Elasticsearch or
+ * OpenSearch over their REST API.
+ */
+export interface SearchFixtureConfig {
+    /** Cluster URL, e.g. `http://localhost:9200`. */
+    url?: string;
+    /** Basic auth (Elasticsearch `elastic` user, OpenSearch `admin`, or any other). */
+    username?: string;
+    password?: string;
+    /** Elasticsearch API key (the base64 `id:key` value), sent as `Authorization: ApiKey ...`. */
+    apiKey?: string;
+    /** Extra headers on every request, e.g. a gateway's auth header. */
+    headers?: Record<string, string>;
+    /** Root of the per-test index prefix (default: `propmaster-tests-`). */
+    indexPrefix?: string;
+    /** Default wait for `waitForDocument()` and `waitForCount()` in ms, and the request timeout (default: 10000). */
+    timeout?: number;
+    /**
+     * Start a search engine in a Docker container for the run (see ContainerOptions).
+     * Elasticsearch by default; an `opensearchproject/opensearch` image starts OpenSearch.
+     */
+    container?: ContainerSetting;
+}
+
+/**
  * Configuration for the Redis integration fixture.
  */
 export interface RedisFixtureConfig {
@@ -424,6 +449,8 @@ export interface FrameworkConfig {
     amqp?: AmqpFixtureConfig;
     /** AWS (S3, SQS, SNS) fixture configuration. */
     aws?: AwsFixtureConfig;
+    /** Elasticsearch / OpenSearch fixture configuration. */
+    search?: SearchFixtureConfig;
     /** Redis fixture configuration. */
     redis?: RedisFixtureConfig;
     /** MongoDB fixture configuration. */

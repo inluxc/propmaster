@@ -156,6 +156,22 @@ aws:
     - wait_for moto 5000
     - npx playwright test --project=integration-aws --reporter=line,junit
 
+search:
+  extends: .playwright
+  services:
+    - name: elasticsearch:9.5.5
+      alias: elasticsearch
+      variables:
+        discovery.type: single-node
+        xpack.security.enabled: "false"
+        cluster.routing.allocation.disk.threshold_enabled: "false"
+        ES_JAVA_OPTS: -Xms512m -Xmx512m
+  variables:
+    PW_SEARCH_URL: http://elasticsearch:9200
+  script:
+    - wait_for elasticsearch 9200
+    - npx playwright test --project=integration-search --reporter=line,junit
+
 browser:
   extends: .playwright
   image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test

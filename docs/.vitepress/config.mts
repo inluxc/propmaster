@@ -63,6 +63,7 @@ export default defineConfig({
                     { text: 'Kafka', link: '/kafka-fixture' },
                     { text: 'RabbitMQ (AMQP)', link: '/amqp-fixture' },
                     { text: 'AWS (S3, SQS, SNS)', link: '/aws-fixture' },
+                    { text: 'Elasticsearch / OpenSearch', link: '/search-fixture' },
                     { text: 'Redis', link: '/redis-fixture' },
                     { text: 'MongoDB', link: '/mongodb-fixture' },
                     { text: 'Neo4j', link: '/neo4j-fixture' },

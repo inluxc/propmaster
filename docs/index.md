@@ -40,6 +40,11 @@ features:
     details: Wait for the files your app writes to S3, send and receive SQS messages, and listen on SNS topics. Runs on Moto, LocalStack or a real test account.
     link: /aws-fixture
     linkText: AWS fixtures
+  - icon: 🔎
+    title: Elasticsearch & OpenSearch
+    details: Wait for the documents your app indexes instead of sleeping, and check rankings, filters and aggregations in indices of the test's own.
+    link: /search-fixture
+    linkText: Search fixture
   - icon: 📱
     title: Mobile with Appium
     details: A WebdriverIO session on local Appium, a grid, a cloud farm or a GADS device farm. The device is freed when the test ends.

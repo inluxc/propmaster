@@ -34,6 +34,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `KFK` | Kafka tests |
 | `AMQ` | RabbitMQ / AMQP tests |
 | `AWS` | AWS tests (S3, SQS, SNS) |
+| `SRCH` | Search tests (Elasticsearch, OpenSearch) |
 | `RDS` | Redis tests |
 | `MDB` | MongoDB tests |
 | `NEO` | Neo4j tests |
@@ -2773,6 +2774,71 @@ test.describe('AWS — Exports', () => {
 
 ---
 
+## Skill 24: Test Search Indexing and Queries (Elasticsearch / OpenSearch)
+
+**When to use:** The application indexes documents into Elasticsearch or OpenSearch, or its search results (relevance, filters, aggregations) need checking. One client works with both engines.
+
+**Steps:**
+
+1. Use `searchClient` (`PW_SEARCH_URL`, or `PW_SEARCH_CONTAINER=true` / `=opensearch` for a container). `SearchSteps` from `src/steps` wraps the calls in `test.step()`.
+2. A document the **application** writes: `waitForDocument(index, query)`, never a search right after the action or a fixed sleep. Indexing is eventually consistent (about a second). Match on a value unique to the test, since the application's index is shared.
+3. Data the **test** writes: put it in an index of the test's own, `searchClient.indexName('name')`; it's deleted after the test. `index()`/`indexMany()` refresh by default, so it is searchable at once. Writes to other indices are undone (deleted or put back).
+4. Check a delete with `waitForCount(index, query, 0)`.
+5. Get IDs with `npm run next-id -- SRCH <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+
+test.describe('Search — Catalogue', () => {
+    test('[TC-SRCH-NNN] a new product becomes searchable, and leaves when deleted', { tag: ['@TC-SRCH-NNN'] }, async ({ searchClient, openApiClient, testData }) => {
+        const sku = testData.unique('sku');
+
+        await test.step('Step 1: Create the product through the API', async () => {
+            const response = await (openApiClient.client as any).createProduct(null, { sku, title: 'Trail running shoes' });
+            expect(response.status).toBe(201);
+        });
+
+        await test.step('Step 2: Verify it is indexed', async () => {
+            const hit = await searchClient.waitForDocument('products', { term: { sku } }, { timeout: 15_000 });
+            expect(hit.source).toMatchObject({ title: 'Trail running shoes' });
+        });
+
+        await test.step('Step 3: Delete it and verify it leaves the index', async () => {
+            await (openApiClient.client as any).deleteProduct({ sku });
+            await searchClient.waitForCount('products', { term: { sku } }, 0);
+        });
+    });
+
+    test('[TC-SRCH-NNN] both words must match, the shorter title first', { tag: ['@TC-SRCH-NNN'] }, async ({ searchClient }) => {
+        const index = searchClient.indexName('products');
+
+        await test.step('Step 1: Seed an index of the test\'s own', async () => {
+            await searchClient.createIndex(index, { mappings: { properties: { title: { type: 'text' } } } });
+            await searchClient.indexMany(index, [
+                { title: 'Trail running shoes' },
+                { title: 'Running socks' },
+                { title: 'Running shoes for the road, lightweight running' },
+            ], { id: (_doc, i) => `p-${i + 1}` });
+        });
+
+        await test.step('Step 2: Verify the hits and their order', async () => {
+            const result = await searchClient.search(index, { match: { title: { query: 'running shoes', operator: 'and' } } });
+            expect(result.hits.map((h) => h.id)).toEqual(['p-1', 'p-3']);
+        });
+    });
+});
+```
+
+**Key points:**
+- `query` is a Query DSL clause (`{ term: ... }`, `{ match: ... }`, `{ bool: ... }`); size, sort, aggs and `_source` go in the options, anything else in `{ body }`. `search()` returns `total` (exact), `hits` (`id`, `score`, `source`), `documents` and `aggregations`.
+- A `text` field matches by words; for an exact value use a `keyword` field (`sku` mapped as keyword, or `field.keyword` with dynamic mappings).
+- On timeout, `waitForDocument()` says how many documents the index holds and shows a few: read it before changing the query.
+- Errors carry the engine's reason (`400 parsing_exception: ...`). `deleteByQuery`, `deleteIndex` and `request()` are not undone.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -2783,6 +2849,7 @@ test.describe('AWS — Exports', () => {
 | Test event publishing/consuming | Skill 3 (Kafka) |
 | Test RabbitMQ events or commands | Skill 22 (RabbitMQ) |
 | Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
+| Test what reaches a search index, rankings or aggregations | Skill 24 (Search) |
 | Test caching or pub/sub | Skill 4 (Redis) |
 | Test a native mobile app (Appium) | Skill 5 (Appium) |
 | Test document storage or aggregations | Skill 6 (MongoDB) |
