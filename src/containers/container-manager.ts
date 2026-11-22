@@ -282,6 +282,15 @@ export function kafkaSpec(options: ContainerOptions, host: string, hostPort: num
 }
 
 /**
+ * RabbitMQ is ready when its AMQP listener answers the protocol header with a
+ * frame (first byte 1); the listener opens after `rabbitmq-diagnostics ping`
+ * already passes. Not the Erlang CLI: run as root before the broker has made
+ * its Erlang cookie, it makes the cookie itself, owned by root, and the broker
+ * crashes on `eacces`. With a 1 s interval on a busy CI runner, it got there first.
+ */
+const RABBITMQ_HEALTH_CHECK = `bash -c 'exec 3<>/dev/tcp/127.0.0.1/5672 && printf "AMQP\\0\\0\\11\\1" >&3 && [ "$(head -c 1 <&3 | od -An -tx1)" = " 01" ]'`;
+
+/**
  * RabbitMQ: the image's default `guest` user may only connect from inside the
  * container, so the broker gets the config's credentials (or throwaway ones).
  */
@@ -294,8 +303,7 @@ export function rabbitMqSpec(config: AmqpFixtureConfig, options: ContainerOption
             ...baseSpec('rabbitmq', 'amqpClient', options),
             env: { RABBITMQ_DEFAULT_USER: username, RABBITMQ_DEFAULT_PASS: password, RABBITMQ_DEFAULT_VHOST: vhost },
             port: 5672,
-            // `ping` passes before the AMQP listener is up; this waits for the port.
-            healthCheck: 'rabbitmq-diagnostics -q check_port_connectivity',
+            healthCheck: RABBITMQ_HEALTH_CHECK,
         },
         username,
         password,
