@@ -79,6 +79,7 @@ export const integrationProjects = (config: FrameworkConfig) => [
             redis: config.redis,
             mongodb: config.mongodb,
             neo4j: config.neo4j,
+            cassandra: config.cassandra,
         },
     },
 ];

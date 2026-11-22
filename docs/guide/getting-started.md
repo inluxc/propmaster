@@ -24,6 +24,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
+| `cassandraClient` | `cassandra-driver` |
 | `kafkaClient` | `kafkajs` |
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
@@ -119,6 +120,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 | `databaseClient` | PostgreSQL, MySQL, MSSQL or SQLite queries | [Database](../database-fixture) |
 | `mongoDbClient` | MongoDB CRUD and aggregation | [MongoDB](../mongodb-fixture) |
 | `neo4jClient` | Neo4j Cypher reads, writes and transactions | [Neo4j](../neo4j-fixture) |
+| `cassandraClient` | Cassandra / ScyllaDB: parameterized CQL, rows as plain objects, wait for a row; inserts undone | [Cassandra](../cassandra-fixture) |
 | `kafkaClient` | Kafka produce and consume | [Kafka](../kafka-fixture) |
 | `amqpClient` | RabbitMQ publish, listen on an exchange, consume and purge | [RabbitMQ](../amqp-fixture) |
 | `s3Client` | S3 objects under a per-test prefix: write, read, list, wait for a file | [AWS](../aws-fixture) |

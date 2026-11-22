@@ -211,7 +211,7 @@ tests/
     └── config/      # Test configuration helpers
 \`\`\`
 
-**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, RabbitMQ, AWS (S3/SQS/DynamoDB), Elasticsearch/OpenSearch, Redis, MongoDB or Neo4j client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`grpcClient\`/\`realtimeClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx propmaster organize\` to check (it prints where each test belongs).
+**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, RabbitMQ, AWS (S3/SQS/DynamoDB), Elasticsearch/OpenSearch, Redis, MongoDB, Neo4j or Cassandra client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`grpcClient\`/\`realtimeClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx propmaster organize\` to check (it prints where each test belongs).
 
 ## Writing Tests
 
@@ -255,7 +255,7 @@ test.describe('API — Users', () => {
 ## Test Case ID Convention
 
 - **Pattern:** \`TC-XXX-NNN\` — \`XXX\` is a category code, \`NNN\` a zero-padded sequential number.
-- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`AMQ\`, \`AWS\`, \`DDB\`, \`SRCH\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`GRPC\`, \`RT\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
+- **Category codes:** \`API\`, \`DB\`, \`KFK\`, \`AMQ\`, \`AWS\`, \`DDB\`, \`SRCH\`, \`RDS\`, \`MDB\`, \`NEO\`, \`CAS\`, \`GQL\`, \`GRPC\`, \`RT\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom 2–6 character code.
 - **Title:** starts with \`[TC-XXX-NNN]\`.
 - **Tag:** \`{ tag: ['@TC-XXX-NNN'] }\` as the second argument to \`test()\`, with the same ID.
 - **Unique:** no two tests share an ID. Always take IDs from \`npm run next-id -- <CATEGORY>\`; never guess.
@@ -365,7 +365,7 @@ test.describe('Feature Name', () => {
 \`\`\`
 
 Steps:
-1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`AMQ\`, \`AWS\`, \`DDB\`, \`SRCH\`, \`RDS\`, \`MDB\`, \`NEO\`, \`GQL\`, \`GRPC\`, \`RT\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom one)
+1. Pick the category code (\`API\`, \`DB\`, \`KFK\`, \`AMQ\`, \`AWS\`, \`DDB\`, \`SRCH\`, \`RDS\`, \`MDB\`, \`NEO\`, \`CAS\`, \`GQL\`, \`GRPC\`, \`RT\`, \`BRW\`, \`APM\`, \`GDS\`, \`OTP\`, \`INT\`, or a custom one)
 2. Run \`npm run next-id -- <CATEGORY> <count>\` and replace every placeholder ID
 3. Run \`npm run lint:tests\`
 

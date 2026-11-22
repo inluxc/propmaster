@@ -24,6 +24,7 @@ import type {
     KafkaFixtureConfig,
     AmqpFixtureConfig,
     AwsFixtureConfig,
+    CassandraFixtureConfig,
     SearchFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -36,7 +37,7 @@ import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'elasticsearch' | 'opensearch' | 'mailpit' | 'wiremock';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'elasticsearch' | 'opensearch' | 'mailpit' | 'wiremock' | 'scylla';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -53,6 +54,7 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     opensearch: 'opensearchproject/opensearch:3.10.0',
     mailpit: 'axllent/mailpit:latest',
     wiremock: 'wiremock/wiremock:3.13.2',
+    scylla: 'scylladb/scylla:2026.3.6',
 };
 
 /** Throwaway credentials used when the config doesn't set its own. */
@@ -64,7 +66,7 @@ export const DEFAULT_CREDENTIALS = {
     neo4jPassword: 'testpassword',
 } as const;
 
-const SLOW: ReadonlySet<ContainerKind> = new Set(['mssql', 'neo4j', 'elasticsearch', 'opensearch']);
+const SLOW: ReadonlySet<ContainerKind> = new Set(['mssql', 'neo4j', 'elasticsearch', 'opensearch', 'scylla']);
 const SQLCMD = '/opt/mssql-tools18/bin/sqlcmd';
 
 /** `true` → {}, options → options, false/undefined → null. */
@@ -315,6 +317,23 @@ export function rabbitMqSpec(config: AmqpFixtureConfig, options: ContainerOption
  * Moto: one endpoint for S3, SQS, SNS and the rest of AWS. (LocalStack's
  * image needs an auth token since 2026, so the container uses Moto.)
  */
+/**
+ * ScyllaDB by default, or Cassandra when the image is a Cassandra one
+ * (`PW_CASSANDRA_CONTAINER=cassandra:5`). Both speak CQL on 9042; ScyllaDB is
+ * ready in seconds rather than a minute. One CPU and little memory for each.
+ */
+export function cassandraSpec(options: ContainerOptions): ContainerSpec {
+    const base = baseSpec('scylla', 'cassandraClient', options);
+    const cassandra = /(^|\/)cassandra(:|$)/.test(base.image);
+    return {
+        ...base,
+        env: cassandra ? { MAX_HEAP_SIZE: '512M', HEAP_NEWSIZE: '128M', CASSANDRA_DC: 'datacenter1' } : {},
+        port: 9042,
+        healthCheck: "cqlsh -e 'SELECT now() FROM system.local' > /dev/null",
+        ...(cassandra ? {} : { command: ['--smp', '1', '--memory', '750M', '--overprovisioned', '1', '--developer-mode', '1'] }),
+    };
+}
+
 export function motoSpec(options: ContainerOptions): ContainerSpec {
     return {
         ...baseSpec('moto', 's3Client / sqsClient / dynamoDbClient', options),
@@ -515,6 +534,23 @@ export class ContainerManager {
             secretAccessKey: 'test',
             sessionToken: undefined,
             profile: undefined,
+            container: false,
+        };
+    }
+
+    /** Cassandra / ScyllaDB: `contactPoints` point at the container, without credentials; the keyspace is created. */
+    async cassandra(config: CassandraFixtureConfig): Promise<CassandraFixtureConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const started = await this.ensure(cassandraSpec(options));
+        return {
+            ...config,
+            contactPoints: [`${started.host}:${started.port}`],
+            port: undefined,
+            localDataCenter: 'datacenter1',
+            username: undefined,
+            password: undefined,
+            createKeyspace: config.createKeyspace ?? true,
             container: false,
         };
     }

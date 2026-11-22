@@ -27,6 +27,7 @@ export const FIXTURE_PACKAGES = {
     'databaseClient (sqlite)': ['better-sqlite3'],
     mongoDbClient: ['mongodb'],
     neo4jClient: ['neo4j-driver'],
+    cassandraClient: ['cassandra-driver'],
     kafkaClient: ['kafkajs'],
     amqpClient: ['amqplib'],
     s3Client: ['@aws-sdk/client-s3'],

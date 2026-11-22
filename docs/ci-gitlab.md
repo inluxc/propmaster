@@ -271,6 +271,20 @@ script:
   - npx playwright test --project=integration-neo4j --reporter=line,junit
 ```
 
+```yaml [Cassandra / ScyllaDB]
+services:
+  - name: scylladb/scylla:2026.3.6
+    alias: scylla
+    command: ["--smp", "1", "--memory", "750M", "--overprovisioned", "1", "--developer-mode", "1"]
+variables:
+  PW_CASSANDRA_CONTACT_POINTS: scylla
+  PW_CASSANDRA_KEYSPACE: propmaster_examples
+  PW_CASSANDRA_CREATE_KEYSPACE: "true"
+script:
+  - wait_for scylla 9042
+  - npx playwright test --project=integration-cassandra --reporter=line,junit
+```
+
 :::
 
 ## Secrets and environments

@@ -300,6 +300,36 @@ export interface Neo4jFixtureConfig {
 }
 
 /**
+ * Configuration for the Cassandra / ScyllaDB fixture (`cassandraClient`).
+ */
+export interface CassandraFixtureConfig {
+    /** Nodes to connect to: `host` or `host:port` (default: `localhost`). */
+    contactPoints?: string[];
+    /** CQL port for contact points without one (default: 9042). */
+    port?: number;
+    /** The data center of the contact points (default: `datacenter1`, the Cassandra and ScyllaDB default). */
+    localDataCenter?: string;
+    /** Keyspace for unqualified table names. */
+    keyspace?: string;
+    /** Create `keyspace` when it's missing (local runs and containers). Never dropped. */
+    createKeyspace?: boolean;
+    /** Replication for keyspaces the fixture creates (default: `{ class: 'NetworkTopologyStrategy', replication_factor: 1 }`). */
+    replication?: Record<string, string | number>;
+    username?: string;
+    password?: string;
+    /** Default consistency level, e.g. `localQuorum`, `one`, `quorum` (default: the driver's, `localOne`). */
+    consistency?: 'any' | 'one' | 'two' | 'three' | 'quorum' | 'all' | 'localQuorum' | 'eachQuorum' | 'localOne' | 'serial' | 'localSerial';
+    /** Default wait for `waitForRows()` / `waitForRow()` in ms (default: 10000). */
+    timeout?: number;
+    /** Per-request timeout in ms (default: the driver's, 12000). */
+    requestTimeout?: number;
+    /** Connection timeout in ms (default: 10000). */
+    connectTimeout?: number;
+    /** Start ScyllaDB (or Cassandra, by image name) in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
+}
+
+/**
  * GADS preset for the Appium fixture (https://github.com/shamanec/GADS).
  * When present, `serverUrl` is the GADS hub and sessions go through its `/grid` endpoint.
  */
@@ -531,6 +561,7 @@ export interface FrameworkConfig {
     mongodb?: MongoDbFixtureConfig;
     /** Neo4j fixture configuration. */
     neo4j?: Neo4jFixtureConfig;
+    cassandra?: CassandraFixtureConfig;
     /** Appium fixture configuration (local Appium, grids, cloud farms, GADS). */
     appium?: AppiumFixtureConfig;
     /** OTP fixture configuration. */

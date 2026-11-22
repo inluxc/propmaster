@@ -6,7 +6,7 @@ Turn on `container` for a backend and Stagehand starts it in a throwaway Docker 
 PW_DB_CONTAINER=true PW_KAFKA_CONTAINER=true npx playwright test --project=integration
 ```
 
-Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS, DynamoDB), **Elasticsearch, OpenSearch**, **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
+Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, ScyllaDB (or Cassandra), Kafka, RabbitMQ, Moto** (AWS: S3, SQS, SNS, DynamoDB), **Elasticsearch, OpenSearch**, **Mailpit** (the [inbox](./inbox-fixture) mail server) **and WireMock** (the [mock server](./mock-server-fixture)). SQLite needs no server.
 
 ## Setup
 
@@ -24,6 +24,7 @@ Supported: **PostgreSQL, MySQL, MSSQL, Redis, MongoDB, Neo4j, Kafka, RabbitMQ, M
     PW_REDIS_CONTAINER=true       # redisClient
     PW_MONGODB_CONTAINER=true     # mongoDbClient
     PW_NEO4J_CONTAINER=true       # neo4jClient
+    PW_CASSANDRA_CONTAINER=true   # cassandraClient (ScyllaDB; =cassandra:5 for Apache Cassandra)
     PW_KAFKA_CONTAINER=true       # kafkaClient
     PW_AMQP_CONTAINER=true        # amqpClient (RabbitMQ)
     PW_AWS_CONTAINER=true         # s3Client, sqsClient and dynamoDbClient (Moto, an AWS emulator)
@@ -66,7 +67,7 @@ With 4 workers, a backend runs in 4 containers, one per worker, so tests in diff
 |---|---|---|
 | `image` | See the table below | Image to run |
 | `initScripts` | none | SQL files run once after the database starts, in order (PostgreSQL, MySQL, MSSQL). Paths are relative to the working directory |
-| `startupTimeout` | `60` (`120` for MSSQL and Neo4j) | Seconds to wait for the health check |
+| `startupTimeout` | `60` (`120` for MSSQL, Neo4j, ScyllaDB, Elasticsearch and OpenSearch) | Seconds to wait for the health check |
 | `reuse` | `false` | Keep the container running between runs and reuse it (Testcontainers' reuse mode; also set `TESTCONTAINERS_REUSE_ENABLE=true`). Not available for Kafka |
 
 | Backend | Default image | Credentials used |
@@ -77,6 +78,7 @@ With 4 workers, a backend runs in 4 containers, one per worker, so tests in diff
 | Redis | `redis:7` | The config's `password`, if set |
 | MongoDB | `mongo:7` | A root user when the config sets `username`; otherwise no auth |
 | Neo4j | `neo4j:5` | `neo4j` with the config's password (8+ characters), or `testpassword` |
+| ScyllaDB | `scylladb/scylla:2026.3.6` | No auth; one core and 750 MB in developer mode. The configured keyspace is created. A `cassandra` image (`cassandra:5`) runs Apache Cassandra instead, with a 512 MB heap |
 | Kafka | `apache/kafka:latest` | Single KRaft broker, no auth |
 | RabbitMQ | `rabbitmq:4` | The config's `username`/`password`/`vhost`, or `testuser`/`testpass` on `/` |
 | Moto (AWS) | `motoserver/moto:5.2.5` | Credentials `test`/`test`, region `us-east-1` unless the config sets one. Moto rather than LocalStack, whose image needs an auth token |

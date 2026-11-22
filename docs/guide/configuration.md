@@ -66,6 +66,7 @@ Every setting has a `PW_*` variable. These are the most common ones. Each fixtur
 | `PW_DB_HOST`, `PW_DB_PORT`, `PW_DB_NAME`, `PW_DB_USERNAME`, `PW_DB_PASSWORD` | Database connection |
 | `PW_MONGODB_URI` or `PW_MONGODB_HOST`, `PW_MONGODB_PORT`, `PW_MONGODB_DATABASE` | MongoDB connection |
 | `PW_NEO4J_URI`, `PW_NEO4J_USERNAME`, `PW_NEO4J_PASSWORD` | Neo4j connection |
+| `PW_CASSANDRA_CONTACT_POINTS`, `PW_CASSANDRA_LOCAL_DC`, `PW_CASSANDRA_KEYSPACE`, `PW_CASSANDRA_USERNAME`, `PW_CASSANDRA_PASSWORD` | Cassandra / ScyllaDB nodes, data center, keyspace and credentials |
 | `PW_KAFKA_BROKERS` | Comma-separated broker list |
 | `PW_AMQP_URL` or `PW_AMQP_HOST`, `PW_AMQP_PORT`, `PW_AMQP_USERNAME`, `PW_AMQP_PASSWORD`, `PW_AMQP_VHOST` | RabbitMQ / AMQP broker |
 | `PW_AWS_ENDPOINT`, `PW_AWS_REGION`, `PW_AWS_S3_BUCKET`, `PW_AWS_ACCESS_KEY_ID`, `PW_AWS_SECRET_ACCESS_KEY`, `PW_AWS_PROFILE` | AWS (S3, SQS, SNS, DynamoDB): an emulator endpoint, or a real account through the standard credential chain |

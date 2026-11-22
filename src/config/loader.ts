@@ -495,6 +495,46 @@ export class ConfigLoader {
                 if (!cfg.mongodb) cfg.mongodb = { database: '' };
                 cfg.mongodb.srv = val.toLowerCase() === 'true';
             },
+            'PW_CASSANDRA_CONTACT_POINTS': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.contactPoints = val.split(',').map((h) => h.trim()).filter(Boolean);
+            },
+            'PW_CASSANDRA_PORT': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.port = parseInt(val, 10);
+            },
+            'PW_CASSANDRA_LOCAL_DC': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.localDataCenter = val;
+            },
+            'PW_CASSANDRA_KEYSPACE': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.keyspace = val;
+            },
+            'PW_CASSANDRA_CREATE_KEYSPACE': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.createKeyspace = val.toLowerCase() === 'true';
+            },
+            'PW_CASSANDRA_USERNAME': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.username = val;
+            },
+            'PW_CASSANDRA_PASSWORD': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.password = val;
+            },
+            'PW_CASSANDRA_CONSISTENCY': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.consistency = val as NonNullable<FrameworkConfig['cassandra']>['consistency'];
+            },
+            'PW_CASSANDRA_TIMEOUT': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.timeout = parseInt(val, 10);
+            },
+            'PW_CASSANDRA_CONTAINER': (cfg, val) => {
+                cfg.cassandra ??= {};
+                cfg.cassandra.container = parseContainerEnv(val);
+            },
             'PW_NEO4J_URI': (cfg, val) => {
                 if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
                 cfg.neo4j.uri = val;

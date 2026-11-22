@@ -29,6 +29,7 @@ Ports are published on `127.0.0.1`. Tests running on the host use `localhost`. T
 | MSSQL | `mssql` | `PW_DB_TYPE=mssql` `PW_DB_HOST=localhost` `PW_DB_PORT=1433` `PW_DB_NAME=master` `PW_DB_USERNAME=sa` `PW_DB_PASSWORD=TestPass123!` `PW_DB_ENCRYPT=false` `PW_DB_TRUST_SERVER_CERTIFICATE=true` | `PW_DB_HOST=mssql` |
 | Redis | `redis` | `PW_REDIS_HOST=localhost` `PW_REDIS_PORT=6379` | `PW_REDIS_HOST=redis` |
 | MongoDB | `mongodb` | `PW_MONGODB_HOST=localhost` `PW_MONGODB_DATABASE=testdb` | `PW_MONGODB_HOST=mongodb` |
+| Cassandra / ScyllaDB | `scylla` | `PW_CASSANDRA_CONTACT_POINTS=localhost` `PW_CASSANDRA_KEYSPACE=propmaster_examples` `PW_CASSANDRA_CREATE_KEYSPACE=true` | `PW_CASSANDRA_CONTACT_POINTS=scylla` |
 | Neo4j | `neo4j` | `PW_NEO4J_URI=bolt://localhost:7687` `PW_NEO4J_USERNAME=neo4j` `PW_NEO4J_PASSWORD=testpassword` | `PW_NEO4J_URI=bolt://neo4j:7687` |
 | Kafka | `kafka` | `PW_KAFKA_BROKERS=localhost:9092` | `PW_KAFKA_BROKERS=kafka:19092` |
 | RabbitMQ | `rabbitmq` | `PW_AMQP_URL=amqp://testuser:testpass@localhost:5672` | `PW_AMQP_URL=amqp://testuser:testpass@rabbitmq:5672` |

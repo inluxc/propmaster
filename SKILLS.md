@@ -35,6 +35,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `AMQ` | RabbitMQ / AMQP tests |
 | `AWS` | AWS tests (S3, SQS, SNS) |
 | `DDB` | DynamoDB tests |
+| `CAS` | Cassandra / ScyllaDB tests |
 | `SRCH` | Search tests (Elasticsearch, OpenSearch) |
 | `RDS` | Redis tests |
 | `MDB` | MongoDB tests |
@@ -2128,6 +2129,7 @@ Never put tokens, secret_ids or JWTs in `environments.json`. See [docs/secrets.m
    - `mongoDbClient.insertOne` / `insertMany`
    - `redisClient.set`
    - `dynamoDbClient.put` / `putMany` / `update`
+   - `cassandraClient.insert`
    - `neo4jClient.write` with `{ runId: testData.runId }`
 3. For anything else (an API call, raw SQL, a browser flow), register the undo with `testData.cleanup(label, fn)` right after creating the data.
 4. Only data meant to stay (a seeding setup project) opts out, with `{ keep: true }` or `use: { autoCleanup: false }`.
@@ -3033,6 +3035,77 @@ test.describe('DynamoDB — Orders', () => {
 
 ---
 
+## Skill 28: Test What a Backend Stores in Cassandra / ScyllaDB
+
+**When to use:** The backend writes to Cassandra or ScyllaDB tables: check the row an API call stored, wait for a consumer or worker to write or update it, seed the rows a test needs, or check that a lightweight transaction refuses a duplicate or a stale version.
+
+**Steps:**
+
+1. Use `cassandraClient`. Configure it with `PW_CASSANDRA_CONTACT_POINTS`, `PW_CASSANDRA_LOCAL_DC` (default `datacenter1`) and `PW_CASSANDRA_KEYSPACE`. For local runs, add `PW_CASSANDRA_CREATE_KEYSPACE=true`, or use `PW_CASSANDRA_CONTAINER=true` for ScyllaDB in Docker. `CassandraSteps` from `src/steps` wraps the calls in `test.step()`.
+2. **Always bind parameters** (`?` with an array, or `:name` with an object). Never build CQL from strings. Table names without a keyspace use the session keyspace; write `keyspace.table` for any other.
+3. Rows come back as plain objects: `uuid`, `inet`, `date` and `decimal` as strings, `bigint` as a number, `timestamp` as a `Date`, sets and lists as arrays. Assert on those, e.g. `toMatchObject({ total: '12.30' })`. Pass values the same way.
+4. For what the **application** writes, poll with `waitForRow(cql, params, { until })` or `waitForRows(cql, params, { count })`, or use `CassandraSteps.expectRow(..., expected)`, which waits until the row matches. Don't `query()` once right after an asynchronous action.
+5. A `WHERE` clause must name the partition key, or the server refuses the query (unless `ALLOW FILTERING`). Match on a value unique to the test, like a `testData.unique()` customer ID. `cassandraClient.primaryKey(table)` tells you the key.
+6. Seed with `insert(table, rows)`. Each row needs its whole primary key, and the insert is undone after the test: the row is deleted, or put back as it was. `execute()` and `batch()` are **not** undone: for an `UPDATE`/`DELETE` a test makes, register `testData.cleanup()`.
+7. For a lightweight transaction, assert `applied`: `expect((await cassandraClient.execute('... IF version = ?', [...])).applied).toBe(false)`, or use `CassandraSteps.expectNotApplied()`. A refused LWT doesn't throw.
+8. Scratch tables go in `await cassandraClient.createKeyspace()`, a keyspace of the test's own that is dropped afterwards.
+9. Get IDs with `npm run next-id -- CAS <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+import { CassandraSteps } from '@inluxc/propmaster/steps';
+
+test.describe('Cassandra — Orders', () => {
+    test.beforeAll(async ({ cassandraClient }) => {
+        // Local runs: the application's table in the configured keyspace, if it's missing
+        await cassandraClient.execute(`CREATE TABLE IF NOT EXISTS orders (
+            customer_id text, ordered_at timestamp, status text, total decimal,
+            PRIMARY KEY ((customer_id), ordered_at)
+        ) WITH CLUSTERING ORDER BY (ordered_at DESC)`);
+    });
+
+    test('[TC-CAS-NNN] a placed order is stored, then shipped by the worker', { tag: ['@TC-CAS-NNN'] }, async ({ cassandraClient, openApiClient, testData }) => {
+        const cassandra = new CassandraSteps(cassandraClient);
+        const customerId = testData.unique('customer');
+
+        await test.step('Step 1: Place an order through the API', async () => {
+            const response = await (openApiClient.client as any).placeOrder(null, { customerId, sku: 'A-1', qty: 2 });
+            expect(response.status).toBe(201);
+        });
+
+        const select = 'SELECT * FROM orders WHERE customer_id = ?';
+        await cassandra.expectRow('Verify the order is stored', select, [customerId], { status: 'open' });
+        await cassandra.expectRow('Verify the worker ships it', select, [customerId], { status: 'shipped' }, { timeout: 30_000 });
+        await cassandra.expectRows('Verify there is exactly one order', select, [customerId], { count: 1 });
+    });
+
+    test('[TC-CAS-NNN] an account update at a stale version is refused', { tag: ['@TC-CAS-NNN'] }, async ({ cassandraClient, testData }) => {
+        const cassandra = new CassandraSteps(cassandraClient);
+        const id = testData.unique('acct');
+
+        await cassandra.insert('Seed an account at version 2', 'accounts', { id, balance: 100, version: 2 });
+        await cassandra.expectNotApplied('Verify an update at version 1 is refused',
+            'UPDATE accounts SET balance = ?, version = ? WHERE id = ? IF version = ?', [0, 2, id, 1]);
+
+        await test.step('Step 1: Verify the balance did not change', async () => {
+            const [account] = await cassandraClient.query('SELECT balance, version FROM accounts WHERE id = ?', [id], { consistency: 'serial' });
+            expect(account).toEqual({ balance: 100, version: 2 });
+        });
+    });
+});
+```
+
+**Key points:**
+- Names that are CQL keywords (`token`, `key`, `order`, ...) need quotes in CQL, and `insert()` takes only plain names. Pick other column names in test tables.
+- Reads use the default consistency (`localOne`) unless `PW_CASSANDRA_CONSISTENCY` or `{ consistency }` says otherwise. On a multi-node cluster, read with `quorum` or `localQuorum` what was written with it. After an LWT, read with `serial`.
+- An undo puts a row's values back, but not its TTL or write time.
+- A connection failure lists each contact point with its error. "only found hosts in data centers: [x]" means `PW_CASSANDRA_LOCAL_DC` is wrong.
+- `cassandraClient.driver` is the DataStax driver, for paging by hand, tracing or metadata.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -3044,6 +3117,7 @@ test.describe('DynamoDB — Orders', () => {
 | Test RabbitMQ events or commands | Skill 22 (RabbitMQ) |
 | Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
 | Test what a backend stores in DynamoDB | Skill 27 (DynamoDB) |
+| Test what a backend stores in Cassandra / ScyllaDB | Skill 28 (Cassandra) |
 | Test what reaches a search index, rankings or aggregations | Skill 24 (Search) |
 | Test caching or pub/sub | Skill 4 (Redis) |
 | Test a native mobile app (Appium) | Skill 5 (Appium) |
