@@ -22,6 +22,13 @@ export default defineConfig<ConfigOptions>({
             },
         },
         {
+            name: 'grpc',
+            testMatch: '**/examples/grpc.spec.ts',
+            use: {
+                grpc: config.grpc,
+            },
+        },
+        {
             // Tests written by `propmaster generate openapi` (CI generates them into
             // tests/generated/ and runs them against the Prism mock).
             name: 'openapi-generated',

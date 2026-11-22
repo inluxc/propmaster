@@ -62,6 +62,13 @@ export type {
     CreateIndexOptions,
     SearchEngineInfo,
     SearchRequestOptions,
+    GrpcClient,
+    GrpcCallOptions,
+    GrpcServerStreamOptions,
+    GrpcResult,
+    GrpcMethodInfo,
+    GrpcMetadataInput,
+    GrpcStatusName,
     RedisClient,
     MongoDbClient,
     Neo4jClient,
@@ -102,6 +109,8 @@ export type {
     AmqpFixtureConfig,
     AwsFixtureConfig,
     SearchFixtureConfig,
+    GrpcFixtureConfig,
+    GrpcTlsConfig,
     RedisFixtureConfig,
     OtpFixtureConfig,
     InboxFixtureConfig,
@@ -133,6 +142,9 @@ export { createSqsClient } from './fixtures/sqs.fixture.js';
 
 // Search client outside the fixture (e.g. a global setup that creates index templates)
 export { createSearchClient } from './fixtures/search.fixture.js';
+
+// gRPC client outside the fixture, and its error type (code, codeName, details, trailers)
+export { createGrpcClient, GrpcError } from './fixtures/grpc.fixture.js';
 
 // Appium/GADS helpers for use outside the fixture (e.g. worker-scoped sessions)
 export { startAppiumSession, createGadsHubClient, gadsSessionInfo } from './fixtures/appium.fixture.js';

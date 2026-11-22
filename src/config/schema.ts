@@ -192,6 +192,51 @@ export interface SearchFixtureConfig {
 }
 
 /**
+ * TLS for the gRPC fixture. Certificates are PEM text or a path to a PEM file,
+ * so they can come from a secrets provider or from disk.
+ */
+export interface GrpcTlsConfig {
+    /** CA certificate(s) to trust instead of the system roots, e.g. a self-signed server's. */
+    ca?: string;
+    /** Client certificate and key, for servers that want mutual TLS. */
+    cert?: string;
+    key?: string;
+    /** Name to check the server certificate against (and the `:authority`), when it differs from the address. */
+    serverName?: string;
+    /** Accept any server certificate. For test servers only. */
+    insecureSkipVerify?: boolean;
+}
+
+/**
+ * Configuration for the gRPC fixture (`grpcClient`).
+ */
+export interface GrpcFixtureConfig {
+    /** Server address: `host:port`, or `grpcs://host:port` for TLS (`grpc://` for plaintext). */
+    address?: string;
+    /** `.proto` files describing the services. Services they don't cover are looked up through server reflection. */
+    protoFiles?: string[];
+    /** Folders that `import` statements in the proto files are resolved against. */
+    includeDirs?: string[];
+    /** Look services up through server reflection (default: true). */
+    reflection?: boolean;
+    /** `true` for TLS with the system roots, or the certificates to use (default: plaintext, unless the address is `grpcs://`). */
+    tls?: boolean | GrpcTlsConfig;
+    /** Bearer token, sent as `authorization: Bearer <token>` metadata on every call. */
+    authToken?: string;
+    /** Metadata sent on every call. */
+    metadata?: Record<string, string>;
+    /** Default deadline per call in ms (default: 10000). */
+    timeout?: number;
+    /**
+     * How messages map to JavaScript objects, as @grpc/proto-loader options
+     * (default: `{ keepCase: true, longs: String, enums: String, defaults: true, oneofs: true }`).
+     */
+    loaderOptions?: Record<string, unknown>;
+    /** gRPC channel options, e.g. `{ 'grpc.max_receive_message_length': 16777216 }`. */
+    channelOptions?: Record<string, string | number>;
+}
+
+/**
  * Configuration for the Redis integration fixture.
  */
 export interface RedisFixtureConfig {
@@ -360,8 +405,8 @@ export interface AuthConfig {
     /** Credentials for the default role, when `roles` isn't used. */
     username?: string;
     password?: string;
-    /** Clients that get `Authorization: Bearer <token>` automatically (default: both). */
-    applyTo?: ('openapi' | 'graphql')[];
+    /** Clients that get `Authorization: Bearer <token>` automatically (default: all three). */
+    applyTo?: ('openapi' | 'graphql' | 'grpc')[];
     /** Folder for saved browser login state (default: `.auth`). */
     stateDir?: string;
 }
@@ -451,6 +496,8 @@ export interface FrameworkConfig {
     aws?: AwsFixtureConfig;
     /** Elasticsearch / OpenSearch fixture configuration. */
     search?: SearchFixtureConfig;
+    /** gRPC fixture configuration. */
+    grpc?: GrpcFixtureConfig;
     /** Redis fixture configuration. */
     redis?: RedisFixtureConfig;
     /** MongoDB fixture configuration. */

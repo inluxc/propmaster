@@ -99,7 +99,7 @@ A test's fixtures decide its type. These are also the rules `propmaster organize
 | `appiumDriver`, `gadsHub` | `mobile/` |
 | `page`, `context`, `browser` | `e2e/`, even if it also uses API or database fixtures to set up data |
 | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `searchClient`, `redisClient`, `mongoDbClient`, `neo4jClient` | `integration/` |
-| only `openApiClient`, `graphqlClient`, `request` | `api/` |
+| only `openApiClient`, `graphqlClient`, `grpcClient`, `request` | `api/` |
 
 Keep one type per file, so a file never needs two folders.
 

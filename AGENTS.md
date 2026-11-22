@@ -47,6 +47,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **MongoDB:** mongodb (`mongodb ^7.x`)
 - **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
+- **gRPC:** @grpc/grpc-js + @grpc/proto-loader (`@grpc/grpc-js ^1.12`); .proto files or server reflection
 - **OTP/2FA:** otplib (`otplib ^13.6.0`)
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
 - **Env Loading:** built-in `.env` parser (`src/config/env-loader.ts`), no dependency
@@ -73,6 +74,7 @@ src/
 │   ├── openapi.fixture.ts      # OpenAPI client fixture
 │   ├── database.fixture.ts     # Database client fixture (pg/mysql/sqlite)
 │   ├── graphql.fixture.ts      # GraphQL client fixture (queries, mutations, rawRequest)
+│   ├── grpc.fixture.ts         # gRPC client fixture (proto files / server reflection, unary + streaming, GrpcError)
 │   ├── kafka.fixture.ts        # Kafka producer/consumer fixture
 │   ├── amqp.fixture.ts         # RabbitMQ / AMQP fixture (publish, listen, consume, purge)
 │   ├── aws.ts                  # Shared AWS config → SDK client options (endpoint, region, credentials)
@@ -114,6 +116,7 @@ tests/
 │   ├── browser.spec.ts
 │   ├── database.spec.ts
 │   ├── graphql.spec.ts
+│   ├── grpc.spec.ts            # + protos/hello.proto (grpcbin's greeting service)
 │   ├── kafka.spec.ts
 │   ├── amqp.spec.ts
 │   ├── aws.spec.ts
@@ -148,6 +151,7 @@ import { test, expect } from '../../src/fixtures';
 |---------|---------|----------|
 | OpenAPI | `*.spec.ts` | `tests/examples/` or custom dir |
 | GraphQL | `*.spec.ts` | `tests/examples/` or custom dir |
+| gRPC | `*.spec.ts` | `tests/examples/` or custom dir |
 | Database | `*.spec.ts` | `tests/examples/` or custom dir |
 | MongoDB | `*.spec.ts` | `tests/examples/` or custom dir |
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -168,6 +172,7 @@ Request fixtures by name in the test function signature:
 |---|---|---|
 | `openApiClient` | `OpenApiClient` | Typed HTTP client from OpenAPI spec (`{ client, api, checkResponse }`); `validateResponses`/`validateRequests` check calls against the spec |
 | `graphqlClient` | `GraphQLClient` | GraphQL client with `query`, `mutate`, `rawRequest`, `setAuthToken` |
+| `grpcClient` | `GrpcClient` | gRPC: `call` (unary), `serverStream` (`limit`), `clientStream`, `bidiStream`, `invoke` (status instead of throwing), `services`, `methods`, `loadProtos`, `setMetadata`, `setAuthToken`; services from `.proto` files or server reflection |
 | `databaseClient` | `DatabaseClient` | DB client with `query<T>(sql, params?)`, `execute(sql, params?)` and `insert(table, rows, { key?, keep? })` (rows deleted after the test) |
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
@@ -181,7 +186,7 @@ Request fixtures by name in the test function signature:
 | `inboxClient` | `InboxClient` | Test mail server (Mailpit): `uniqueAddress`, `waitForMessage`, `messages`, `extractCode`, `extractLink`, `deleteAll`, `send`, `smtp` |
 | `testData` | `TestData` | Factories (`build`, `buildMany`, `define`), unique values (`unique`, `email`, `runId`), custom undo (`cleanup`); inserts through the clients are undone after every test |
 | `mockServer` | `MockServer` | WireMock: `stub`, `stubSequence`, `requests`, `verify`, `url` — third-party APIs your backend calls |
-| `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient` send it automatically |
+| `authToken`, `authHeaders`, `authRequest` | `string`, `Record`, `APIRequestContext` | OAuth/OIDC token for the test's role (`authRole` option), refreshed before expiry; `openApiClient`/`graphqlClient`/`grpcClient` send it automatically |
 | `appiumDriver` | `AppiumDriver` (WebdriverIO `Browser`) | Appium session — `$('~id')`, `execute('mobile: ...')`, `takeScreenshot`, full WebdriverIO API; session deleted (device freed) on teardown. Works with local Appium, grids, cloud farms, and GADS (`appium.gads`) |
 | `gadsHub` | `GadsHubClient` | GADS hub status and device listing (`status`, `listDevices`) — reserves nothing; needs `appium.gads` |
 
@@ -439,6 +444,24 @@ graphqlClient.setHeader('X-Custom', 'value');
 await graphqlClient.query(`{ me { email } }`, undefined, { headers: { 'X-Request-ID': '123' } });
 ```
 
+**gRPC Client:**
+```typescript
+// Methods are 'package.Service/Method'. Services come from grpc.protoFiles, else server reflection (no protos needed).
+// Fields keep their .proto names; int64 and enums are strings; unset fields have defaults.
+const order = await grpcClient.call<{ id: string; status: string }>('orders.v1.Orders/GetOrder', { id });
+// Expected failure: invoke() returns the status instead of throwing (never try/catch around call())
+const missing = await grpcClient.invoke('orders.v1.Orders/GetOrder', { id: 'nope' });
+expect(missing.codeName).toBe('NOT_FOUND');                              // also code, details, trailers, metadata
+await expect(grpcClient.call('orders.v1.Orders/Cancel', { id })).rejects.toMatchObject({ codeName: 'FAILED_PRECONDITION' }); // GrpcError
+const updates = await grpcClient.serverStream('orders.v1.Orders/Watch', { id }, { limit: 3 }); // stops (cancels) after 3
+const summary = await grpcClient.clientStream('inv.v1.Inventory/Import', [{ sku: 'a' }, { sku: 'b' }]);
+const replies = await grpcClient.bidiStream('chat.v1.Chat/Talk', [{ text: 'hi' }]);
+await grpcClient.call('orders.v1.Orders/GetOrder', { id }, { metadata: { 'x-request-id': 'r1' }, timeout: 30_000 }); // deadline in ms
+grpcClient.setMetadata('x-tenant', 'acme');                              // every later call; setAuthToken(t) for authorization
+await grpcClient.methods('orders.v1.Orders');                            // kinds and message types, when unsure what to call
+// Nothing is undone automatically: register testData.cleanup('delete order', () => grpcClient.call(...)) for what a test creates
+```
+
 **OTP Client:**
 ```typescript
 // Generate a new base32 secret
@@ -473,7 +496,7 @@ await mockServer.verify({ path: '/v1/refunds' }, { times: 0 });   // never calle
 // Pick a role: the API token's identity AND the saved browser login (.auth/<role>.json)
 test.use({ authRole: 'admin' });
 
-// openApiClient / graphqlClient send `Authorization: Bearer <admin token>` automatically
+// openApiClient / graphqlClient / grpcClient send `Authorization: Bearer <admin token>` automatically
 const res = await (openApiClient.client as any).listOrders();
 
 // Or use the token directly
@@ -538,6 +561,10 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_NEO4J_DATABASE` | Neo4j database (optional; server default) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
+| `PW_GRPC_ADDRESS` | gRPC server: `host:port`, or `grpcs://host:port` for TLS |
+| `PW_GRPC_PROTO_FILES`, `PW_GRPC_INCLUDE_DIRS` | `.proto` files and import folders, comma-separated (leave out to use server reflection) |
+| `PW_GRPC_REFLECTION`, `PW_GRPC_AUTH_TOKEN`, `PW_GRPC_TIMEOUT` | `false` for proto files only; bearer token; deadline per call (ms) |
+| `PW_GRPC_TLS`, `PW_GRPC_TLS_CA`, `PW_GRPC_TLS_CERT`, `PW_GRPC_TLS_KEY`, `PW_GRPC_TLS_SERVER_NAME`, `PW_GRPC_TLS_SKIP_VERIFY` | gRPC TLS: on, CA, client cert/key (PEM file or text), certificate name, accept any certificate |
 | `PW_APPIUM_SERVER_URL` | Appium server URL (`http://127.0.0.1:4723`), grid/cloud URL, or GADS hub URL |
 | `PW_APPIUM_PLATFORM` | `ios` or `android` (sets `platformName` and default automation engine) |
 | `PW_APPIUM_UDID`, `PW_APPIUM_DEVICE_NAME` | Device selection (GADS: device name is a regex resolved to a UDID) |
@@ -571,6 +598,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | Project | testMatch | Fixtures Available |
 |---|---|---|
 | `openapi` | `**/examples/openapi.spec.ts` | `openApiClient` |
+| `grpc` | `**/examples/grpc.spec.ts` | `grpcClient` (needs grpcbin: `docker compose -f compose.test.yaml up -d --wait grpcbin`) |
 | `appium-android` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform android) |
 | `appium-ios` | `**/examples/appium.spec.ts` | `appiumDriver` (local Appium, platform ios) |
 | `gads` | `**/examples/gads.spec.ts` | `appiumDriver`, `gadsHub` (GADS preset; 5-minute test timeout for device queueing) |
@@ -663,7 +691,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

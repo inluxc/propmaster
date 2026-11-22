@@ -19,6 +19,7 @@ Propmaster itself has no runtime dependencies. Each fixture's driver is an optio
 |---|---|
 | `openApiClient` | `openapi-client-axios` (`js-yaml` too, for YAML spec files; `ajv` and `ajv-formats` for contract checks) |
 | `graphqlClient` | `graphql-request graphql` |
+| `grpcClient` | `@grpc/grpc-js @grpc/proto-loader` |
 | `databaseClient` | `pg` (PostgreSQL), `mysql2` (MySQL), `mssql` (MSSQL) or `better-sqlite3` (SQLite) |
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
@@ -111,6 +112,7 @@ test('a user created through the API appears in the admin UI', async ({ openApiC
 |---|---|---|
 | `openApiClient` | Typed HTTP client generated from an OpenAPI spec | [OpenAPI](../openapi-fixture) |
 | `graphqlClient` | GraphQL queries, mutations and raw responses | [GraphQL](../graphql-fixture) |
+| `grpcClient` | gRPC unary and streaming calls, from .proto files or server reflection | [gRPC](../grpc-fixture) |
 | `databaseClient` | PostgreSQL, MySQL, MSSQL or SQLite queries | [Database](../database-fixture) |
 | `mongoDbClient` | MongoDB CRUD and aggregation | [MongoDB](../mongodb-fixture) |
 | `neo4jClient` | Neo4j Cypher reads, writes and transactions | [Neo4j](../neo4j-fixture) |

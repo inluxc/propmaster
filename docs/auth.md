@@ -2,7 +2,7 @@
 
 Two kinds of login plumbing every suite needs, built in:
 
-- **API tokens:** OAuth 2.0 / OIDC access tokens for your test identities, fetched once per worker, refreshed before they expire, and sent on `openApiClient` and `graphqlClient` calls automatically.
+- **API tokens:** OAuth 2.0 / OIDC access tokens for your test identities, fetched once per worker, refreshed before they expire, and sent on `openApiClient`, `graphqlClient` and `grpcClient` calls automatically.
 - **Browser roles:** each role logs in once in a setup project, its browser state is saved, and tests start already logged in with `test.use({ authRole: 'admin' })`. There are no login steps in the tests.
 
 The same `authRole` picks both: an `admin` test gets the admin's token *and* the admin's browser session.
@@ -52,7 +52,7 @@ The same `authRole` picks both: an `admin` test gets the admin's token *and* the
 
 ## API tokens
 
-With a token endpoint configured, `openApiClient` and `graphqlClient` send `Authorization: Bearer <token>` for the test's role on every request. A token close to expiry (60 s by default, `refreshBeforeExpiry`) is refreshed with the refresh token when there is one, or a new grant otherwise.
+With a token endpoint configured, `openApiClient`, `graphqlClient` and `grpcClient` send `Authorization: Bearer <token>` for the test's role on every request (for gRPC, as `authorization` metadata). A token close to expiry (60 s by default, `refreshBeforeExpiry`) is refreshed with the refresh token when there is one, or a new grant otherwise.
 
 ```typescript
 import { test, expect } from '@inluxc/propmaster';
@@ -88,8 +88,8 @@ test('[TC-API-NNN] viewers cannot delete orders', { tag: ['@TC-API-NNN'] }, asyn
 ```
 
 - **A header you set wins.** Passing your own `Authorization` (for example a bad token, to test a 401) is never overwritten.
-- **`applyTo`** (`['openapi']`, `['graphql']` or `[]`) limits which clients get the token automatically.
-- **`graphql.authToken`**, when set, wins over the auth token for GraphQL.
+- **`applyTo`** (`['openapi']`, `['graphql']`, `['grpc']`, a combination, or `[]`) limits which clients get the token automatically. By default all three do; gRPC gets it as `authorization` metadata.
+- **`graphql.authToken`** and **`grpc.authToken`**, when set, win over the auth token for that client.
 - **Each worker caches its own tokens.** Concurrent requests for one role share a single token request.
 
 ---

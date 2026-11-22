@@ -31,3 +31,5 @@ export { S3Steps, SqsSteps } from './aws.steps.js';
 export type { S3Client, S3Object, SqsClient, SqsMessage, SnsListener, SnsMessage } from './aws.steps.js';
 export { SearchSteps } from './search.steps.js';
 export type { SearchClient, SearchHit, SearchResult } from './search.steps.js';
+export { GrpcSteps } from './grpc.steps.js';
+export type { GrpcClient, GrpcResult, GrpcStatusName } from './grpc.steps.js';

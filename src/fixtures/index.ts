@@ -28,6 +28,7 @@ import type {
     AmqpFixtureConfig,
     AwsFixtureConfig,
     SearchFixtureConfig,
+    GrpcFixtureConfig,
     RedisFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -45,6 +46,7 @@ import { amqpFixture, type AmqpClient } from './amqp.fixture.js';
 import { s3Fixture, type S3Client } from './s3.fixture.js';
 import { sqsFixture, type SqsClient } from './sqs.fixture.js';
 import { searchFixture, type SearchClient } from './search.fixture.js';
+import { grpcFixture, type GrpcClient } from './grpc.fixture.js';
 import { redisFixture, type RedisClient } from './redis.fixture.js';
 import { mongoDbFixture, type MongoDbClient } from './mongodb.fixture.js';
 import { neo4jFixture, type Neo4jClient } from './neo4j.fixture.js';
@@ -73,6 +75,7 @@ export interface ConfigOptions {
     amqp: AmqpFixtureConfig | undefined;
     aws: AwsFixtureConfig | undefined;
     search: SearchFixtureConfig | undefined;
+    grpc: GrpcFixtureConfig | undefined;
     redis: RedisFixtureConfig | undefined;
     mongodb: MongoDbFixtureConfig | undefined;
     neo4j: Neo4jFixtureConfig | undefined;
@@ -128,6 +131,8 @@ export interface FixtureTypes {
     /** An APIRequestContext that sends the role's bearer token, with the OpenAPI base URL (or baseURL). */
     authRequest: APIRequestContext;
     graphqlClient: GraphQLClient;
+    /** gRPC: unary and streaming calls from .proto files or server reflection, with metadata and deadlines. */
+    grpcClient: GrpcClient;
     appiumConfig: AppiumFixtureConfig;
     appiumDriver: AppiumDriver;
     gadsHub: GadsHubClient;
@@ -151,6 +156,7 @@ const configOptionFixtures = {
     amqp: [undefined as AmqpFixtureConfig | undefined, { option: true }],
     aws: [undefined as AwsFixtureConfig | undefined, { option: true }],
     search: [undefined as SearchFixtureConfig | undefined, { option: true }],
+    grpc: [undefined as GrpcFixtureConfig | undefined, { option: true }],
     redis: [undefined as RedisFixtureConfig | undefined, { option: true }],
     mongodb: [undefined as MongoDbFixtureConfig | undefined, { option: true }],
     neo4j: [undefined as Neo4jFixtureConfig | undefined, { option: true }],
@@ -471,6 +477,7 @@ const allFixtures = {
     ...s3Fixture,
     ...sqsFixture,
     ...searchFixture,
+    ...grpcFixture,
     ...redisConfigFixture,
     ...redisFixture,
     ...mongoDbFixture,
@@ -543,6 +550,15 @@ export type {
     SearchRequestOptions,
     Refresh,
 } from './search.fixture.js';
+export type {
+    GrpcClient,
+    GrpcCallOptions,
+    GrpcServerStreamOptions,
+    GrpcResult,
+    GrpcMethodInfo,
+    GrpcMetadataInput,
+    GrpcStatusName,
+} from './grpc.fixture.js';
 export type { InboxClient, InboxMessage, InboxProvider, MessageQuery, WaitOptions, SendOptions } from './inbox.fixture.js';
 export type { MockServer, RequestMatch, StubResponse, RecordedRequest, Stub } from './mock-server.fixture.js';
 export type { RedisClient } from './redis.fixture.js';

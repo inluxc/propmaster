@@ -192,6 +192,19 @@ jobs:
           setup:
             - wait-for: { port: 9200 }
 
+  grpc:
+    docker:
+      - image: node:24
+        environment:
+          PW_GRPC_ADDRESS: localhost:9000
+          PW_GRPC_PROTO_FILES: tests/examples/protos/hello.proto
+      - image: moul/grpcbin:latest
+    steps:
+      - playwright:
+          projects: --project=grpc
+          setup:
+            - wait-for: { port: 9000 }
+
   browser:
     docker:
       - image: mcr.microsoft.com/playwright:v1.65.1-noble   # must match @playwright/test
@@ -204,7 +217,7 @@ jobs:
 
 workflows:
   tests:
-    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, search, browser]
+    jobs: [checks, postgres, redis, mongodb, kafka, rabbitmq, aws, search, grpc, browser]
 ```
 
 `node:24` and the Playwright image both include `git` and `ssh`, which `checkout` needs. CircleCI's `cimg/node` images work too.

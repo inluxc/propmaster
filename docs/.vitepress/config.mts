@@ -60,6 +60,7 @@ export default defineConfig({
                     { text: 'OpenAPI', link: '/openapi-fixture' },
                     { text: 'Database', link: '/database-fixture' },
                     { text: 'GraphQL', link: '/graphql-fixture' },
+                    { text: 'gRPC', link: '/grpc-fixture' },
                     { text: 'Kafka', link: '/kafka-fixture' },
                     { text: 'RabbitMQ (AMQP)', link: '/amqp-fixture' },
                     { text: 'AWS (S3, SQS, SNS)', link: '/aws-fixture' },

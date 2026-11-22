@@ -197,6 +197,19 @@ pipeline {
                     }
                 }
 
+                stage('gRPC') {
+                    agent { label 'docker' }
+                    steps {
+                        script {
+                            withService(image: 'moul/grpcbin:latest', alias: 'grpcbin', ready: 'nc -z localhost 9000') {
+                                withEnv(['PW_GRPC_ADDRESS=grpcbin:9000', 'PW_GRPC_PROTO_FILES=tests/examples/protos/hello.proto']) {
+                                    sh 'npx playwright test --project=grpc --reporter=line,junit'
+                                }
+                            }
+                        }
+                    }
+                }
+
                 stage('Browsers') {
                     agent {
                         docker {
