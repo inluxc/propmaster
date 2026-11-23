@@ -96,6 +96,10 @@ npx propmaster doctor --fix        # apply the safe fixes, then check again
 
 `✖` is a problem and makes the exit code 1; `!` is a warning and doesn't. `--fix` applies only the fixes marked `(--fix)`: installing packages, adding config placeholders, `.gitignore` entries and the CI image tag. It prints the rest. `--problems` hides what passed, and `--json` is for scripts. Agents run it through the [MCP server](../mcp-server#project-tools-always-on)'s `doctor` tool.
 
+## QA standards
+
+`propmaster standards init` writes a sample `propmaster.standards.json` and `standards/` pages; `propmaster check` then enforces the team's rules alongside the built-in conventions. See [QA standards](../qa-standards).
+
 ## Adding environments
 
 `propmaster env add stg --from dev` adds an environment copied from another, with `CHANGE_ME` for you to fill in, no credentials, and a `.env.stg` listing its variables. `--prod` marks a production environment. `propmaster env list` shows them all. See [Adding an environment](./configuration#adding-an-environment).
@@ -126,7 +130,7 @@ Every answer can be given as an argument or flag, and then nothing is asked. Wit
 
 ## Banner and version
 
-Commands you run yourself (`init`, `doctor`, `fixture`, `env`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
+Commands you run yourself (`init`, `doctor`, `fixture`, `env`, `standards`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
 
 ```bash
 npx propmaster --version        # or -v: prints just the version, e.g. 1.0.0

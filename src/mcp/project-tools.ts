@@ -9,6 +9,8 @@ import { FIXTURE_CATALOG } from '../cli/fixture-catalog.js';
 import { applyPlan, captureRunner, fixtureStates, formatFixturePlan, parseRequest, planAdd, planRemove, type CommandRunner, type FixturePlan } from '../cli/fixture.js';
 import { applyEnvPlan, formatEnvPlan, listEnvironments, planEnvAdd } from '../cli/env.js';
 import { applyFixes, diagnose, summarize, type Finding } from '../cli/doctor.js';
+import { STANDARDS_FILE, listPages, loadStandards, readPage } from '../cli/standards.js';
+import type { ResourceProvider } from './protocol.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 const MAX_OUTPUT = 4000;
@@ -169,6 +171,25 @@ export function projectTools(root: string, runner: CommandRunner = captureRunner
             },
         },
         {
+            name: 'standards',
+            title: "The team's testing standards",
+            description:
+                "The team's testing standards: with no arguments, its pages (in standards/) and the rules in propmaster.standards.json that check_tests enforces; with page, that page's text. Read them before writing or changing tests, and follow them.",
+            inputSchema: { type: 'object', properties: { page: { type: 'string', description: 'A page file from the list, e.g. tagging.md' } }, additionalProperties: false },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+            handler: async (args) => {
+                const { standards, problems } = loadStandards(root);
+                if (args.page !== undefined) {
+                    if (typeof args.page !== 'string') throw new ToolInputError('page must be a page file, e.g. tagging.md');
+                    const text = readPage(root, args.page, standards?.pages);
+                    if (text === undefined) throw new ToolInputError(`no page "${args.page}". Pages: ${listPages(root, standards?.pages).map((p) => p.file).join(', ') || 'none'}`);
+                    return text;
+                }
+                if (!standards && !problems.length) return { standards: false, message: `This project has no ${STANDARDS_FILE}: only the built-in conventions apply (check_tests).` };
+                return { file: STANDARDS_FILE, ...(problems.length ? { problems } : {}), pages: listPages(root, standards?.pages), rules: standards?.rules ?? [] };
+            },
+        },
+        {
             name: 'doctor',
             title: 'Doctor',
             description:
@@ -209,4 +230,18 @@ export function projectTools(root: string, runner: CommandRunner = captureRunner
             },
         },
     ];
+}
+
+/** The standards pages as MCP resources: `standards://<file>`. */
+export function standardsResources(root: string): ResourceProvider {
+    const folder = () => loadStandards(root).standards?.pages;
+    return {
+        list: () =>
+            listPages(root, folder()).map((p) => ({ uri: `standards://${p.file}`, name: p.file, title: p.title, description: p.summary || undefined, mimeType: 'text/markdown' })),
+        read: (uri) => {
+            const m = /^standards:\/\/(.+)$/.exec(uri);
+            const text = m ? readPage(root, m[1], folder()) : undefined;
+            return text === undefined ? undefined : { text, mimeType: 'text/markdown' };
+        },
+    };
 }

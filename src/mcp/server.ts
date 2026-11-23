@@ -11,7 +11,7 @@
  * --allow-prod is passed, and never get write tools.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConfigLoader } from '../config/loader.js';
@@ -22,6 +22,8 @@ import { SecretsManager } from '../secrets/secrets-manager.js';
 import { createProvider } from '../secrets/providers/index.js';
 import { isProductionEnvironment } from './guards.js';
 import { markedProduction } from '../cli/env.js';
+import { standardsResources } from './project-tools.js';
+import { STANDARDS_FILE, listPages } from '../cli/standards.js';
 import { McpServer, serveStdio, type ToolDefinition } from './protocol.js';
 import { Connections, createTools, type McpContext } from './tools.js';
 
@@ -160,6 +162,11 @@ async function loadConfig(root: string, environment?: string): Promise<{ config?
     return { config };
 }
 
+/** Whether the project has standards rules or pages. */
+function hasStandards(root: string): boolean {
+    return existsSync(join(root, STANDARDS_FILE)) || listPages(root).length > 0;
+}
+
 export interface CreatedServer {
     server: McpServer;
     context: McpContext;
@@ -201,8 +208,10 @@ export async function createPropmasterMcpServer(
             `Propmaster test backends for environment "${environment}".`,
             allowWrites ? 'Write tools are enabled: data you change stays changed.' : 'Read-only: the server offers no write tools.',
             'Use environment_info to see which backends are configured, next_test_id before adding a test, and check_tests after changing tests.',
+            ...(hasStandards(options.root) ? ["This project has testing standards: read them with the standards tool (or the standards:// resources) before writing tests, and follow them; check_tests enforces their rules."] : []),
         ].join(' '),
         tools,
+        resources: standardsResources(options.root),
         onToolCall: ({ name, args, ok, ms, error: message }) => {
             const shownArgs = truncate(redact(JSON.stringify(args)), 500);
             log(`propmaster-mcp: ${name} ${shownArgs} → ${ok ? 'ok' : `error: ${truncate(redact(message ?? ''), 300)}`} (${ms} ms)`);

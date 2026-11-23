@@ -278,6 +278,6 @@ test.describe('check-tests — project config and files', () => {
     });
 
     test('a missing test directory is not an error', () => {
-        expect(collect(root, { ...DEFAULT_CONFIG, testDirs: ['nope'] })).toEqual({ violations: [], ids: [] });
+        expect(collect(root, { ...DEFAULT_CONFIG, testDirs: ['nope'] })).toEqual({ violations: [], ids: [], warnings: [] });
     });
 });

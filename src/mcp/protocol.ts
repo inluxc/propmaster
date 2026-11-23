@@ -68,8 +68,24 @@ export interface McpServerOptions {
     version: string;
     instructions?: string;
     tools: ToolDefinition[];
+    /** Read-only documents the client can list and read (MCP resources). Listed fresh on every request. */
+    resources?: ResourceProvider;
     /** Called after each tool call, for logging. */
     onToolCall?: (event: { name: string; args: Record<string, unknown>; ok: boolean; ms: number; error?: string }) => void;
+}
+
+export interface ResourceInfo {
+    uri: string;
+    name: string;
+    title?: string;
+    description?: string;
+    mimeType?: string;
+}
+
+export interface ResourceProvider {
+    list(): ResourceInfo[];
+    /** The resource's text, or undefined when there's no such resource. */
+    read(uri: string): { text: string; mimeType?: string } | undefined;
 }
 
 /** Thrown by a tool for a bad argument: reported to the agent as a tool error. */
@@ -130,7 +146,7 @@ export class McpServer {
                 const protocolVersion = requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : LATEST_PROTOCOL_VERSION;
                 return {
                     protocolVersion,
-                    capabilities: { tools: { listChanged: false } },
+                    capabilities: { tools: { listChanged: false }, ...(this.options.resources ? { resources: { listChanged: false } } : {}) },
                     serverInfo: { name: this.options.name, version: this.options.version },
                     ...(this.options.instructions ? { instructions: this.options.instructions } : {}),
                 };
@@ -143,11 +159,27 @@ export class McpServer {
                 };
             case 'tools/call':
                 return this.callTool(params);
+            case 'resources/list':
+            case 'resources/templates/list':
+            case 'resources/read':
+                // Only a server that offers resources (and says so in its capabilities) answers these.
+                if (this.options.resources) return this.resource(method, params, this.options.resources);
+                throw new RpcError(ErrorCode.MethodNotFound, `Method not found: ${method}`);
             default:
                 // Notifications (initialized, cancelled, ...) need no handling.
                 if (method.startsWith('notifications/')) return {};
                 throw new RpcError(ErrorCode.MethodNotFound, `Method not found: ${method}`);
         }
+    }
+
+    private resource(method: string, params: Record<string, unknown>, resources: ResourceProvider): unknown {
+        if (method === 'resources/list') return { resources: resources.list() };
+        if (method === 'resources/templates/list') return { resourceTemplates: [] };
+        const uri = params.uri;
+        if (typeof uri !== 'string') throw new RpcError(ErrorCode.InvalidParams, 'resources/read needs a uri');
+        const found = resources.read(uri);
+        if (!found) throw new RpcError(ErrorCode.InvalidParams, `Unknown resource: ${uri}`);
+        return { contents: [{ uri, mimeType: found.mimeType ?? 'text/markdown', text: found.text }] };
     }
 
     private async callTool(params: Record<string, unknown>): Promise<ToolCallResult> {

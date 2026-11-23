@@ -16,12 +16,13 @@ npm run flaky                   # tests ranked by flake rate, from .propmaster/t
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 npx propmaster env add stg --from dev --dry-run  # a new environment: CHANGE_ME values, no credentials, .env.stg to fill in
+npx propmaster standards                          # the team's own rules (propmaster.standards.json) and pages (standards/)
 npx propmaster doctor --problems --offline        # setup problems (config, drivers, CI image, .env in git, conventions) and their fixes; --fix applies the safe ones
 ```
 
 In a terminal, `propmaster` commands ask for missing answers with menus. You have no terminal, so always pass the arguments: a command that would ask stops with exit code 2 and names the flag to pass.
 
-`lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`, `quarantine`) and the fix. It also warns (without failing) about `quarantine.json` entries older than their `maxAgeDays` and IDs no test has.
+`lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`, `quarantine`, or `standard:<id>` for the team's own rules in `propmaster.standards.json`) and the fix. Standards rules at `warn` level are reported without failing; each links to the page in `standards/` that explains it. It also warns (without failing) about `quarantine.json` entries older than their `maxAgeDays` and IDs no test has.
 
 ### Flaky tests and quarantine
 
@@ -36,6 +37,7 @@ The Propmaster reporter (`src/reporter/`, in `playwright.config.ts`) adds every 
 
 When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/mcp-server.md](docs/mcp-server.md)), use its tools to see the real backends instead of guessing:
 
+- **Before writing any test:** if the project has `propmaster.standards.json` or `standards/`, call `standards` and read the pages that apply; follow them as you follow this file.
 - **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
 - **Asserting on stored data:** `db_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
 - **A test fails on a backend assertion:** read what's actually stored and compare it with what the test expected, before changing the assertion.
@@ -121,14 +123,14 @@ src/
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction;
-│                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add / doctor
+│                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add / doctor / standards
 ├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
                                 #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout;
                                 #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours;
                                 #   fixture.ts = `fixture add|remove|list` from fixture-catalog.ts (what each fixture needs),
                                 #   json-edit.ts = edits JSON in place, keeping its formatting; env.ts = `env add|list`;
-                                #   doctor.ts = `doctor` checks and safe fixes
+                                #   doctor.ts = `doctor` checks and safe fixes; standards.ts = the team's rules and pages
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here
