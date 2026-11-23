@@ -7,6 +7,7 @@
 
 import { FIXTURE_CATALOG } from '../cli/fixture-catalog.js';
 import { applyPlan, captureRunner, fixtureStates, formatFixturePlan, parseRequest, planAdd, planRemove, type CommandRunner, type FixturePlan } from '../cli/fixture.js';
+import { applyEnvPlan, formatEnvPlan, listEnvironments, planEnvAdd } from '../cli/env.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 const MAX_OUTPUT = 4000;
@@ -124,6 +125,46 @@ export function projectTools(root: string, runner: CommandRunner = captureRunner
                     throw new ToolInputError(error instanceof Error ? error.message : String(error));
                 }
                 return run(root, plan, bool(args, 'apply', false), bool(args, 'install', true), runner);
+            },
+        },
+        {
+            name: 'environments_list',
+            title: 'List environments',
+            description: 'Lists the environments in environments.json: which are production, their blocks (database, redis, ...), whether .env.<name> exists, and the values still CHANGE_ME.',
+            inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+            handler: async () => ({ environments: listEnvironments(root) }),
+        },
+        {
+            name: 'environment_add',
+            title: 'Add an environment',
+            description:
+                'Adds an environment to environments.json, copied from another (values become CHANGE_ME unless copyValues; credentials are never copied), creates .env.<name> with its variables commented out, and keeps that file out of git. Production environments get "production": true. Returns the plan; nothing changes unless apply is true. Never put secrets in environments.json: they go in .env.<name> or the secrets provider.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string', description: 'The new environment, e.g. stg' },
+                    from: { type: ['string', 'null'], description: 'The environment to copy (default: local, else the first); null for an empty one' },
+                    production: { type: 'boolean', description: 'Mark it production (default: true for prod, production, prd, live)' },
+                    copyValues: { type: 'boolean', description: 'Copy the values too, not just the shape (default false; credentials are never copied)' },
+                    apply: { type: 'boolean', description: 'Make the changes (default false: only show the plan)' },
+                },
+                required: ['name'],
+                additionalProperties: false,
+            },
+            annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+            handler: async (args) => {
+                if (typeof args.name !== 'string' || !args.name) throw new ToolInputError('name must be the new environment\'s name');
+                if (args.from !== undefined && args.from !== null && typeof args.from !== 'string') throw new ToolInputError('from must be an environment name or null');
+                const plan = planEnvAdd(root, args.name, {
+                    from: args.from as string | null | undefined,
+                    production: args.production === undefined ? undefined : bool(args, 'production', false),
+                    copyValues: bool(args, 'copyValues', false),
+                });
+                const result = { plan: formatEnvPlan(plan), files: [...plan.files.keys()] };
+                if (plan.blockers.length) return { ...result, applied: false, reason: plan.blockers.join(' ') };
+                if (!bool(args, 'apply', false)) return { ...result, applied: false, reason: 'Dry run. Call again with apply: true to make these changes.' };
+                return { ...result, applied: true, written: applyEnvPlan(root, plan) };
             },
         },
     ];

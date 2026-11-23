@@ -640,6 +640,7 @@ const HELP = `
   Usage:
     npx propmaster init [directory]
     npx propmaster fixture [list|add|remove] [fixture[:variant]...] [--dry-run]
+    npx propmaster env [list|add] [name] [--from <env>] [--prod] [--dry-run]
     npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
@@ -658,6 +659,9 @@ const HELP = `
               adds its config to every environment, its PW_* variables to
               .env.example, a compose.test.yaml service and a starter test.
               \`propmaster fixture --help\` for details.
+    env       Add an environment to environments.json, copied from another
+              (values become CHANGE_ME, credentials are left out), with a
+              .env.<name> to fill in; or list them. \`propmaster env --help\`.
     organize  Sort existing Playwright tests into those folders by the
               fixtures they use. Dry run by default; --apply moves the files
               (git mv when tracked) and updates relative imports. Files it
@@ -879,6 +883,7 @@ export function runAuthSetup(argv: string[], cwd: string = process.cwd(), log: (
 const COMMAND_MENU: Choice<string>[] = [
     { value: 'init', label: 'init', hint: 'scaffold the test layout here' },
     { value: 'fixture', label: 'fixture', hint: 'add or remove a fixture (driver, config, service, starter test)' },
+    { value: 'env', label: 'env', hint: 'add an environment, or list them' },
     { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
     { value: 'generate', label: 'generate openapi', hint: 'API tests from the OpenAPI spec', search: 'openapi' },
     { value: 'auth-setup', label: 'auth-setup', hint: 'log roles in once for browser tests' },
@@ -889,7 +894,7 @@ const COMMAND_MENU: Choice<string>[] = [
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'fixture', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'fixture', 'env', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -938,6 +943,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return runNextId(rest);
     }
     if (command === 'flaky') return runFlaky(rest);
+    if (command === 'env') {
+        const { runEnv } = await import('./env.js');
+        return runEnv(rest);
+    }
     if (command === 'fixture') {
         const { runFixture } = await import('./fixture.js');
         return runFixture(rest);

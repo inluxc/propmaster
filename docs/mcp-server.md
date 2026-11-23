@@ -81,13 +81,15 @@ Redis keys go through the configured `keyPrefix`, as in the tests. Results are c
 
 ### Project tools (always on)
 
-These change the project's setup, not backend data. They run the same code as [`propmaster fixture`](./guide/cli#adding-and-removing-fixtures), and each one returns its plan without changing anything unless it's called with `apply: true`.
+These change the project's setup, not backend data. They run the same code as [`propmaster fixture`](./guide/cli#adding-and-removing-fixtures) and [`propmaster env`](./guide/configuration#adding-an-environment), and each one changing something returns its plan without changing anything unless it's called with `apply: true`.
 
 | Tool | What it does |
 |---|---|
 | `fixtures_list` | The fixtures Propmaster can set up (ids like `redis`, `database`, `s3`), the fixture names tests request, and which ones the project has |
 | `fixture_add` | Installs the drivers and adds the config to every environment, the `PW_*` variables, compose services and starter tests. Takes `fixtures` (e.g. `["database:mysql", "redis"]`), `service`, `test`, `install` and `apply` |
 | `fixture_remove` | Undoes `fixture_add` for one fixture. Refuses while tests still use it and lists them |
+| `environments_list` | The environments: which are production, their blocks, whether `.env.<name>` exists, and the values still `CHANGE_ME` |
+| `environment_add` | A new environment copied from another, the same as [`propmaster env add`](./guide/configuration#adding-an-environment). Takes `name`, `from` (`null` for an empty one), `production`, `copyValues` and `apply`. Credentials are never copied |
 
 They're marked as not read-only, so clients that ask before such tools run ask before these. With `install: false` the package manager isn't run, and the result has the command to run instead.
 
@@ -102,7 +104,7 @@ Without `--allow-writes` these tools aren't offered at all, so the agent can't c
 ## Safety
 
 - **Backends read-only by default.** Only the project tools change anything, and only files in the project. `db_query` refuses anything but one read statement: a second statement, a write keyword outside strings and comments (`DELETE`, `UPDATE`, `INSERT`, `DROP`, ...), `SELECT ... INTO`, `FOR UPDATE`, `EXPLAIN ANALYZE` and `PRAGMA x = y`. This check protects against mistakes, but it isn't a sandbox. For data you care about, connect as a database user that can only read.
-- **Production is refused.** For an environment named `prod`, `production`, `prd` or `live` the server won't start without `--allow-prod`, and even then it stays read-only: `--allow-writes` is ignored.
+- **Production is refused.** For an environment named `prod`, `production`, `prd` or `live`, or marked `"production": true` in `environments.json` (`propmaster env add --prod` does that), the server won't start without `--allow-prod`, and even then it stays read-only: `--allow-writes` is ignored.
 - **Credentials don't reach the agent.** Every password, secret, token and API key in the loaded configuration, including a password inside a connection URI, is replaced with `[REDACTED]` wherever it shows up: tool results, error messages and the log. On top of that, the redaction the fixture annotations use removes `Bearer` tokens, JWTs and AWS keys. `environment_info` shows hosts and ports, never credentials.
 - **Every call is logged** to stderr as `propmaster-mcp: <tool> <arguments> → ok (12 ms)`. Most clients show this log, for example Claude Code's `/mcp` or VS Code's **MCP: Show Output**.
 
