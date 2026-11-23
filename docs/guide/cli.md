@@ -58,6 +58,44 @@ Some fixtures come in variants, picked from a menu or after a colon: `database:p
 
 `propmaster fixture list` shows every fixture and which ones the project has (`--json` for scripts). Agents can do all of this through the [MCP server](../mcp-server#project-tools-always-on).
 
+## Doctor
+
+`propmaster doctor` checks the setup and says how to fix each problem, before a test run trips over it:
+
+```bash
+npx propmaster doctor              # the active environment (PW_ENVIRONMENT, else local)
+npx propmaster doctor -e stg       # another one
+npx propmaster doctor --fix        # apply the safe fixes, then check again
+```
+
+```
+  ✔ node      Node.js 24.12.0
+  ✔ config    environment "local" loads
+  ✖ drivers   tests use redisClient, but ioredis isn't installed.
+              → npm install --save-dev ioredis  (--fix)
+  ✖ backends  database at localhost:5432 doesn't answer.
+              → docker compose -f compose.test.yaml up -d --wait postgres
+  ! playwright playwright.config.ts doesn't use the Propmaster reporter, so there's no test history ...
+  ✖ secrets   .env.local isn't in .gitignore: secrets in it could be committed.
+              → add .env.local to .gitignore  (--fix)
+
+  3 problems, 1 warning. `propmaster doctor --fix` fixes 2 of them.
+```
+
+| Check | What it looks at |
+|---|---|
+| `node` | Node.js is 22.12 or newer |
+| `config` | `environments.json` exists, has the environment, and has a block for every fixture the tests use (`--fix` adds it, as `fixture add` would). Values still `CHANGE_ME` are a warning |
+| `drivers` | The driver for each fixture the tests use is installed, in `node_modules` and not just in `package.json`, for the variant the config asks for (`mysql2` for `"type": "mysql"`). `--fix` installs it |
+| `backends` | Each configured backend accepts a connection. One the tests use is a problem; one no test uses yet is a warning. When `compose.test.yaml` has its service, the fix is the command that starts it. `--offline` skips this |
+| `playwright` | A `playwright.config.*`, the Propmaster reporter in it, a `tsconfig.json`, and, when tests use a browser, the browsers it names |
+| `ci` | The Playwright image in your CI files (`mcr.microsoft.com/playwright:vX.Y.Z`) is the installed `@playwright/test` version. `--fix` updates the tag |
+| `secrets` | `.env` files are in `.gitignore` (`--fix` adds them) and not committed |
+| `mcp` | An editor is set up to start the MCP server, and the server starts for the environment |
+| `tests` | The test conventions (`propmaster check`) and `quarantine.json` |
+
+`✖` is a problem and makes the exit code 1; `!` is a warning and doesn't. `--fix` applies only the fixes marked `(--fix)`: installing packages, adding config placeholders, `.gitignore` entries and the CI image tag. It prints the rest. `--problems` hides what passed, and `--json` is for scripts. Agents run it through the [MCP server](../mcp-server#project-tools-always-on)'s `doctor` tool.
+
 ## Adding environments
 
 `propmaster env add stg --from dev` adds an environment copied from another, with `CHANGE_ME` for you to fill in, no credentials, and a `.env.stg` listing its variables. `--prod` marks a production environment. `propmaster env list` shows them all. See [Adding an environment](./configuration#adding-an-environment).
@@ -88,7 +126,7 @@ Every answer can be given as an argument or flag, and then nothing is asked. Wit
 
 ## Banner and version
 
-Commands you run yourself (`init`, `fixture`, `env`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
+Commands you run yourself (`init`, `doctor`, `fixture`, `env`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
 
 ```bash
 npx propmaster --version        # or -v: prints just the version, e.g. 1.0.0

@@ -163,7 +163,8 @@ const config = new ConfigLoader().load();
 export default defineConfig<ConfigOptions>({
     timeout: 30_000,
     retries: process.env.CI ? 1 : 0,
-    reporter: [['list'], ['html', { open: 'never' }]],
+    // The Propmaster reporter keeps a test history (\`npx propmaster flaky\`) and applies quarantine.json.
+    reporter: [['list'], ['html', { open: 'never' }], ['@inluxc/propmaster/reporter']],
     use: {
         trace: 'retain-on-failure',
     },

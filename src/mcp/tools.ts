@@ -435,7 +435,7 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
                 return { ok: violations.length === 0, violations };
             },
         },
-        ...projectTools(ctx.root),
+        ...projectTools(ctx.root, undefined, ctx.environment),
     ];
 
     if (!ctx.allowWrites) return tools;
