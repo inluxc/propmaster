@@ -196,7 +196,7 @@ export async function createPropmasterMcpServer(
 
     if (secretsError) log(`propmaster-mcp: secrets not resolved, using values from environments.json, .env and PW_* variables: ${redactCredentials(secretsError)}`);
 
-    const context: McpContext = { root: options.root, environment, config, configError: error, allowWrites };
+    const context: McpContext = { root: options.root, environment, config, configError: error, allowWrites, production };
     const connections = new Connections();
     const redact = makeRedactor(secretValues(config));
     const tools = redactTools(createTools(context, connections), redact);
@@ -207,7 +207,7 @@ export async function createPropmasterMcpServer(
         instructions: [
             `Propmaster test backends for environment "${environment}".`,
             allowWrites ? 'Write tools are enabled: data you change stays changed.' : 'Read-only: the server offers no write tools.',
-            'Use environment_info to see which backends are configured, next_test_id before adding a test, and check_tests after changing tests.',
+            `Use environment_info to see which backends are configured, next_test_id before adding a test, check_tests after changing tests${production ? '' : ', and run_tests to run them'} (last_failures for why the last run failed).`,
             ...(hasStandards(options.root) ? ["This project has testing standards: read them with the standards tool (or the standards:// resources) before writing tests, and follow them; check_tests enforces their rules."] : []),
         ].join(' '),
         tools,

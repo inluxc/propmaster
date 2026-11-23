@@ -8,6 +8,7 @@ import { packageVersion, printBanner } from './banner.js';
 import { NotInteractiveError, PromptCancelledError, isInteractive, select, text, type Choice } from './prompts.js';
 import { styleFor } from './style.js';
 import { runFlaky } from './flaky.js';
+import { runFailures } from './failures.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
 import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
@@ -649,6 +650,7 @@ const HELP = `
     npx propmaster check [--json] [--list-ids] [--root <dir>]
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
     npx propmaster flaky [--history <file|dir>] [--runs <n>] [--limit <n>] [--json]
+    npx propmaster failures [--no-flaky] [--json]
     npx propmaster generate openapi [--tag <tag>] [--operation <id>] [--dry-run] [--prism]
     npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
 
@@ -689,6 +691,8 @@ const HELP = `
     flaky     Rank tests by flake rate over the last runs in the test history
               the Propmaster reporter writes (.propmaster/test-history.json).
               \`propmaster flaky --help\` for details.
+    failures  What failed in the last run and why: the step, the error, where
+              it was thrown and the trace, with each test's recent history.
     generate  Scaffold API tests from the OpenAPI spec into tests/api: one file
               per tag, a test per operation and documented status code, with
               real TestCaseIDs and test.step() blocks. Never overwrites a file;
@@ -902,11 +906,12 @@ const COMMAND_MENU: Choice<string>[] = [
     { value: 'next-id', label: 'next-id', hint: 'the next free TestCaseID' },
     { value: 'check', label: 'check', hint: 'check test conventions' },
     { value: 'flaky', label: 'flaky', hint: 'rank tests by flake rate' },
+    { value: 'failures', label: 'failures', hint: 'what failed in the last run and why' },
     { value: 'help', label: 'help', hint: 'every command and option' },
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'failures', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -955,6 +960,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return runNextId(rest);
     }
     if (command === 'flaky') return runFlaky(rest);
+    if (command === 'failures') return runFailures(rest);
     if (command === 'standards') {
         const { runStandards } = await import('./standards.js');
         return runStandards(rest, findProjectRoot());

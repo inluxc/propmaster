@@ -9,7 +9,7 @@
  */
 
 import { resolve } from 'node:path';
-import { DEFAULT_HISTORY_FILE, flakyReport, formatReport, readHistories } from '../reporter/history.js';
+import { DEFAULT_HISTORY_FILE, flakyReport, formatReport, readHistories, type FlakyRow } from '../reporter/history.js';
 import { loadQuarantine, quarantinePath } from '../reporter/quarantine.js';
 import { findProjectRoot } from './check-tests.js';
 
@@ -44,6 +44,25 @@ const number = (value: string | undefined, fallback: number, name: string): numb
     return n;
 };
 
+/** The history file the reporter writes for the project at `root`. */
+export function historyFile(root: string): string {
+    return resolve(root, process.env.PW_TEST_HISTORY && process.env.PW_TEST_HISTORY !== 'false' ? process.env.PW_TEST_HISTORY : DEFAULT_HISTORY_FILE);
+}
+
+/** The flake ranking over the newest `window` runs: what `propmaster flaky` and the MCP tool flaky_tests show. */
+export function flakyRows(root: string, options: { histories?: string[]; window?: number; minRate?: number } = {}): { runs: number; rows: FlakyRow[] } {
+    const runs = readHistories(options.histories?.length ? options.histories : [historyFile(root)]);
+    let quarantined = new Set<string>();
+    try {
+        quarantined = new Set(loadQuarantine(quarantinePath(root)).entries.keys());
+    } catch {
+        // `propmaster check` reports a broken quarantine file
+    }
+    const windowRuns = runs.slice(-(options.window ?? 30));
+    const minRate = options.minRate ?? 0;
+    return { runs: windowRuns.length, rows: flakyReport(windowRuns, { quarantined }).filter((r) => r.alwaysFails || r.flakeRate >= minRate) };
+}
+
 /** Runs the command; returns the exit code. */
 export function runFlaky(argv: string[], log: (line?: string) => void = console.log, cwd: string = process.cwd()): number {
     if (argv.includes('--help') || argv.includes('-h')) {
@@ -58,21 +77,13 @@ export function runFlaky(argv: string[], log: (line?: string) => void = console.
         const limit = Math.floor(number(option(argv, '--limit')[0], 20, '--limit'));
         const minRate = number(option(argv, '--min-rate')[0], 0, '--min-rate');
 
-        const runs = readHistories(histories.length ? histories : [resolve(root, process.env.PW_TEST_HISTORY ?? DEFAULT_HISTORY_FILE)]);
-        let quarantined = new Set<string>();
-        try {
-            quarantined = new Set(loadQuarantine(quarantinePath(root)).entries.keys());
-        } catch {
-            // `propmaster check` reports a broken quarantine file
-        }
-        const windowRuns = runs.slice(-window);
-        const rows = flakyReport(windowRuns, { quarantined }).filter((r) => r.alwaysFails || r.flakeRate >= minRate);
+        const { runs: runCount, rows } = flakyRows(root, { histories, window, minRate });
 
         if (argv.includes('--json')) {
-            log(JSON.stringify({ runs: windowRuns.length, tests: rows }, null, 2));
+            log(JSON.stringify({ runs: runCount, tests: rows }, null, 2));
             return 0;
         }
-        log(formatReport(limit > 0 ? rows.slice(0, limit) : rows, windowRuns.length));
+        log(formatReport(limit > 0 ? rows.slice(0, limit) : rows, runCount));
         if (limit > 0 && rows.length > limit) log(`\n… and ${rows.length - limit} more (--limit 0 for all)`);
         const candidates = rows.filter((r) => !r.alwaysFails && !r.quarantined && r.flakeRate >= 0.1);
         if (candidates.length) {

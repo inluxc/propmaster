@@ -96,6 +96,10 @@ npx propmaster doctor --fix        # apply the safe fixes, then check again
 
 `✖` is a problem and makes the exit code 1; `!` is a warning and doesn't. `--fix` applies only the fixes marked `(--fix)`: installing packages, adding config placeholders, `.gitignore` entries and the CI image tag. It prints the rest. `--problems` hides what passed, and `--json` is for scripts. Agents run it through the [MCP server](../mcp-server#project-tools-always-on)'s `doctor` tool.
 
+## Failures
+
+`propmaster failures` shows what failed in the last run and why: the step, the error, where it was thrown and the trace to open, with each test's recent history. The Propmaster reporter writes it after every run. See [What failed in the last run](../flaky-tests#what-failed-in-the-last-run).
+
 ## QA standards
 
 `propmaster standards init` writes a sample `propmaster.standards.json` and `standards/` pages; `propmaster check` then enforces the team's rules alongside the built-in conventions. See [QA standards](../qa-standards).

@@ -9,6 +9,10 @@
  * Carry that file between CI runs (a cache or an artifact) and
  * `npx propmaster flaky` ranks the tests by flake rate.
  *
+ * It also writes `.propmaster/last-run.json`: the failed and flaky tests of
+ * that run with the step that failed, the error and the trace
+ * (`npx propmaster failures`, and the MCP tools run_tests and last_failures).
+ *
  * When every failure of a run is a test listed in `quarantine.json`, it turns
  * the run's status into passed, so a known-flaky test doesn't block merges.
  * Quarantined tests still run and show in every report.
@@ -18,6 +22,7 @@ import { appendFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase, TestError } from '@playwright/test/reporter';
 import { appendRun, DEFAULT_HISTORY_FILE, DEFAULT_MAX_RUNS, runContext, type HistoryTest, type TestOutcome } from './history.js';
+import { DEFAULT_LAST_RUN_FILE, MAX_RUN_ERRORS, describeTest, runErrorText, writeLastRun, type LastRunTest } from './last-run.js';
 import { describeEntry, loadQuarantine, quarantinePath, testIdOf, type LoadedQuarantine } from './quarantine.js';
 
 export interface PropmasterReporterOptions {
@@ -27,6 +32,8 @@ export interface PropmasterReporterOptions {
     maxRuns?: number;
     /** Quarantine file, relative to the config file (default `quarantine.json`, or PW_QUARANTINE_FILE); `false` to ignore quarantine. */
     quarantine?: string | false;
+    /** Last-run file (failures with their errors), relative to the config file (default `.propmaster/last-run.json`, or PW_LAST_RUN_FILE); `false` for none. */
+    lastRun?: string | false;
     /** Write a summary of flaky and quarantined tests to the GitHub Actions job summary when it's available (default true). */
     summary?: boolean;
 }
@@ -57,6 +64,7 @@ export default class PropmasterReporter implements Reporter {
     private suite!: Suite;
     private startedAt = new Date();
     private errors = 0;
+    private runErrors: string[] = [];
     private quarantine: LoadedQuarantine | undefined;
     private quarantineError: string | undefined;
 
@@ -69,7 +77,7 @@ export default class PropmasterReporter implements Reporter {
     }
 
     private get baseDir(): string {
-        return this.config.configFile ? dirname(this.config.configFile) : this.config.rootDir;
+        return this.config?.configFile ? dirname(this.config.configFile) : this.config?.rootDir ?? process.cwd();
     }
 
     onBegin(config: FullConfig, suite: Suite): void {
@@ -86,11 +94,17 @@ export default class PropmasterReporter implements Reporter {
         }
     }
 
-    onError(_error: TestError): void {
+    onError(error: TestError): void {
         this.errors++;
+        if (this.runErrors.length < MAX_RUN_ERRORS) this.runErrors.push(runErrorText(error, this.baseDir));
     }
 
     async onEnd(result: FullResult): Promise<{ status?: FullResult['status'] } | undefined> {
+        if (!this.suite) {
+            // The run never started (a config that doesn't load): keep what went wrong.
+            this.writeLastRun(result, [], []);
+            return undefined;
+        }
         const tests = this.suite.allTests();
         const rootDir = this.config.rootDir;
         const records: HistoryTest[] = tests.map((test) => {
@@ -110,6 +124,7 @@ export default class PropmasterReporter implements Reporter {
         });
 
         this.writeHistory(result, records);
+        this.writeLastRun(result, tests, records);
 
         const lines: string[] = [];
         if (this.quarantineError) lines.push(`Propmaster: quarantine ignored, the file is invalid: ${this.quarantineError}`);
@@ -150,6 +165,32 @@ export default class PropmasterReporter implements Reporter {
             appendRun(file, { id, startedAt: this.startedAt.toISOString(), commit, branch, status: result.status, tests }, this.options.maxRuns ?? DEFAULT_MAX_RUNS);
         } catch (error) {
             console.log(`Propmaster: couldn't update the test history ${file}: ${(error as Error).message}`);
+        }
+    }
+
+    private writeLastRun(result: FullResult, tests: TestCase[], records: HistoryTest[]): void {
+        const option = this.options.lastRun ?? process.env.PW_LAST_RUN_FILE;
+        if (option === false || option === 'false') return;
+        const file = isAbsolute(option || '') ? (option as string) : resolve(this.baseDir, option || DEFAULT_LAST_RUN_FILE);
+        const counts = { total: records.length, passed: 0, flaky: 0, failed: 0, skipped: 0 };
+        const details: LastRunTest[] = [];
+        records.forEach((record, i) => {
+            counts[record.outcome]++;
+            if (record.outcome === 'failed' || record.outcome === 'flaky') details.push(describeTest(tests[i], record, this.baseDir));
+        });
+        try {
+            writeLastRun(file, {
+                version: 1,
+                startedAt: this.startedAt.toISOString(),
+                finishedAt: new Date().toISOString(),
+                status: result.status,
+                counts,
+                errors: this.runErrors,
+                // Failures first, then flaky tests
+                tests: details.sort((a, b) => Number(a.outcome === 'flaky') - Number(b.outcome === 'flaky')),
+            });
+        } catch (error) {
+            console.log(`Propmaster: couldn't write the last-run file ${file}: ${(error as Error).message}`);
         }
     }
 
