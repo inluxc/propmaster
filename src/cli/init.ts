@@ -33,6 +33,7 @@ const FILES: Record<string, string> = {
 dist/
 playwright-report/
 test-results/
+.propmaster/
 blob-report/
 *.tgz
 .env
@@ -640,6 +641,7 @@ const HELP = `
   Usage:
     npx propmaster init [directory]
     npx propmaster fixture [list|add|remove] [fixture[:variant]...] [--dry-run]
+    npx propmaster doctor [-e <env>] [--fix] [--offline] [--json]
     npx propmaster env [list|add] [name] [--from <env>] [--prod] [--dry-run]
     npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
     npx propmaster auth-setup [role...]
@@ -659,6 +661,9 @@ const HELP = `
               adds its config to every environment, its PW_* variables to
               .env.example, a compose.test.yaml service and a starter test.
               \`propmaster fixture --help\` for details.
+    doctor    Check the setup and say how to fix each problem: config,
+              drivers, backends, browsers, CI image, .env files, the MCP
+              server, test conventions. --fix applies the safe fixes.
     env       Add an environment to environments.json, copied from another
               (values become CHANGE_ME, credentials are left out), with a
               .env.<name> to fill in; or list them. \`propmaster env --help\`.
@@ -781,7 +786,7 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
         log('         npx propmaster fixture add            (pick from a menu)');
         log('         npx propmaster fixture add openapi database redis');
         log('    3. npx playwright install');
-        log('    4. Update environments.json with your service URLs');
+        log('    4. Update environments.json with your service URLs; npx propmaster doctor checks the setup');
         log('    5. Get a TestCaseID: npm run next-id -- API');
         log('    6. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
         log('    7. Check conventions: npm run lint:tests');
@@ -883,6 +888,7 @@ export function runAuthSetup(argv: string[], cwd: string = process.cwd(), log: (
 const COMMAND_MENU: Choice<string>[] = [
     { value: 'init', label: 'init', hint: 'scaffold the test layout here' },
     { value: 'fixture', label: 'fixture', hint: 'add or remove a fixture (driver, config, service, starter test)' },
+    { value: 'doctor', label: 'doctor', hint: 'find and fix setup problems' },
     { value: 'env', label: 'env', hint: 'add an environment, or list them' },
     { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
     { value: 'generate', label: 'generate openapi', hint: 'API tests from the OpenAPI spec', search: 'openapi' },
@@ -894,7 +900,7 @@ const COMMAND_MENU: Choice<string>[] = [
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'fixture', 'env', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -943,6 +949,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return runNextId(rest);
     }
     if (command === 'flaky') return runFlaky(rest);
+    if (command === 'doctor') {
+        const { runDoctor } = await import('./doctor.js');
+        return runDoctor(rest);
+    }
     if (command === 'env') {
         const { runEnv } = await import('./env.js');
         return runEnv(rest);

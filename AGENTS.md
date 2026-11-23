@@ -16,6 +16,7 @@ npm run flaky                   # tests ranked by flake rate, from .propmaster/t
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 npx propmaster env add stg --from dev --dry-run  # a new environment: CHANGE_ME values, no credentials, .env.stg to fill in
+npx propmaster doctor --problems --offline        # setup problems (config, drivers, CI image, .env in git, conventions) and their fixes; --fix applies the safe ones
 ```
 
 In a terminal, `propmaster` commands ask for missing answers with menus. You have no terminal, so always pass the arguments: a command that would ask stops with exit code 2 and names the flag to pass.
@@ -38,6 +39,7 @@ When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/m
 - **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
 - **Asserting on stored data:** `db_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
 - **A test fails on a backend assertion:** read what's actually stored and compare it with what the test expected, before changing the assertion.
+- **Tests fail before reaching the code under test** (connection refused, MissingPackageError, config error): `doctor` first; `doctor` with `fix: true` applies the safe fixes.
 - **A test needs a backend the project doesn't have:** `fixtures_list`, then `fixture_add` (it returns the plan), then `fixture_add` with `apply: true`. Never hand-edit `environments.json` for a fixture the catalog knows.
 - **A new environment (staging, a feature stack):** `environment_add` (plan first, then `apply: true`); never copy credentials into `environments.json` yourself.
 - **After changing tests:** `check_tests` (same rules as `npm run lint:tests`).
@@ -119,13 +121,14 @@ src/
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction;
-│                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add
+│                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add / doctor
 ├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
                                 #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout;
                                 #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours;
                                 #   fixture.ts = `fixture add|remove|list` from fixture-catalog.ts (what each fixture needs),
-                                #   json-edit.ts = edits JSON in place, keeping its formatting; env.ts = `env add|list`
+                                #   json-edit.ts = edits JSON in place, keeping its formatting; env.ts = `env add|list`;
+                                #   doctor.ts = `doctor` checks and safe fixes
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here

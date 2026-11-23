@@ -8,6 +8,7 @@
 import { FIXTURE_CATALOG } from '../cli/fixture-catalog.js';
 import { applyPlan, captureRunner, fixtureStates, formatFixturePlan, parseRequest, planAdd, planRemove, type CommandRunner, type FixturePlan } from '../cli/fixture.js';
 import { applyEnvPlan, formatEnvPlan, listEnvironments, planEnvAdd } from '../cli/env.js';
+import { applyFixes, diagnose, summarize, type Finding } from '../cli/doctor.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 const MAX_OUTPUT = 4000;
@@ -48,7 +49,7 @@ const bool = (args: Record<string, unknown>, key: string, fallback: boolean): bo
 };
 
 /** The project tools for the project at `root`. `runner` runs the package manager (injected by tests). */
-export function projectTools(root: string, runner: CommandRunner = captureRunner): ToolDefinition[] {
+export function projectTools(root: string, runner: CommandRunner = captureRunner, environment?: string): ToolDefinition[] {
     const ids = FIXTURE_CATALOG.map((e) => e.id);
     const variantNote = FIXTURE_CATALOG.filter((e) => e.variants.length > 1)
         .map((e) => `${e.id}:${e.variants.map((v) => v.id).join('|')}`)
@@ -165,6 +166,46 @@ export function projectTools(root: string, runner: CommandRunner = captureRunner
                 if (plan.blockers.length) return { ...result, applied: false, reason: plan.blockers.join(' ') };
                 if (!bool(args, 'apply', false)) return { ...result, applied: false, reason: 'Dry run. Call again with apply: true to make these changes.' };
                 return { ...result, applied: true, written: applyEnvPlan(root, plan) };
+            },
+        },
+        {
+            name: 'doctor',
+            title: 'Doctor',
+            description:
+                "Checks the project's setup and says how to fix each problem: Node.js, the environment's config (missing blocks, CHANGE_ME values), drivers for the fixtures the tests use, whether the backends answer, the Playwright config and browsers, the CI image, .env files kept out of git, and test conventions. Call it when tests fail before reaching the code under test. With fix: true it applies the safe fixes (installing drivers, adding config blocks, .gitignore entries, the CI image tag) and checks again.",
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    environment: { type: 'string', description: "The environment to check (default: the server's)" },
+                    offline: { type: 'boolean', description: "Don't try to reach the backends (default false)" },
+                    problems: { type: 'boolean', description: 'Return only the problems, not what passed (default true)' },
+                    fix: { type: 'boolean', description: 'Apply the safe fixes, then check again (default false)' },
+                },
+                additionalProperties: false,
+            },
+            annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+            handler: async (args) => {
+                if (args.environment !== undefined && typeof args.environment !== 'string') throw new ToolInputError('environment must be a string');
+                const options = { environment: (args.environment as string | undefined) ?? environment, offline: bool(args, 'offline', false), skipMcp: true, runner };
+                let result = await diagnose(root, options);
+                let fixed: Finding[] = [];
+                let failed: Finding[] = [];
+                if (bool(args, 'fix', false)) {
+                    ({ fixed, failed } = await applyFixes(result.findings));
+                    if (fixed.length || failed.length) result = await diagnose(root, options);
+                }
+                const onlyProblems = bool(args, 'problems', true);
+                const { fail, warn, fixable } = summarize(result.findings);
+                return {
+                    environment: result.environment,
+                    ok: fail === 0,
+                    summary: `${fail} problem(s), ${warn} warning(s)${fixable ? `; ${fixable} can be fixed with fix: true` : ''}`,
+                    ...(fixed.length ? { fixed: fixed.map((f) => f.fix!.text) } : {}),
+                    ...(failed.length ? { fixFailed: failed.map((f) => f.message) } : {}),
+                    findings: result.findings
+                        .filter((f) => !onlyProblems || f.status === 'fail' || f.status === 'warn')
+                        .map(({ fix, ...f }) => ({ ...f, ...(fix ? { fix: fix.text, autoFix: !!(fix.safe && fix.apply) } : {}) })),
+                };
             },
         },
     ];
