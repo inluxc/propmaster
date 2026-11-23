@@ -297,17 +297,19 @@ test.describe('mcp — server tools (SQLite project)', () => {
         await server?.close();
     });
 
-    test('read-only by default: no write tools are offered', async () => {
+    test('backends read-only by default: no backend write tools; only the project tools change anything', async () => {
         const res = await server.server.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
         const names = (res?.result as { tools: Array<{ name: string; annotations?: { readOnlyHint?: boolean } }> }).tools;
         expect(names.map((t) => t.name)).toEqual([
             'environment_info', 'db_query', 'mongo_find', 'mongo_aggregate', 'redis_get', 'redis_keys', 'kafka_topics',
             'kafka_peek', 'neo4j_read', 'openapi_operations', 'otp_generate', 'next_test_id', 'check_tests',
+            'fixtures_list', 'fixture_add', 'fixture_remove',
         ]);
-        expect(names.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
+        // fixture_add / fixture_remove change project files (only with apply: true), never backend data.
+        expect(names.filter((t) => t.annotations?.readOnlyHint !== true).map((t) => t.name)).toEqual(['fixture_add', 'fixture_remove']);
         const write = await server.server.handle({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'db_execute', arguments: { sql: 'DELETE FROM users' } } });
         expect(write?.error).toMatchObject({ message: 'Unknown tool: db_execute' });
-        expect(server.logs[0]).toContain('read-only, 13 tools');
+        expect(server.logs[0]).toContain('backends read-only, 16 tools');
     });
 
     test('db_query returns rows, honours params and maxRows', async () => {
@@ -465,6 +467,6 @@ test('mcp — `propmaster mcp` speaks MCP over stdio', async () => {
     expect(code).toBe(0);
     // stdout carries only protocol messages; logs go to stderr
     expect(stdout.trim().split('\n').every((l) => JSON.parse(l).jsonrpc === '2.0')).toBe(true);
-    expect(stderr).toContain('propmaster-mcp: environment "local", read-only');
+    expect(stderr).toContain('propmaster-mcp: environment "local", backends read-only');
     expect(stderr).toContain('propmaster-mcp: db_query');
 });

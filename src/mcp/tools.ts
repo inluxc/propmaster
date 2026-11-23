@@ -19,6 +19,7 @@ import { createOtpClient } from '../fixtures/otp.fixture.js';
 import { createKafka, type KafkaAdminLike, type KafkaLike } from '../fixtures/kafka-driver.js';
 import { loadOpenApiDocument } from '../openapi/load.js';
 import { readOnlySqlProblem, writingPipelineStage } from './guards.js';
+import { projectTools } from './project-tools.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 type Redis = Awaited<ReturnType<typeof createRedisClient>>['client'];
@@ -434,6 +435,7 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
                 return { ok: violations.length === 0, violations };
             },
         },
+        ...projectTools(ctx.root),
     ];
 
     if (!ctx.allowWrites) return tools;

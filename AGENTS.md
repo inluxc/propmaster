@@ -14,6 +14,7 @@ npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line
 npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
 npm run flaky                   # tests ranked by flake rate, from .propmaster/test-history.json (--json for scripts)
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
+npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 ```
 
 In a terminal, `propmaster` commands ask for missing answers with menus. You have no terminal, so always pass the arguments: a command that would ask stops with exit code 2 and names the flag to pass.
@@ -36,9 +37,10 @@ When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/m
 - **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
 - **Asserting on stored data:** `db_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
 - **A test fails on a backend assertion:** read what's actually stored and compare it with what the test expected, before changing the assertion.
+- **A test needs a backend the project doesn't have:** `fixtures_list`, then `fixture_add` (it returns the plan), then `fixture_add` with `apply: true`. Never hand-edit `environments.json` for a fixture the catalog knows.
 - **After changing tests:** `check_tests` (same rules as `npm run lint:tests`).
 
-The server is read-only unless it was started with `--allow-writes`. Even then, tests create their data through the fixtures (`databaseClient.insert`, `testData`, ...), never through MCP write tools: MCP writes aren't cleaned up. Results never contain credentials; don't try to read them some other way.
+The server's backend tools are read-only unless it was started with `--allow-writes`; the project tools (`fixture_add`, `fixture_remove`) change only project files, and only with `apply: true`. Even then, tests create their data through the fixtures (`databaseClient.insert`, `testData`, ...), never through MCP write tools: MCP writes aren't cleaned up. Results never contain credentials; don't try to read them some other way.
 
 ## Project Overview
 
@@ -66,7 +68,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **Property Testing:** fast-check (`fast-check ^4.10.3`)
 - **Env Loading:** built-in `.env` parser (`src/config/env-loader.ts`), no dependency
 
-Every driver above is an **optional peer dependency** (and a devDependency here, for the self-tests). Propmaster has no runtime dependencies: importing it loads no driver, and each fixture loads its own on first use through `loadOptional()` in `src/fixtures/optional-package.ts`. A missing driver throws `MissingPackageError` with the install command. A new fixture must load its driver the same way (never a top-level value import) and add it to `peerDependencies`, `peerDependenciesMeta` and `FIXTURE_PACKAGES`.
+Every driver above is an **optional peer dependency** (and a devDependency here, for the self-tests). Propmaster has no runtime dependencies: importing it loads no driver, and each fixture loads its own on first use through `loadOptional()` in `src/fixtures/optional-package.ts`. A missing driver throws `MissingPackageError` with the install command. A new fixture must load its driver the same way (never a top-level value import) and add it to `peerDependencies`, `peerDependenciesMeta` and `FIXTURE_PACKAGES`, and give it an entry in `FIXTURE_CATALOG` (`src/cli/fixture-catalog.ts`: packages, config, `PW_*` variables, compose service, starter test) so `propmaster fixture add` can set it up. `tests/unit/fixture.spec.ts` checks they agree.
 
 ## Project Structure
 
@@ -114,11 +116,14 @@ src/
 ├── test-data/                  # testData fixture: factories, unique values, cleanup registry, per-client tracking
 ├── annotations/                # Fixture-operation annotation recorder (redaction + truncation)
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
-│                               #   read-only SQL guard, production refusal, credential redaction
+│                               #   read-only SQL guard, production refusal, credential redaction;
+│                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove
 ├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
                                 #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout;
-                                #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours
+                                #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours;
+                                #   fixture.ts = `fixture add|remove|list` from fixture-catalog.ts (what each fixture needs),
+                                #   json-edit.ts = edits JSON in place, keeping its formatting
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here

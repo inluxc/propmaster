@@ -265,6 +265,26 @@ test.describe('ConfigLoader', () => {
                 cleanup(dir);
             }
         });
+
+        test('maps PW_OTP_* to otp, over environments.json', () => {
+            const dir = createTempDir();
+            const vars = { PW_OTP_SECRET: 'JBSWY3DPEHPK3PXP', PW_OTP_DIGITS: '8', PW_OTP_PERIOD: '60', PW_OTP_ALGORITHM: 'SHA256', PW_OTP_ISSUER: 'Acme' };
+            const original = Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]]));
+            try {
+                writeEnvironmentsJson(dir, { environments: { local: { otp: { digits: 6, window: 1 } } } });
+                Object.assign(process.env, vars);
+
+                const config = new ConfigLoader(dir).load('local');
+
+                expect(config.otp).toEqual({ secret: 'JBSWY3DPEHPK3PXP', digits: 8, period: 60, algorithm: 'sha256', issuer: 'Acme', window: 1 });
+            } finally {
+                for (const [k, v] of Object.entries(original)) {
+                    if (v === undefined) delete process.env[k];
+                    else process.env[k] = v;
+                }
+                cleanup(dir);
+            }
+        });
     });
 
     test.describe('environment selection', () => {
