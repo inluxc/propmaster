@@ -427,12 +427,12 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
         {
             name: 'check_tests',
             title: 'Check test conventions',
-            description: 'Checks every test file against the Propmaster conventions (TestCaseID in title and tag, unique IDs, test.step() bodies, imports) and lists the violations with file, line and fix. Run it after writing or changing tests.',
+            description: "Checks every test file against the Propmaster conventions (TestCaseID in title and tag, unique IDs, test.step() bodies, imports) and the team's own rules in propmaster.standards.json (standard:<id>; warnings don't fail), and lists the violations with file, line and fix. Run it after writing or changing tests.",
             inputSchema: { type: 'object', properties: {}, additionalProperties: false },
             annotations: { readOnlyHint: true, openWorldHint: false },
             handler: async () => {
-                const { violations } = collect(ctx.root);
-                return { ok: violations.length === 0, violations };
+                const { violations, warnings } = collect(ctx.root);
+                return { ok: violations.length === 0, violations, ...(warnings.length ? { warnings } : {}) };
             },
         },
         ...projectTools(ctx.root, undefined, ctx.environment),

@@ -643,6 +643,7 @@ const HELP = `
     npx propmaster fixture [list|add|remove] [fixture[:variant]...] [--dry-run]
     npx propmaster doctor [-e <env>] [--fix] [--offline] [--json]
     npx propmaster env [list|add] [name] [--from <env>] [--prod] [--dry-run]
+    npx propmaster standards [list|init] [--json]
     npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
@@ -667,6 +668,9 @@ const HELP = `
     env       Add an environment to environments.json, copied from another
               (values become CHANGE_ME, credentials are left out), with a
               .env.<name> to fill in; or list them. \`propmaster env --help\`.
+    standards The team's testing standards: pages in standards/ for agents,
+              rules in propmaster.standards.json that \`check\` enforces.
+              \`standards init\` writes a sample set.
     organize  Sort existing Playwright tests into those folders by the
               fixtures they use. Dry run by default; --apply moves the files
               (git mv when tracked) and updates relative imports. Files it
@@ -790,6 +794,7 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
         log('    5. Get a TestCaseID: npm run next-id -- API');
         log('    6. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
         log('    7. Check conventions: npm run lint:tests');
+        log("    8. Add the team's testing standards: npx propmaster standards init");
         log();
     }
     return result;
@@ -890,6 +895,7 @@ const COMMAND_MENU: Choice<string>[] = [
     { value: 'fixture', label: 'fixture', hint: 'add or remove a fixture (driver, config, service, starter test)' },
     { value: 'doctor', label: 'doctor', hint: 'find and fix setup problems' },
     { value: 'env', label: 'env', hint: 'add an environment, or list them' },
+    { value: 'standards', label: 'standards', hint: "the team's testing rules and pages" },
     { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
     { value: 'generate', label: 'generate openapi', hint: 'API tests from the OpenAPI spec', search: 'openapi' },
     { value: 'auth-setup', label: 'auth-setup', hint: 'log roles in once for browser tests' },
@@ -900,7 +906,7 @@ const COMMAND_MENU: Choice<string>[] = [
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -949,6 +955,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return runNextId(rest);
     }
     if (command === 'flaky') return runFlaky(rest);
+    if (command === 'standards') {
+        const { runStandards } = await import('./standards.js');
+        return runStandards(rest, findProjectRoot());
+    }
     if (command === 'doctor') {
         const { runDoctor } = await import('./doctor.js');
         return runDoctor(rest);

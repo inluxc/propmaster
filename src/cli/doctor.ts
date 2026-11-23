@@ -475,7 +475,7 @@ async function checkMcp(ctx: Context): Promise<Finding[]> {
 }
 
 function checkTests(ctx: Context): Finding[] {
-    const { violations, ids } = collect(ctx.root);
+    const { violations, ids, warnings } = collect(ctx.root);
     const findings: Finding[] = [];
     findings.push(
         violations.length
@@ -487,6 +487,14 @@ function checkTests(ctx: Context): Finding[] {
               }
             : ok('tests', `test conventions OK (${new Set(ids.filter((i) => !i.reserved).map((i) => i.id)).size} TestCaseIDs)`),
     );
+    if (warnings.length) {
+        findings.push({
+            check: 'tests',
+            status: 'warn',
+            message: `${warnings.length} standards warning${warnings.length > 1 ? 's' : ''}, first: ${warnings[0].file}:${warnings[0].line} [${warnings[0].rule}] ${warnings[0].message}`,
+            fix: { text: 'npx propmaster check (lists each one)', safe: false },
+        });
+    }
     const quarantine = checkQuarantine(ctx.root, ids);
     for (const v of quarantine.violations) findings.push({ check: 'tests', status: 'fail', message: `${v.file}: ${v.message}` });
     for (const w of quarantine.warnings) findings.push({ check: 'tests', status: 'warn', message: w, fix: { text: 'fix the test and remove its quarantine entry, or update the entry', safe: false } });

@@ -89,6 +89,7 @@ These change the project's setup, not backend data. They run the same code as [`
 | `fixture_add` | Installs the drivers and adds the config to every environment, the `PW_*` variables, compose services and starter tests. Takes `fixtures` (e.g. `["database:mysql", "redis"]`), `service`, `test`, `install` and `apply` |
 | `fixture_remove` | Undoes `fixture_add` for one fixture. Refuses while tests still use it and lists them |
 | `environments_list` | The environments: which are production, their blocks, whether `.env.<name>` exists, and the values still `CHANGE_ME` |
+| `standards` | The team's [testing standards](./qa-standards): the pages in `standards/` and the rules `check_tests` enforces; with `page`, that page's text. The pages are also MCP resources (`standards://<file>`) |
 | `doctor` | The setup checks of [`propmaster doctor`](./guide/cli#doctor): config, drivers, backends, browsers, CI image, `.env` files, test conventions. Returns only the problems unless `problems: false`. `fix: true` applies the safe fixes and checks again |
 | `environment_add` | A new environment copied from another, the same as [`propmaster env add`](./guide/configuration#adding-an-environment). Takes `name`, `from` (`null` for an empty one), `production`, `copyValues` and `apply`. Credentials are never copied |
 
@@ -118,6 +119,7 @@ When `secrets.provider` is set, the server resolves the secrets on start. If the
 - **Before writing an API test:** `openapi_operations` for the exact `operationId` and parameters, then `next_test_id` for the ID.
 - **Before asserting on stored data:** `db_query` or `mongo_find` to see the real column names, types and sample rows. Don't guess them.
 - **When a test fails on a backend assertion:** look at what's actually there. `db_query` shows the row, `kafka_peek` the topic, `redis_get` the key and `neo4j_read` the graph. Compare it with what the test expected.
+- **Before writing tests, when the project has [standards](./qa-standards):** `standards`, then the pages that apply. The server's instructions say so when there are any.
 - **When tests fail before reaching the code under test** (a connection refused, a missing package, a config error): `doctor`, then `doctor` with `fix: true` for what it can fix.
 - **When a test needs a backend the project doesn't have yet:** `fixtures_list`, then `fixture_add` to see the plan, then again with `apply: true`.
 - **After changing tests:** `check_tests`, and fix what it reports.

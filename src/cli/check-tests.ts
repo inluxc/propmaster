@@ -18,6 +18,7 @@
  * This module has no side effects; the CLI entry point is `init.ts`.
  */
 
+import { STANDARDS_FILE, checkStandards, loadStandards, maskNonCode, type FoundDescribe, type Standards } from './standards.js';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { loadQuarantine, quarantinePath, quarantineWarnings } from '../reporter/quarantine.js';
@@ -275,6 +276,34 @@ export function findTests(src: string): FoundTest[] {
     return tests;
 }
 
+const DESCRIBE_RE = /^test\.describe(?:\.(?:only|skip|fixme|serial|parallel))*(?:\.(?:only|skip|fixme))?\s*\(/;
+
+/** Finds every `test.describe(...)` (and .serial/.parallel/.only/.skip/.fixme) with a literal title. */
+export function findDescribes(src: string): FoundDescribe[] {
+    const out: FoundDescribe[] = [];
+    for (let i = 0; i < src.length; ) {
+        const skipped = skipNonCode(src, i);
+        if (skipped !== -1) {
+            i = skipped;
+            continue;
+        }
+        if (src.startsWith('test.describe', i) && !/[\w$.]/.test(src[i - 1] ?? '')) {
+            const m = DESCRIBE_RE.exec(src.slice(i, i + 60));
+            if (m) {
+                const open = i + m[0].length - 1;
+                const close = matchClose(src, open);
+                const args = splitArgs(src, open, close);
+                const lit = args.length >= 2 ? titleLiteral(args[0]) : null;
+                if (lit) out.push({ index: i, title: lit.title, options: args.length >= 3 ? args[1].trim() : null, open, close });
+                i = open + 1;
+                continue;
+            }
+        }
+        i++;
+    }
+    return out;
+}
+
 export function lineOf(src: string, index: number): number {
     let line = 1;
     for (let i = 0; i < index; i++) if (src[i] === '\n') line++;
@@ -295,7 +324,8 @@ export function codeBlocks(md: string): { code: string; lineOffset: number }[] {
 
 // ─── Checks ─────────────────────────────────────────────────────────────────
 
-export type Rule = 'tc-id' | 'tc-tag' | 'tc-unique' | 'test-step' | 'import' | 'quarantine';
+/** The built-in rules, `standards` (a problem with propmaster.standards.json) and `standard:<id>` (one of its rules). */
+export type Rule = 'tc-id' | 'tc-tag' | 'tc-unique' | 'test-step' | 'import' | 'quarantine' | 'standards' | `standard:${string}`;
 
 export interface Violation {
     file: string;
@@ -319,6 +349,8 @@ export interface IdEntry {
 export interface CheckResult {
     violations: Violation[];
     ids: IdEntry[];
+    /** Standards rules at level "warn": reported, but they don't fail the check. */
+    warnings: Violation[];
 }
 
 /** One source to check: a test file, or a markdown doc whose code samples are checked. */
@@ -389,8 +421,9 @@ const PLAYWRIGHT_VALUE_IMPORT = /^\s*import\s+(?!type\b)[^;]*?from\s+['"]@playwr
  * Checks a set of in-memory sources. Pure: no filesystem access, so it is the
  * unit-testable core of {@link collect}.
  */
-export function checkSources(sources: SourceInput[]): CheckResult {
+export function checkSources(sources: SourceInput[], standards: Standards | null = null): CheckResult {
     const violations: Violation[] = [];
+    const warnings: Violation[] = [];
     const ids: IdEntry[] = [];
 
     for (const { file, content: src, kind } of sources) {
@@ -430,6 +463,19 @@ export function checkSources(sources: SourceInput[]): CheckResult {
             checkTest(t, { file, line: lineOf(src, t.index), isDoc: false, violations, ids });
         }
 
+        if (standards?.rules.length) {
+            const result = checkStandards(standards, {
+                file,
+                src,
+                tests,
+                describes: findDescribes(src),
+                lineOf: (index) => lineOf(src, index),
+                masked: maskNonCode(src, skipNonCode),
+            });
+            violations.push(...result.errors);
+            warnings.push(...result.warnings);
+        }
+
         // Parameterized tests keep their IDs in data rows, which can't be tied
         // to a test statically. Reserve every ID mentioned in such files so
         // next-id never hands one of them out again.
@@ -458,7 +504,7 @@ export function checkSources(sources: SourceInput[]): CheckResult {
         }
     }
 
-    return { violations, ids };
+    return { violations, ids, warnings };
 }
 
 // ─── Files ──────────────────────────────────────────────────────────────────
@@ -496,7 +542,10 @@ export function collect(root: string, config: CheckConfig = loadConfig(root)): C
         if (existsSync(full)) sources.push({ file: doc, content: readFileSync(full, 'utf8'), kind: 'doc' });
     }
 
-    return checkSources(sources);
+    const { standards, problems } = loadStandards(root);
+    const result = checkSources(sources, problems.length ? null : standards);
+    for (const problem of problems) result.violations.unshift({ file: STANDARDS_FILE, line: 1, rule: 'standards', message: problem });
+    return result;
 }
 
 /** Returns the next `count` free IDs in `category`. */
@@ -542,11 +591,12 @@ export function runCheck(argv: string[]): number {
     }
 
     if (argv.includes('--json')) {
-        console.log(JSON.stringify({ ok: violations.length === 0, violations, warnings }, null, 2));
+        console.log(JSON.stringify({ ok: violations.length === 0, violations, warnings, standardWarnings: collected.warnings }, null, 2));
         return violations.length ? 1 : 0;
     }
 
     for (const w of warnings) console.log(`⚠ ${w}`);
+    for (const v of collected.warnings) console.log(`⚠ ${v.file}:${v.line}  [${v.rule}]${v.test ? ` "${v.test}"` : ''}\n    ${v.message}`);
     if (violations.length === 0) {
         const inUse = new Set(ids.filter((e) => !e.reserved).map((e) => e.id)).size;
         console.log(`✓ Test conventions OK (${inUse} TestCaseIDs in use)`);
@@ -556,7 +606,10 @@ export function runCheck(argv: string[]): number {
         const name = v.test ? ` "${v.test}"` : '';
         console.log(`${v.file}:${v.line}  [${v.rule}]${name}\n    ${v.message}`);
     }
-    console.log(`\n✗ ${violations.length} test convention violation(s). See AGENTS.md → "Test Case ID Convention".`);
+    const own = violations.filter((v) => v.rule.startsWith('standard'));
+    const builtIn = violations.length - own.length;
+    const where = [builtIn ? 'AGENTS.md → "Test Case ID Convention"' : '', own.length ? `the linked pages for the standard:* rules (\`propmaster standards\` lists them)` : ''].filter(Boolean).join('; ');
+    console.log(`\n✗ ${violations.length} test convention violation(s). See ${where}.`);
     return 1;
 }
 

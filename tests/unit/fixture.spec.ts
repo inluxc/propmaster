@@ -469,7 +469,7 @@ test.describe('the fixture command and MCP tools', () => {
         const root = project();
         const npm = fakeNpm();
         const tools = Object.fromEntries(projectTools(root, npm.runner).map((t) => [t.name, t]));
-        expect(Object.keys(tools)).toEqual(['fixtures_list', 'fixture_add', 'fixture_remove', 'environments_list', 'environment_add', 'doctor']);
+        expect(Object.keys(tools)).toEqual(['fixtures_list', 'fixture_add', 'fixture_remove', 'environments_list', 'environment_add', 'standards', 'doctor']);
 
         const before = snapshot(root);
         const dry = (await tools.fixture_add.handler({ fixtures: ['redis'] })) as Record<string, unknown>;

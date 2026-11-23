@@ -99,6 +99,7 @@ export default defineConfig({
                 items: [
                     { text: 'Secrets Management', link: '/secrets' },
                     { text: 'Flaky tests & quarantine', link: '/flaky-tests' },
+                    { text: 'QA standards', link: '/qa-standards' },
                     { text: 'MCP server for agents', link: '/mcp-server' },
                 ],
             },
