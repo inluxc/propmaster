@@ -40,8 +40,8 @@ const SAME_EVERYWHERE = new Set(['type', 'driver', 'platform', 'region', 'create
 
 // ─── Project state ──────────────────────────────────────────────────────────
 
-/** The project's files as the plan sees them: what's on disk, plus the plan's own edits. */
-class Files {
+/** The project's files as a plan sees them: what's on disk, plus the plan's own edits. */
+export class Files {
     private readonly changed = new Map<string, string | null>();
 
     constructor(readonly root: string) {}
@@ -72,7 +72,8 @@ export function installedPackages(root: string): Set<string> {
     return new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {}), ...Object.keys(pkg.optionalDependencies ?? {})]);
 }
 
-function environmentNames(text: string | null): string[] {
+/** The environment names in environments.json text. */
+export function environmentNames(text: string | null): string[] {
     if (!text) return [];
     const envs = valueAt(text, ['environments']);
     return envs && typeof envs === 'object' && !Array.isArray(envs) ? Object.keys(envs) : [];
@@ -110,7 +111,8 @@ export function fixtureStates(root: string, files: Files = new Files(root)): Fix
 
 // ─── environments.json ──────────────────────────────────────────────────────
 
-function localEnvironment(names: string[]): string {
+/** The environment that gets local values: `local`, else the first. */
+export function localEnvironment(names: string[]): string {
     return names.includes('local') ? 'local' : names[0];
 }
 
@@ -612,13 +614,18 @@ export function applyPlan(root: string, plan: FixturePlan, options: ApplyOptions
     return result;
 }
 
+/** A title and plan lines as text: `+ config    environments.json: ...`. */
+export function formatPlanLines(title: string, lines: ReadonlyArray<{ sign: PlanLine['sign']; kind: string; text: string }>, color = false): string[] {
+    const s = styleFor({ isTTY: color }, color ? { FORCE_COLOR: '1' } : { NO_COLOR: '1' });
+    const paint = { '+': s.green, '-': s.red, '·': s.dim, '!': s.yellow } as const;
+    return [s.bold(title), ...lines.map((line) => `  ${paint[line.sign](line.sign)} ${line.kind.padEnd(9)} ${line.sign === '·' ? s.dim(line.text) : line.text}`)];
+}
+
 /** The plan as lines of text, for the terminal and the MCP tools. */
 export function formatFixturePlan(plan: FixturePlan, color = false): string[] {
     const s = styleFor({ isTTY: color }, color ? { FORCE_COLOR: '1' } : { NO_COLOR: '1' });
     const names = plan.fixtures.map(({ entry, variant }) => `${entry.id}${entry.variants.length > 1 ? ` (${variant.label})` : ''}`).join(', ');
-    const out = [s.bold(`${plan.command === 'add' ? 'Add' : 'Remove'} ${names}`)];
-    const paint = { '+': s.green, '-': s.red, '·': s.dim, '!': s.yellow } as const;
-    for (const line of plan.lines) out.push(`  ${paint[line.sign](line.sign)} ${line.kind.padEnd(9)} ${line.sign === '·' ? s.dim(line.text) : line.text}`);
+    const out = formatPlanLines(`${plan.command === 'add' ? 'Add' : 'Remove'} ${names}`, plan.lines, color);
     if (plan.blockers.length) {
         out.push('', s.red(`Can't remove ${plan.fixtures[0].entry.id}: these tests still use ${plan.fixtures[0].entry.fixtures.join(', ')}:`));
         for (const file of plan.blockers) out.push(`  ${file}`);

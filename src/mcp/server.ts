@@ -6,8 +6,9 @@
  *
  *   npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod] [--root <dir>]
  *
- * Read-only by default. Environments named prod/production/prd/live are
- * refused unless --allow-prod is passed, and never get write tools.
+ * Read-only by default. Environments named prod/production/prd/live, or
+ * marked "production": true in environments.json, are refused unless
+ * --allow-prod is passed, and never get write tools.
  */
 
 import { readFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ import { redactCredentials, truncate } from '../annotations/truncation.js';
 import { SecretsManager } from '../secrets/secrets-manager.js';
 import { createProvider } from '../secrets/providers/index.js';
 import { isProductionEnvironment } from './guards.js';
+import { markedProduction } from '../cli/env.js';
 import { McpServer, serveStdio, type ToolDefinition } from './protocol.js';
 import { Connections, createTools, type McpContext } from './tools.js';
 
@@ -45,7 +47,7 @@ export const MCP_HELP = `
     --allow-writes     Also offer write tools (db_execute, mongo_insert, redis_set,
                        kafka_produce, neo4j_write, ...). Never in production.
     --allow-prod       Allow a production environment (prod, production, prd,
-                       live), read-only
+                       live, or "production": true in environments.json), read-only
     --root <dir>       Project root (default: nearest package.json)
 `;
 
@@ -174,7 +176,7 @@ export async function createPropmasterMcpServer(
 ): Promise<CreatedServer> {
     const { config, error, secretsError } = await loadConfig(options.root, options.environment);
     const environment = config?.environment ?? options.environment ?? process.env.PW_ENVIRONMENT ?? 'local';
-    const production = isProductionEnvironment(environment);
+    const production = isProductionEnvironment(environment) || config?.production === true || markedProduction(options.root, environment);
 
     if (production && !options.allowProd) {
         throw new Error(`Refusing to start for environment "${environment}": it's a production environment. Pass --allow-prod to allow it (read-only).`);

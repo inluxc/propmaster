@@ -544,6 +544,13 @@ export interface SecretsConfig {
 export interface FrameworkConfig {
     /** Active environment name (local, dev, test, stg, prod). */
     environment: string;
+    /**
+     * Marks the environment as production (set by `propmaster env add --prod`).
+     * Names like prod, production, prd and live are production anyway. The MCP
+     * server refuses a production environment without --allow-prod and never
+     * offers it write tools.
+     */
+    production?: boolean;
     /** OpenAPI client fixture configuration. */
     openapi?: OpenApiFixtureConfig;
     /** Database fixture configuration. */

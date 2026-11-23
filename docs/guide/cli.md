@@ -58,6 +58,10 @@ Some fixtures come in variants, picked from a menu or after a colon: `database:p
 
 `propmaster fixture list` shows every fixture and which ones the project has (`--json` for scripts). Agents can do all of this through the [MCP server](../mcp-server#project-tools-always-on).
 
+## Adding environments
+
+`propmaster env add stg --from dev` adds an environment copied from another, with `CHANGE_ME` for you to fill in, no credentials, and a `.env.stg` listing its variables. `--prod` marks a production environment. `propmaster env list` shows them all. See [Adding an environment](./configuration#adding-an-environment).
+
 ## Interactive use
 
 Run `npx propmaster` with no command in a terminal and it offers the commands in a menu. Commands ask for what you leave out, with a menu wherever the answer is one of a fixed list:
@@ -84,7 +88,7 @@ Every answer can be given as an argument or flag, and then nothing is asked. Wit
 
 ## Banner and version
 
-Commands you run yourself (`init`, `fixture`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
+Commands you run yourself (`init`, `fixture`, `env`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
 
 ```bash
 npx propmaster --version        # or -v: prints just the version, e.g. 1.0.0

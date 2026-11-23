@@ -40,6 +40,21 @@ Keep non-secret settings for each environment in one file at the project root:
 
 Leave passwords and tokens out of this file. Use environment variables or a [secrets provider](../secrets).
 
+### Adding an environment
+
+`propmaster env add` makes a new environment from an existing one, so you start from the right shape:
+
+```bash
+npx propmaster env add                    # asks: the name, which environment to copy, production or not
+npx propmaster env add stg --from dev     # or say so
+npx propmaster env add eu-main --prod     # a production environment with any name
+npx propmaster env list                   # every environment, and what is still CHANGE_ME
+```
+
+It copies the block with its values replaced by `CHANGE_ME`. Settings that are the same everywhere stay, like a database `type`, and so do numbers and switches like ports and `ssl`. `--copy-values` keeps the rest too, and `--empty` starts from nothing. Credentials are never copied: passwords, tokens and keys come out empty. It also creates `.env.<name>` with every variable for those blocks commented out, ready to fill in, and adds the file to `.gitignore` when nothing there covers it.
+
+A production environment gets `"production": true`. Like the names `prod`, `production`, `prd` and `live`, the mark makes the [MCP server](../mcp-server#safety) refuse the environment without `--allow-prod` and never offer it write tools.
+
 ## `.env` files
 
 `.env.{environment}` files hold the same settings as `PW_*` variables, one per line. They are handy for local overrides you don't commit:
