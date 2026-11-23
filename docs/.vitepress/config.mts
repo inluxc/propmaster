@@ -49,6 +49,7 @@ export default defineConfig({
                 items: [
                     { text: 'Getting Started', link: '/guide/getting-started' },
                     { text: 'Configuration', link: '/guide/configuration' },
+                    { text: 'The CLI', link: '/guide/cli' },
                     { text: 'Project Layout', link: '/guide/project-layout' },
                     { text: 'Writing Tests', link: '/guide/writing-tests' },
                     { text: 'Generating API Tests', link: '/guide/generate-api-tests' },

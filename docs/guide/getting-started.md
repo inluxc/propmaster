@@ -56,6 +56,8 @@ npx propmaster init my-tests
 
 Run it in a project that already has Playwright tests and it adds only what's missing. It moves nothing and reports where your tests belong; `npx propmaster organize` then moves them. See [Project Layout](./project-layout).
 
+Run `npx propmaster` on its own to pick a command from a menu; see [The CLI](./cli).
+
 ## Your first test
 
 Import `test` and `expect` from Propmaster instead of `@playwright/test`. Then request fixtures by name:

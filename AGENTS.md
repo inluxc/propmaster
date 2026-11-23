@@ -16,6 +16,8 @@ npm run flaky                   # tests ranked by flake rate, from .propmaster/t
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 ```
 
+In a terminal, `propmaster` commands ask for missing answers with menus. You have no terminal, so always pass the arguments: a command that would ask stops with exit code 2 and names the flag to pass.
+
 `lint:tests` exits non-zero on any violation and runs in CI. Each violation names the rule (`tc-id`, `tc-tag`, `tc-unique`, `test-step`, `import`, `quarantine`) and the fix. It also warns (without failing) about `quarantine.json` entries older than their `maxAgeDays` and IDs no test has.
 
 ### Flaky tests and quarantine
@@ -115,7 +117,8 @@ src/
 │                               #   read-only SQL guard, production refusal, credential redaction
 ├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
-                                #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout
+                                #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout;
+                                #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here
