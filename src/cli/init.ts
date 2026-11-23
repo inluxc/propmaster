@@ -3,7 +3,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runCheck, runNextId } from './check-tests.js';
+import { KNOWN_CATEGORIES, collect, findProjectRoot, isCategory, nextIds, runCheck, runNextId } from './check-tests.js';
+import { packageVersion, printBanner } from './banner.js';
+import { NotInteractiveError, PromptCancelledError, isInteractive, select, text, type Choice } from './prompts.js';
+import { styleFor } from './style.js';
 import { runFlaky } from './flaky.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
@@ -12,6 +15,8 @@ import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
 export * from './check-tests.js';
 export * from './layout.js';
 export * from './organize.js';
+export * from './prompts.js';
+export { banner, logoLines, packageVersion, shouldShowBanner } from './banner.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Directory structure to scaffold
@@ -686,8 +691,14 @@ const HELP = `
       "docFiles": ["AGENTS.md", "SKILLS.md"]
     }
 
+  Run \`npx propmaster\` with no command in a terminal to pick one from a menu.
+  Commands ask for what you leave out, with menus where the answers are a
+  fixed list; every answer can also be given as a flag. With no terminal
+  (CI, pipes) a command never waits: it says which flag to pass.
+
   Options:
-    --help  Show this help message
+    --help          Show this help message
+    -v, --version   Print the version
 `;
 
 const PLAYWRIGHT_CONFIG = /^playwright\.config\.(?:c|m)?[jt]s$/;
@@ -859,29 +870,101 @@ export function runAuthSetup(argv: string[], cwd: string = process.cwd(), log: (
     return 0;
 }
 
-function main(): number {
-    const args = process.argv.slice(2);
-    const command = args[0];
+/** The commands offered when `propmaster` runs in a terminal with no command. */
+const COMMAND_MENU: Choice<string>[] = [
+    { value: 'init', label: 'init', hint: 'scaffold the test layout here' },
+    { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
+    { value: 'generate', label: 'generate openapi', hint: 'API tests from the OpenAPI spec', search: 'openapi' },
+    { value: 'auth-setup', label: 'auth-setup', hint: 'log roles in once for browser tests' },
+    { value: 'next-id', label: 'next-id', hint: 'the next free TestCaseID' },
+    { value: 'check', label: 'check', hint: 'check test conventions' },
+    { value: 'flaky', label: 'flaky', hint: 'rank tests by flake rate' },
+    { value: 'help', label: 'help', hint: 'every command and option' },
+];
 
-    if (command === 'check') return runCheck(args.slice(1));
-    if (command === 'next-id') return runNextId(args.slice(1));
-    if (command === 'flaky') return runFlaky(args.slice(1));
-    if (command === 'organize') return runOrganize(args.slice(1));
-    if (command === 'auth-setup') return runAuthSetup(args.slice(1));
+/** Commands that print the banner (when stdout is a terminal). */
+const BANNER_COMMANDS = new Set(['init', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+
+/** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
+export async function askCategory(root: string = findProjectRoot()): Promise<string> {
+    const { ids } = collect(root);
+    const inUse = [...new Set(ids.map((i) => i.id.split('-')[1]))];
+    const codes = [...KNOWN_CATEGORIES.map((c) => c.code), ...inUse.filter((c) => !KNOWN_CATEGORIES.some((k) => k.code === c)).sort()];
+    const describe = (code: string) => KNOWN_CATEGORIES.find((c) => c.code === code)?.description ?? 'in use here';
+    const choices: Choice<string>[] = codes.map((code) => ({ value: code, label: code, hint: `${describe(code)} · next ${nextIds(code, ids)[0]}`, search: describe(code) }));
+    choices.push({ value: '', label: 'Other…', hint: 'a code of your own' });
+    const picked = await select({ message: 'Category', choices, flag: '<CATEGORY>, e.g. `propmaster next-id API`' });
+    if (picked) return picked;
+    return text({
+        message: 'Category code',
+        placeholder: 'e.g. PAY',
+        flag: '<CATEGORY>',
+        validate: (v) => (isCategory(v.toUpperCase()) ? undefined : '2–6 capitals or digits, starting with a capital'),
+    }).then((v) => v.toUpperCase());
+}
+
+/** Runs the CLI with `argv` (without node and the script) and returns the exit code. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+    let [command, ...rest] = argv;
+
+    if (command === '-v' || command === '--version' || command === 'version') {
+        console.log(packageVersion());
+        return 0;
+    }
+    if (command === 'mcp') {
+        // Loaded on demand: the server pulls in every client factory. No banner: stdout is the protocol.
+        const { runMcp } = await import('../mcp/server.js');
+        return runMcp(rest);
+    }
+
+    if (command === undefined && isInteractive()) {
+        printBanner(argv);
+        command = await select({ message: 'What do you want to do?', choices: COMMAND_MENU, flag: 'a command (see --help)' });
+        if (command === 'generate') rest = ['openapi'];
+    } else if (BANNER_COMMANDS.has(command ?? 'help')) {
+        printBanner(argv);
+    }
+
+    if (command === 'check') return runCheck(rest);
+    if (command === 'next-id') {
+        const positional = rest.filter((a) => !a.startsWith('--'));
+        if (!positional.length && isInteractive()) return runNextId([await askCategory(), ...rest]);
+        return runNextId(rest);
+    }
+    if (command === 'flaky') return runFlaky(rest);
+    if (command === 'organize') return runOrganize(rest);
+    if (command === 'auth-setup') return runAuthSetup(rest);
+    if (command === 'generate') {
+        const { runGenerate } = await import('./generate.js');
+        return runGenerate(rest);
+    }
     if (command !== 'init') {
         console.log(HELP);
         return command === undefined || command === '--help' || command === 'help' ? 0 : 2;
     }
 
-    const targetDir = path.resolve(args[1] || '.');
+    const targetDir = path.resolve(rest[0] || '.');
     const isCurrentDir = targetDir === process.cwd();
-
-    console.log('');
-    console.log('  🎭 Propmaster — Initializing project...');
-    console.log(`  📁 Target: ${isCurrentDir ? '.' : path.relative(process.cwd(), targetDir)}`);
+    const s = styleFor();
+    console.log(`  ${s.bold('Initializing project')} in ${s.cyan(isCurrentDir ? '.' : path.relative(process.cwd(), targetDir))}`);
     console.log('');
     initProject(targetDir);
     return 0;
+}
+
+/** Runs `main` and turns prompt errors into exit codes: 2 with no terminal, 130 when cancelled. */
+export async function runCli(argv: string[] = process.argv.slice(2)): Promise<number> {
+    try {
+        return await main(argv);
+    } catch (error) {
+        if (error instanceof NotInteractiveError) {
+            console.error(`  ${styleFor(process.stderr).red('✖')} ${error.message}`);
+            return 2;
+        }
+        if (error instanceof PromptCancelledError) return 130; // the prompt already says "cancelled"
+
+        throw error;
+    }
 }
 
 // Run only when executed as the `propmaster` bin (or via tsx), not when the
@@ -896,16 +979,7 @@ function isEntryPoint(): boolean {
 }
 
 if (isEntryPoint()) {
-    if (process.argv[2] === 'generate') {
-        void import('./generate.js').then(({ runGenerate }) => runGenerate(process.argv.slice(3))).then((code) => {
-            process.exitCode = code;
-        });
-    } else if (process.argv[2] === 'mcp') {
-        // Loaded on demand: the server pulls in every client factory.
-        void import('../mcp/server.js').then(({ runMcp }) => runMcp(process.argv.slice(3))).then((code) => {
-            process.exitCode = code;
-        });
-    } else {
-        process.exitCode = main();
-    }
+    void runCli().then((code) => {
+        process.exitCode = code;
+    });
 }

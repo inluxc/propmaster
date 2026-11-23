@@ -98,6 +98,38 @@ export function findProjectRoot(start: string = process.cwd()): string {
 // ─── Source scanning ────────────────────────────────────────────────────────
 
 const CATEGORY = '[A-Z][A-Z0-9]{1,5}';
+
+/** The built-in TestCaseID categories, for the `next-id` menu. Projects can use any other code. */
+export const KNOWN_CATEGORIES: ReadonlyArray<{ code: string; description: string }> = [
+    { code: 'API', description: 'OpenAPI / REST' },
+    { code: 'GQL', description: 'GraphQL' },
+    { code: 'GRPC', description: 'gRPC' },
+    { code: 'RT', description: 'WebSocket / SSE' },
+    { code: 'DB', description: 'SQL databases' },
+    { code: 'MDB', description: 'MongoDB' },
+    { code: 'NEO', description: 'Neo4j' },
+    { code: 'CAS', description: 'Cassandra / ScyllaDB' },
+    { code: 'RDS', description: 'Redis' },
+    { code: 'KFK', description: 'Kafka' },
+    { code: 'AMQ', description: 'RabbitMQ / AMQP' },
+    { code: 'AWS', description: 'S3, SQS, SNS' },
+    { code: 'DDB', description: 'DynamoDB' },
+    { code: 'SRCH', description: 'Elasticsearch / OpenSearch' },
+    { code: 'BRW', description: 'Browser' },
+    { code: 'APM', description: 'Appium' },
+    { code: 'GDS', description: 'GADS device farm' },
+    { code: 'OTP', description: 'One-time passwords' },
+    { code: 'EML', description: 'Email / inbox' },
+    { code: 'MCK', description: 'Mock server' },
+    { code: 'AUTH', description: 'Auth tokens and roles' },
+    { code: 'INT', description: 'Cross-system integration' },
+    { code: 'PROP', description: 'Property tests' },
+];
+
+/** Whether `code` is a valid TestCaseID category (2–6 capitals or digits, starting with a capital). */
+export function isCategory(code: string): boolean {
+    return CATEGORY_RE.test(code);
+}
 const ID_RE = new RegExp(`^\\[(TC-(${CATEGORY})-(\\d{3,}))\\]`);
 const PLACEHOLDER_ID_RE = new RegExp(`^\\[(TC-(${CATEGORY}|XXX)-(N{3,}))\\]`);
 const ANY_ID_RE = new RegExp(`TC-(${CATEGORY})-(\\d{3,})`, 'g');
