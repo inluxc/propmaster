@@ -467,6 +467,21 @@ export class ConfigLoader {
                 if (!cfg.redis) cfg.redis = { host: '', port: 6379 };
                 cfg.redis.keyPrefix = val;
             },
+            'PW_OTP_SECRET': (cfg, val) => {
+                cfg.otp = { ...cfg.otp, secret: val };
+            },
+            'PW_OTP_DIGITS': (cfg, val) => {
+                cfg.otp = { ...cfg.otp, digits: parseInt(val, 10) };
+            },
+            'PW_OTP_PERIOD': (cfg, val) => {
+                cfg.otp = { ...cfg.otp, period: parseInt(val, 10) };
+            },
+            'PW_OTP_ALGORITHM': (cfg, val) => {
+                cfg.otp = { ...cfg.otp, algorithm: val.toLowerCase() as 'sha1' | 'sha256' | 'sha512' };
+            },
+            'PW_OTP_ISSUER': (cfg, val) => {
+                cfg.otp = { ...cfg.otp, issuer: val };
+            },
             'PW_MONGODB_URI': (cfg, val) => {
                 if (!cfg.mongodb) cfg.mongodb = { database: '' };
                 cfg.mongodb.uri = val;

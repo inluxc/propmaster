@@ -66,8 +66,8 @@ blob-report/
                 "host": "localhost",
                 "port": 5432,
                 "database": "testdb",
-                "username": "test",
-                "password": "test"
+                "username": "testuser",
+                "password": "testpass"
             },
             "kafka": {
                 "brokers": ["localhost:9092"]
@@ -196,7 +196,7 @@ npx propmaster generate openapi --dry-run   # API test skeletons from the spec, 
 
 ## Propmaster MCP server
 
-\`.mcp.json\` connects the \`propmaster\` MCP server (\`npx propmaster mcp\`, read-only). Use it to see the real backends instead of guessing: \`openapi_operations\` for operation IDs and parameters, \`db_query\` / \`mongo_find\` / \`redis_get\` / \`kafka_peek\` / \`neo4j_read\` for what's actually stored, \`next_test_id\` for new IDs and \`check_tests\` after changing tests. Tests still create their data through the fixtures, never through MCP write tools.
+\`.mcp.json\` connects the \`propmaster\` MCP server (\`npx propmaster mcp\`, backends read-only). Use it to see the real backends instead of guessing: \`openapi_operations\` for operation IDs and parameters, \`db_query\` / \`mongo_find\` / \`redis_get\` / \`kafka_peek\` / \`neo4j_read\` for what's actually stored, \`next_test_id\` for new IDs and \`check_tests\` after changing tests. When a test needs a backend the project doesn't have yet, \`fixture_add\` sets it up (it returns the plan; call it again with \`apply: true\`). Tests still create their data through the fixtures, never through MCP write tools.
 
 ## Structure
 
@@ -231,7 +231,7 @@ import { test, expect } from '@inluxc/propmaster';
 
 **Never** value-import \`test\`/\`expect\` from \`@playwright/test\` in a test file. Type-only imports (\`import type { Page } from '@playwright/test'\`) are fine.
 
-Each fixture's driver is an optional dependency. If a test fails with \`MissingPackageError\`, run the install command it prints (e.g. \`npm install --save-dev kafkajs\`) and add the package to \`devDependencies\`; don't work around it.
+Each fixture's driver is an optional dependency. To use a new one, run \`npx propmaster fixture add <name>\` (e.g. \`kafka\`): it installs the driver and adds its config, variables, local service and a starter test. If a test fails with \`MissingPackageError\`, run the install command it prints (e.g. \`npm install --save-dev kafkajs\`); don't work around it.
 
 ### Test Structure
 
@@ -639,6 +639,7 @@ const HELP = `
 
   Usage:
     npx propmaster init [directory]
+    npx propmaster fixture [list|add|remove] [fixture[:variant]...] [--dry-run]
     npx propmaster organize [--apply] [--force] [--json] [--root <dir>]
     npx propmaster auth-setup [role...]
     npx propmaster check [--json] [--list-ids] [--root <dir>]
@@ -653,6 +654,10 @@ const HELP = `
               tests/support. In a project that already has Playwright tests
               it adds only what's missing, moves and overwrites nothing, and
               reports where the existing tests belong.
+    fixture   Add a fixture to the project, or remove one: installs its driver,
+              adds its config to every environment, its PW_* variables to
+              .env.example, a compose.test.yaml service and a starter test.
+              \`propmaster fixture --help\` for details.
     organize  Sort existing Playwright tests into those folders by the
               fixtures they use. Dry run by default; --apply moves the files
               (git mv when tracked) and updates relative imports. Files it
@@ -768,9 +773,9 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
     } else {
         log('  Next steps:');
         log('    1. npm install');
-        log('    2. Install the driver for each fixture you use, e.g.:');
-        log('         npm install --save-dev openapi-client-axios pg');
-        for (const line of driverTable()) log(`         ${line}`);
+        log('    2. Set up the fixtures you use: driver, config, local service, starter test');
+        log('         npx propmaster fixture add            (pick from a menu)');
+        log('         npx propmaster fixture add openapi database redis');
         log('    3. npx playwright install');
         log('    4. Update environments.json with your service URLs');
         log('    5. Get a TestCaseID: npm run next-id -- API');
@@ -873,6 +878,7 @@ export function runAuthSetup(argv: string[], cwd: string = process.cwd(), log: (
 /** The commands offered when `propmaster` runs in a terminal with no command. */
 const COMMAND_MENU: Choice<string>[] = [
     { value: 'init', label: 'init', hint: 'scaffold the test layout here' },
+    { value: 'fixture', label: 'fixture', hint: 'add or remove a fixture (driver, config, service, starter test)' },
     { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
     { value: 'generate', label: 'generate openapi', hint: 'API tests from the OpenAPI spec', search: 'openapi' },
     { value: 'auth-setup', label: 'auth-setup', hint: 'log roles in once for browser tests' },
@@ -883,7 +889,7 @@ const COMMAND_MENU: Choice<string>[] = [
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'fixture', 'organize', 'auth-setup', 'generate', 'flaky', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -932,6 +938,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return runNextId(rest);
     }
     if (command === 'flaky') return runFlaky(rest);
+    if (command === 'fixture') {
+        const { runFixture } = await import('./fixture.js');
+        return runFixture(rest);
+    }
     if (command === 'organize') return runOrganize(rest);
     if (command === 'auth-setup') return runAuthSetup(rest);
     if (command === 'generate') {

@@ -13,7 +13,14 @@ Propmaster extends [Playwright Test](https://playwright.dev/) with fixtures for 
 npm install --save-dev @playwright/test @inluxc/propmaster
 ```
 
-Propmaster itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use:
+Propmaster itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use. The quickest way is to let Propmaster set the fixture up: driver, config, variables, a local service and a starter test ([more](./cli#adding-and-removing-fixtures)):
+
+```bash
+npx propmaster fixture add          # pick from a menu
+npx propmaster fixture add database redis
+```
+
+Or install the drivers yourself:
 
 | Fixture | Install |
 |---|---|

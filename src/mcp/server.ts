@@ -207,7 +207,7 @@ export async function createPropmasterMcpServer(
         },
     });
 
-    log(`propmaster-mcp: environment "${environment}", ${allowWrites ? 'writes enabled' : 'read-only'}, ${server.toolNames.length} tools${error ? ` (config not loaded: ${redact(error)})` : ''}`);
+    log(`propmaster-mcp: environment "${environment}", ${allowWrites ? 'backend writes enabled' : 'backends read-only'}, ${server.toolNames.length} tools${error ? ` (config not loaded: ${redact(error)})` : ''}`);
     return { server, context, close: () => connections.closeAll() };
 }
 
