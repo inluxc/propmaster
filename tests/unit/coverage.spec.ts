@@ -11,7 +11,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { analyzeTestFile, anyStatusesOf, anyTouchesOf, constantsOf, findTestFiles, kindFromPath, statusesOf, touchesOf } from '../../src/coverage/inventory';
 import { findOtherTests, languageOf } from '../../src/coverage/languages';
-import { findCoverageReports, formatOf, layerOfReport, parseClover, parseCobertura, parseCoveragePy, parseGoProfile, parseIstanbulSummary, parseJacoco, parseLcov, parseOpenCover, parseSimpleCov, readCoverageReport } from '../../src/coverage/code-coverage';
+import { findCoverageReports, formatOf, isGenerated, layerOfReport, parseClover, parseCobertura, parseCoveragePy, parseGoProfile, parseIstanbulSummary, parseJacoco, parseLcov, parseOpenCover, parseSimpleCov, readCoverageReport } from '../../src/coverage/code-coverage';
 import { coverageReport, formatCoverageReport, pathMatcher } from '../../src/coverage/report';
 import { runCoverage } from '../../src/cli/coverage';
 import { testTools } from '../../src/mcp/test-tools';
@@ -453,6 +453,71 @@ test.describe('coverage — tests in any language', () => {
         expect(anyStatusesOf('expect(response).to have_http_status(:not_found)\n.expect(201)\nlet total = 300')).toEqual([201, 404]);
     });
 
+    test('what real projects do: long [InlineData] lists, .NET HttpClient calls, harnesses and backend names decide the layer', () => {
+        const cs = `public class LogRedactionTests {
+    [Theory]
+    [InlineData(new[] { 2.1, 9.8 }, false, 16.3)]
+    [InlineData(
+        "homeassistant/sensor/x]/config",
+        "redacted")]
+    // a comment between the attributes and the method
+    [InlineData("a", "b")]
+    [InlineData("c", "d")]
+    [InlineData("e", "f")]
+    [InlineData("g", "h")]
+    [InlineData("i", "j")]
+    [InlineData("k", "l")]
+    public void Redacts(string input, string expected) {}
+
+    [Fact]
+    public async Task<int> Logs_In()
+    {
+        var login = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { username = "u" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        var vehicles = await client.GetFromJsonAsync<List<JsonElement>>($"/api/vehicles/{Vin}/status", ct);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
+        return 1;
+    }
+}`;
+        const tests = analyzeTestFile(cs, 'src/Shop.Tests/LogRedactionTests.cs');
+        expect(tests.map((t) => t.title)).toEqual(['Redacts', 'Logs_In']);
+        expect(tests[1].touches).toEqual([
+            { kind: 'http', name: 'POST /api/auth/login' },
+            { kind: 'http', name: 'GET /api/vehicles/{Vin}/status' },
+            { kind: 'http', name: 'POST /api/auth/logout' },
+        ]);
+        expect(tests[1].statuses).toEqual([200]);
+
+        const layer = (file: string, src: string) => analyzeTestFile(src, file).map((t) => t.layer);
+        const fact = (using: string) => `${using}\npublic class T { [Fact] public void A() {} }`;
+        expect(layer('src/Shop.Tests/AuthFlowTests.cs', fact('await using var factory = new WebApplicationFactory<Program>();'))).toEqual(['integration']);
+        expect(layer('src/Shop.Tests/Postgres/OrderRepositoryTests.cs', fact(''))).toEqual(['integration']);
+        expect(layer('src/Shop.Tests/OrderRepositoryPostgresTests.cs', fact(''))).toEqual(['integration']);
+        expect(layer('src/Shop.Tests/CheckoutTests.cs', fact('using Microsoft.Playwright;'))).toEqual(['e2e']);
+        expect(layer('src/Shop.Tests/PostingRulesTests.cs', fact(''))).toEqual(['unit']);
+        expect(layer('src/test/java/shop/OrderRepoTest.java', 'import org.testcontainers.containers.PostgreSQLContainer;\nclass OrderRepoTest {\n    @Test\n    void stores() {}\n}')).toEqual(['integration']);
+        expect(layer('tests/test_checkout.py', 'from playwright.sync_api import Page\n\ndef test_checkout(page):\n    pass\n')).toEqual(['e2e']);
+        // Vitest with Testcontainers is integration too
+        expect(layer('src/orders.test.ts', "import { PostgreSqlContainer } from '@testcontainers/postgresql';\nit('stores', () => {});")).toEqual(['integration']);
+    });
+
+    test('a spec without operationIds: gaps name operations by method and path', async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-coverage-noid-'));
+        try {
+            const spec = { openapi: '3.0.3', info: { title: 'x', version: '1' }, paths: { '/api/orders': { get: { responses: { 200: { description: 'ok' }, 401: { description: 'no' } } }, post: { responses: { 201: { description: 'ok' } } } } } };
+            fs.writeFileSync(path.join(dir, 'openapi.json'), JSON.stringify(spec));
+            fs.writeFileSync(path.join(dir, 'test_orders.py'), 'def test_lists(client):\n    res = client.get("/api/orders")\n    assert res.status_code == 200\n');
+            const r = await coverageReport({ root: dir, spec: 'openapi.json' });
+            const gaps = Object.fromEntries(r.gaps.map((g) => [g.kind, g.items]));
+            expect(gaps['operation-untested']).toEqual(['POST /api/orders']);
+            expect(gaps['error-paths-untested']).toEqual(['GET /api/orders — documented 401']);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test('a call matches an operation by method and path template, with any base path', () => {
         const get = pathMatcher({ method: 'get', path: '/orders/{id}' });
         expect(get('GET /orders/42')).toBe('exact');
@@ -488,6 +553,23 @@ test.describe('coverage — tests in any language', () => {
 });
 
 test.describe('coverage — reports from other languages', () => {
+    test('generated and vendored code stays out of the least-covered list, not out of the totals', () => {
+        for (const f of ['api/gen/telemetry.pb.go', 'app/node_modules/flatted/golang/flatted.go', 'svc/orders_pb2.py', 'Api/Migrations/2024_Init.cs', 'Api/Order.g.cs', 'pkg/kind_string.go', 'src/types.d.ts']) {
+            expect(isGenerated(f), f).toBe(true);
+        }
+        for (const f of ['pkg/web/dashboard.go', 'src/orders.py', 'Api/OrderService.cs', 'src/generator.ts']) expect(isGenerated(f), f).toBe(false);
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'propmaster-coverage-go-'));
+        try {
+            fs.writeFileSync(path.join(dir, 'coverage.out'), 'mode: set\nshop/a.pb.go:1.1,2.2 50 0\nshop/web.go:1.1,2.2 4 1\nshop/web.go:3.1,4.2 6 0\n');
+            const r = readCoverageReport(dir, 'coverage.out');
+            expect('error' in r ? r : { lines: r.lines, lowest: r.lowest.map((f) => f.file) }).toEqual({ lines: { covered: 4, total: 60, pct: 6.7 }, lowest: ['shop/web.go'] });
+            // A report outside the project keeps its full path
+            expect(readCoverageReport(path.join(dir, 'sub'), path.join(dir, 'coverage.out'))).toMatchObject({ path: path.join(dir, 'coverage.out') });
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test('Go cover profile: statements, a block counted once across test binaries', () => {
         const go = parseGoProfile('mode: atomic\nshop/a.go:1.1,3.2 2 1\nshop/a.go:4.1,6.2 3 0\nshop/a.go:4.1,6.2 3 5\nshop/b.go:1.1,2.2 5 0\n');
         expect(go.measure).toBe('statements');
@@ -503,7 +585,18 @@ test.describe('coverage — reports from other languages', () => {
             <class name="Order"><metrics statements="99"/></class>
             <line num="3" type="method" count="1"/><line num="4" type="stmt" count="1"/><line num="5" type="stmt" count="0"/>
             <metrics loc="10" statements="2" coveredstatements="1"/></file></project></coverage>`);
-        expect(clover).toMatchObject({ lines: { covered: 1, total: 2 }, functions: { covered: 1, total: 1 } });
+        // The file's own metrics; the class's (statements="99") are PHPUnit's per-class counts
+        expect(clover).toMatchObject({ lines: { covered: 1, total: 2 } });
+        // Istanbul: one <line> per source line, exact counts only in the metrics
+        const istanbul = parseClover(`<coverage generated="1" clover="3.2.0"><project><file name="a.ts" path="/app/a.ts">
+            <metrics statements="10" coveredstatements="7" conditionals="4" coveredconditionals="3" methods="2" coveredmethods="1"/>
+            <line num="1" count="1" type="stmt"/></file></project></coverage>`);
+        expect(istanbul).toMatchObject({ lines: { covered: 7, total: 10 }, branches: { pct: 75 }, functions: { pct: 50 } });
+        // No metrics: the stmt and method lines
+        expect(parseClover('<coverage><project><file path="b.php"><line type="method" count="1"/><line type="stmt" count="1"/><line type="stmt" count="0"/></file></project></coverage>')).toMatchObject({
+            lines: { covered: 1, total: 2 },
+            functions: { covered: 1, total: 1 },
+        });
 
         const opencover = parseOpenCover(`<CoverageSession><Summary numSequencePoints="4" visitedSequencePoints="3" numBranchPoints="2" visitedBranchPoints="1"/>
             <Modules><Module><Files><File uid="1" fullPath="C:\\src\\Order.cs"/></Files>

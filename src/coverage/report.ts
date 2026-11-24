@@ -142,6 +142,9 @@ const pct = (n: number, d: number) => (d ? Math.round((n / d) * 1000) / 10 : nul
 const testKey = (t: Pick<InventoryTest, 'id' | 'file' | 'title'>) => t.id ?? `${t.file} › ${t.title}`;
 const label = (t: InventoryTest) => (t.id ? `${t.id} ${t.title.replace(/^\[[^\]]+\]\s*/, '')}` : `${t.file}:${t.line} ${t.title}`);
 
+/** An operation by its operationId, else by method and path (specs without operationIds). */
+const opLabel = (o: Pick<OperationCoverage, 'operationId' | 'method' | 'path'>) => o.operationId ?? `${o.method} ${o.path}`;
+
 function cap<T>(items: T[], limit: number): T[] {
     return items.slice(0, limit);
 }
@@ -394,7 +397,7 @@ export async function coverageReport(options: CoverageOptions): Promise<Coverage
                 kind: 'operation-untested',
                 layer: 'integration',
                 message: `${api.operations - api.tested} of ${api.operations} API operations have no test.`,
-                items: withMore(api.untested.map((o) => `${o.operationId ?? '(no operationId)'} ${o.method} ${o.path}`), limit),
+                items: withMore(api.untested.map((o) => (o.operationId ? `${o.operationId} ${o.method} ${o.path}` : `${o.method} ${o.path}`)), limit),
             });
         }
         const noErrors = api.partial.filter((o) => o.missing.some((s) => /^[45]/.test(s)) && !o.asserted.some((s) => /^[45]/.test(s)));
@@ -403,7 +406,7 @@ export async function coverageReport(options: CoverageOptions): Promise<Coverage
                 kind: 'error-paths-untested',
                 layer: 'integration',
                 message: `${noErrors.length} tested operation(s) assert no error status (4xx/5xx), though the spec documents some.`,
-                items: withMore(noErrors.map((o) => `${o.operationId} — documented ${o.missing.filter((s) => /^[45]/.test(s)).join(', ')}`), limit),
+                items: withMore(noErrors.map((o) => `${opLabel(o)} — documented ${o.missing.filter((s) => /^[45]/.test(s)).join(', ')}`), limit),
             });
         }
         const otherMissing = api.partial.filter((o) => !noErrors.includes(o));
@@ -412,7 +415,7 @@ export async function coverageReport(options: CoverageOptions): Promise<Coverage
                 kind: 'status-untested',
                 layer: 'integration',
                 message: `${otherMissing.length} tested operation(s) have documented status codes no test asserts.`,
-                items: withMore(otherMissing.map((o) => `${o.operationId} — ${o.missing.join(', ')}`), limit),
+                items: withMore(otherMissing.map((o) => `${opLabel(o)} — ${o.missing.join(', ')}`), limit),
             });
         }
     }

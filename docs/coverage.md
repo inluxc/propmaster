@@ -74,7 +74,13 @@ The application's own tests are found and counted wherever they are in the proje
 | Swift | `*Test.swift`, `*Tests.swift` | `func test...`, `@Test` |
 | Elixir | `*_test.exs` | `test "..."` |
 
-They're unit tests unless something says otherwise: a folder (`integration/`, `it/`, `functional/`, `e2e/`, `acceptance/`), the language's convention (Maven and Gradle `*IT`, Rust's `tests/` folder, a Go `//go:build integration` tag), or a marker on the test (`@pytest.mark.integration`, `@Tag("integration")`, `[Trait("Category", "Integration")]`). Skip markers (`@pytest.mark.skip`, `@Disabled`, `[Fact(Skip = ...)]`, `#[ignore]`, `xit`, `@tag :skip`) mark the test as not active. Each layer lists its tests per language.
+They're unit tests unless something says otherwise:
+
+- **A folder:** `integration/`, `it/`, `functional/`, `e2e/`, `acceptance/`.
+- **The language's convention:** Maven and Gradle `*IT`, Rust's `tests/` folder, a Go `//go:build integration` tag.
+- **A harness the file uses:** Testcontainers, `WebApplicationFactory`, `@SpringBootTest`, `@DataJpaTest`, `@QuarkusTest`, Rails request specs or `ActionDispatch::IntegrationTest` and Django's `LiveServerTestCase` make it integration. Playwright, Selenium, Capybara, XCUITest, Espresso and chromedp make it e2e.
+- **A real backend in its folder or name:** `Postgres/`, `OrderRepositoryPostgresTests`, `redis_cache_test.go`. The same goes for MySQL, SQL Server, Redis, Kafka, RabbitMQ, MongoDB, DynamoDB, LocalStack, Elasticsearch, OpenSearch, Cassandra and Neo4j.
+- **A marker on the test:** `@pytest.mark.integration`, `@Tag("integration")`, `[Trait("Category", "Integration")]`. Skip markers (`@pytest.mark.skip`, `@Disabled`, `[Fact(Skip = ...)]`, `#[ignore]`, `xit`, `@tag :skip`) mark the test as not active. Each layer lists its tests per language.
 
 ## What a test touches
 
@@ -83,7 +89,7 @@ Read from each test's body:
 | Kind | From |
 |---|---|
 | `operation` | Calls to an `operationId` (any `.listOrders(` when there's a spec, else calls on `client`), `checkResponse(res, 'id')` |
-| `http` | `request.get('/path')`, `authRequest.post(...)`; in any language: `client.get("/orders")` (pytest, supertest, Laravel), `get("/orders")` (MockMvc, Rails), `GetAsync("/orders")` (.NET), `http.NewRequest("GET", "/orders", ...)` (Go) |
+| `http` | `request.get('/path')`, `authRequest.post(...)`; in any language: `client.get("/orders")` (pytest, supertest, Laravel), `get("/orders")` (MockMvc, Rails), `GetAsync("/orders")`, `PostAsJsonAsync($"/orders/{id}", ...)`, `GetFromJsonAsync<T>(...)` and `new HttpRequestMessage(HttpMethod.Post, "/orders")` (.NET), `http.NewRequest("GET", "/orders", ...)` (Go). URLs kept in a variable (`client.GetAsync(ordersUrl)`) aren't followed |
 | `graphql`, `grpc` | `query GetUser {`, `'orders.v1.Orders/Get'` |
 | `table` | Table names in SQL statements sent through `databaseClient` / `cassandraClient` (in any string literal, for other languages), and `insert('table', ...)`; DynamoDB tables |
 | `collection`, `label` | MongoDB collections, Neo4j labels in Cypher |
@@ -116,7 +122,7 @@ Reports the project's own tools already write are read as they are, whatever the
 | coverage.py JSON | `coverage.json` | `coverage json` |
 | SimpleCov | `.resultset.json` | SimpleCov (Ruby) |
 
-Go, coverage.py, Clover and OpenCover count statements rather than lines; the report says which (`measure`). When one run writes several formats into one folder (Jest's `lcov.info`, `clover.xml` and `coverage-summary.json`), only one is read. A file with a generic name (`coverage.out`, `coverage.json`) that isn't a coverage report is left out.
+Go, coverage.py, Clover and OpenCover count statements rather than lines; the report says which (`measure`). Istanbul's `clover.xml` fills its "statements" field with its line counts, so it matches the LCOV next to it. The least-covered list leaves out generated and vendored code (`*.pb.go`, `*_pb2.py`, `*.g.cs`, `Migrations/`, `node_modules/`, `vendor/`, ...), which still counts in the totals. When one run writes several formats into one folder (Jest's `lcov.info`, `clover.xml` and `coverage-summary.json`), only one is read. A file with a generic name (`coverage.out`, `coverage.json`) that isn't a coverage report is left out.
 
 They're found anywhere in the project, six folders down at most, or named with `--report` (repeatable). The layer comes from the path: `coverage/e2e/lcov.info` is e2e, `build/integration/...` integration, anything else unit. Reports under 60% get a gap with their least-covered files; reports older than 30 days are flagged as stale.
 
