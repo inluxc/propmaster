@@ -26,6 +26,7 @@ import { initProject } from '../../src/cli/init';
 import { planSetup, clientById } from '../../src/cli/mcp-setup';
 import { MissingPackageError } from '../../src/errors';
 import PropmasterReporter from '../../src/reporter/index';
+import { confluentOnBunError } from '../../src/fixtures/kafka-driver';
 
 let root: string;
 test.beforeEach(() => {
@@ -237,5 +238,31 @@ test.describe('package manager — installed packages', () => {
         expect(installedPackageDir(path.join(root, 'a/b'), '@scope/pkg')).toBe(path.join(root, 'node_modules/@scope/pkg'));
         // Not installed anywhere above: undefined, even where Bun's auto-install would resolve it from its cache.
         expect(installedPackageDir(path.join(root, 'a/b'), 'surely-not-installed-xyz')).toBeUndefined();
+    });
+});
+
+test.describe('package manager — Confluent\'s Kafka client on Bun', () => {
+    test('the ABI mismatch becomes an error that says what to do; other errors and Node.js are left alone', () => {
+        const abi = new Error("The module 'kafka' was compiled against a different Node.js ABI version using NODE_MODULE_VERSION 137. This version of Bun requires NODE_MODULE_VERSION 147.");
+        const error = confluentOnBunError(abi, '1.4.5')!;
+        expect(error.message).toBe("Confluent's Kafka client doesn't load on Bun 1.4.5: its native binding is built for Node.js, and Confluent publishes none for Bun. Use the kafkajs driver (driver: 'kafkajs', the default), or run these tests on Node.js (`bunx playwright test`, without --bun).");
+        expect(error.cause).toBe(abi);
+        expect(confluentOnBunError(abi, null)).toBeUndefined(); // on Node.js
+        expect(confluentOnBunError(new Error('Could not locate the bindings file'), '1.4.5')).toBeUndefined();
+    });
+
+    test('doctor warns when the tests run on Bun with the Confluent driver', async () => {
+        write({
+            'package.json': JSON.stringify({ name: 's', scripts: { test: 'bunx --bun playwright test' } }, null, 2),
+            'bun.lock': '{}',
+            'environments.json': JSON.stringify({ environments: { local: { kafka: { brokers: ['localhost:9092'], driver: 'confluent' } } } }),
+            'playwright.config.ts': "export default { reporter: [['@inluxc/propmaster/reporter']] };\n",
+            'tsconfig.json': '{}',
+        });
+        const findings = (await diagnose(root, { env: {}, skipMcp: true, offline: true, nodeVersion: '24.12.0', bunVersion: '1.4.5' })).findings;
+        expect(findings.find((f) => /Confluent/.test(f.message))).toMatchObject({ status: 'warn', message: expect.stringContaining('package.json:4 runs the tests with --bun') });
+        write({ 'environments.json': JSON.stringify({ environments: { local: { kafka: { brokers: ['localhost:9092'] } } } }) });
+        const kafkajs = (await diagnose(root, { env: {}, skipMcp: true, offline: true, nodeVersion: '24.12.0', bunVersion: '1.4.5' })).findings;
+        expect(kafkajs.filter((f) => /Confluent/.test(f.message))).toEqual([]);
     });
 });

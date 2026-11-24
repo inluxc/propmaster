@@ -40,7 +40,7 @@ CI runs every suite on Bun 1.4.5, installed with `bun install` and run with `bun
 | Elasticsearch, OpenSearch | ✅ |
 | gRPC, WebSocket and SSE | ✅ |
 | Mock server (WireMock), inbox (Mailpit), OTP | ✅ |
-| Kafka with Confluent's client (`PW_KAFKA_DRIVER=confluent`) | See [below](#confluent-s-kafka-client) |
+| Kafka with Confluent's client (`PW_KAFKA_DRIVER=confluent`) | ❌ On Node.js only, see [below](#confluent-s-kafka-client) |
 
 On Propmaster's own unit tests, Bun 1.4.5 takes about as long as Node.js (17 s against 18 s). Error messages from the fixtures are the same on both runtimes: a refused connection is `fetch failed: ECONNREFUSED (...)` on either.
 
@@ -62,7 +62,9 @@ The module 'kafka' was compiled against a different Node.js ABI version using NO
 This version of Bun requires NODE_MODULE_VERSION 147.
 ```
 
-To use Kafka on Bun, use the default driver, kafkajs, which needs no native code. To keep Confluent's client, run the Kafka tests on Node.js (`bunx playwright test`, without `--bun`). `propmaster doctor` warns when the tests run on Bun with the Confluent driver.
+Building the binding from source for Bun doesn't work either: we tried with Bun 1.4.5, and librdkafka's build fails after several minutes.
+
+So on Bun, use the default driver, kafkajs. It needs no native code, and its tests pass on Bun. To keep Confluent's client, run the Kafka tests on Node.js (`bunx playwright test`, without `--bun`). When the Confluent driver is loaded on Bun, the fixture says this instead of the ABI error, and `propmaster doctor` warns when the tests run with `--bun` and the Kafka driver is Confluent's.
 
 Bun also runs the install scripts only of packages it trusts. If Confluent's binding is missing, `doctor` finds it, and its fix (also applied by `--fix`) is `bun pm trust @confluentinc/kafka-javascript`.
 

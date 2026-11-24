@@ -360,6 +360,15 @@ function checkPlaywright(ctx: Context): Finding[] {
                 ? { check: 'playwright', status: 'warn', message: problem, fix: { text: bun ? 'bun upgrade, or drop --bun to run on Node.js' : 'install Bun (https://bun.sh), or drop --bun', safe: false } }
                 : ok('playwright', `tests run on Bun ${bun}${playwright ? ` with Playwright ${playwright}` : ''} (${where})`),
         );
+        const kafkaDriver = ((ctx.config as { kafka?: { driver?: string } } | undefined)?.kafka?.driver ?? (ctx.options.env ?? process.env).PW_KAFKA_DRIVER);
+        if (kafkaDriver === 'confluent') {
+            findings.push({
+                check: 'playwright',
+                status: 'warn',
+                message: `the Kafka driver is Confluent's client, which doesn't load on Bun (its native binding is built for Node.js), and ${where} run${onBun.length > 1 ? '' : 's'} the tests with --bun.`,
+                fix: { text: "use the kafkajs driver (driver: 'kafkajs'), or run the Kafka tests without --bun (on Node.js)", safe: false },
+            });
+        }
     }
     if (!/propmaster\/reporter|src\/reporter/.test(text)) {
         findings.push({
