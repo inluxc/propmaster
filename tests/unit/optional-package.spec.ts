@@ -4,6 +4,7 @@
  * driver anywhere in src/, and package.json in sync with FIXTURE_PACKAGES.
  */
 
+import { packageCommand, packageManager } from '../../src/package-manager';
 import { test, expect } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -48,7 +49,7 @@ test.describe('optional packages — loadOptional', () => {
         if (!(err instanceof MissingPackageError)) return;
         expect(err.fixtureName).toBe('fakeClient');
         expect(err.packageName).toBe('propmaster-no-such-driver');
-        expect(err.installCommand).toBe('npm install --save-dev propmaster-no-such-driver peer-pkg');
+        expect(err.installCommand).toBe(packageCommand(packageManager(process.cwd()), 'install', ['propmaster-no-such-driver', 'peer-pkg']).join(' '));
         expect(err.message).toContain('The "fakeClient" fixture needs the "propmaster-no-such-driver" package');
         expect(err.cause).toBeDefined();
     });

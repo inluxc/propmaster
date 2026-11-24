@@ -31,7 +31,7 @@ import {
 } from './fixture.js';
 import { gitIgnores, isProduction } from './env.js';
 import { valueAt } from './json-edit.js';
-import { adaptCommands, execCommand, rebuildCommand } from '../package-manager.js';
+import { adaptCommands, bunRuntimeProblem, execCommand, installedPackageDir, rebuildCommand } from '../package-manager.js';
 import { ConfigLoader } from '../config/loader.js';
 import type { FrameworkConfig } from '../config/schema.js';
 import { styleFor } from './style.js';
@@ -71,6 +71,8 @@ export interface DoctorOptions {
     env?: NodeJS.ProcessEnv;
     /** Node.js version (tests replace it). */
     nodeVersion?: string;
+    /** The installed Bun's version, or null for none (tests replace it; default: `bun --version`). */
+    bunVersion?: string | null;
 }
 
 /** Drivers with a native binding their install script builds or downloads, and where it ends up. */
@@ -346,14 +348,18 @@ function checkPlaywright(ctx: Context): Finding[] {
     }
     const text = fs.readFileSync(path.join(ctx.root, configFile), 'utf-8');
     findings.push(ok('playwright', configFile));
+    // Tests run on Bun's runtime (`--bun`): Bun 1.4.3 and Playwright 1.65 or later.
     const onBun = bunRuntimeLines(ctx.root);
     if (onBun.length) {
-        findings.push({
-            check: 'playwright',
-            status: 'warn',
-            message: `${onBun.length > 1 ? 'these run' : 'this runs'} on Bun's runtime, which Playwright Test doesn't support (slower, and some drivers don't work): ${onBun.join('; ')}`,
-            fix: { text: 'drop --bun: `bunx playwright test` runs Playwright on Node.js, with Bun still the package manager', safe: false },
-        });
+        const bun = ctx.options.bunVersion === undefined ? installedBun() : ctx.options.bunVersion;
+        const playwright = readJson(path.join(ctx.root, 'node_modules', '@playwright', 'test', 'package.json'))?.version as string | undefined;
+        const where = onBun.map((l) => l.split(': ')[0]).join(', ');
+        const problem = bun ? bunRuntimeProblem(bun, playwright) : `Bun isn't installed, but ${where} run${onBun.length > 1 ? '' : 's'} the tests with --bun.`;
+        findings.push(
+            problem
+                ? { check: 'playwright', status: 'warn', message: problem, fix: { text: bun ? 'bun upgrade, or drop --bun to run on Node.js' : 'install Bun (https://bun.sh), or drop --bun', safe: false } }
+                : ok('playwright', `tests run on Bun ${bun}${playwright ? ` with Playwright ${playwright}` : ''} (${where})`),
+        );
     }
     if (!/propmaster\/reporter|src\/reporter/.test(text)) {
         findings.push({
@@ -371,8 +377,10 @@ function checkPlaywright(ctx: Context): Finding[] {
     if (['page', 'context', 'browser', 'browserName'].some((f) => ctx.used.has(f))) {
         const browsers = ['chromium', ...(/firefox/i.test(text) ? ['firefox'] : []), ...(/webkit|safari/i.test(text) ? ['webkit'] : [])];
         try {
-            const require = createRequire(path.join(ctx.root, 'package.json'));
-            const core = require('playwright-core') as Record<string, { executablePath(): string }>;
+            const coreDir = installedPackageDir(ctx.root, 'playwright-core');
+            if (!coreDir) throw new Error('playwright-core is not installed');
+            const require = createRequire(path.join(coreDir, 'package.json'));
+            const core = require(coreDir) as Record<string, { executablePath(): string }>;
             const missing = browsers.filter((b) => {
                 try {
                     return !fs.existsSync(core[b].executablePath());
@@ -390,6 +398,12 @@ function checkPlaywright(ctx: Context): Finding[] {
         }
     }
     return findings;
+}
+
+/** `bun --version`, or null when Bun isn't installed. */
+function installedBun(): string | null {
+    const result = spawnSync('bun', ['--version'], { encoding: 'utf-8', shell: process.platform === 'win32' });
+    return result.status === 0 ? result.stdout.trim() : null;
 }
 
 /** Lines in package.json scripts and CI files that run commands on Bun's runtime (`bun --bun`, `bunx --bun`). */
@@ -583,7 +597,7 @@ export async function diagnose(root: string, options: DoctorOptions = {}): Promi
         ...checkTests(ctx),
     ];
     // Commands in the fixes, for the project's package manager (bunx, bun add -d, ...).
-    const pm = packageManager(root, ctx.options.env ?? process.env);
+    const pm = packageManager(root);
     for (const f of findings) if (f.fix) f.fix.text = adaptCommands(f.fix.text, pm);
     return { environment: ctx.environment, findings };
 }

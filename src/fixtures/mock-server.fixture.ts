@@ -13,6 +13,7 @@
  * the test (an order ID, an email) or run those tests serially.
  */
 
+import { errorReason } from '../network-error.js';
 import type { MockServerConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
@@ -280,7 +281,7 @@ export function createMockServer(admin: WireMockAdmin, baseUrl: string, testTag:
         try {
             return await admin.addMapping({ ...mapping, metadata });
         } catch (error) {
-            throw new FixtureOperationError('mockServer', 'stub', { reason: error instanceof Error ? error.message : String(error) });
+            throw new FixtureOperationError('mockServer', 'stub', { reason: errorReason(error) });
         }
     };
 
@@ -363,7 +364,7 @@ export const mockServerFixture = {
             throw new FixtureInitError(
                 'mockServer',
                 'connect',
-                { url: mockConfig.adminUrl ?? mockConfig.url, reason: error instanceof Error ? error.message : String(error) },
+                { url: mockConfig.adminUrl ?? mockConfig.url, reason: errorReason(error) },
                 error instanceof Error ? error : undefined,
             );
         }

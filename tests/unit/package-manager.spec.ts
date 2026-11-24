@@ -9,9 +9,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
-    BUN_RUNTIME_WARNING,
+    bunRuntimeProblem,
+    compareVersions,
+    packageManagerForNewProject,
     adaptCommands,
     execCommand,
+    installedPackageDir,
     packageCommand,
     packageManager,
     packageManagerFromAgent,
@@ -40,20 +43,25 @@ const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf-8');
 const BUN_AGENT = { npm_config_user_agent: 'bun/1.3.12 npm/? node/v24.12.0 linux x64' };
 
 test.describe('package manager — detection and commands', () => {
-    test('the lock file decides; without one, the command that started the process; else npm', () => {
-        expect(packageManager(root, {})).toBe('npm');
-        expect(packageManager(root, BUN_AGENT)).toBe('bun');
-        expect(packageManager(root, { npm_config_user_agent: 'pnpm/10.0.0 npm/? node/v24' })).toBe('pnpm');
-        expect(packageManagerFromAgent({ npm_config_user_agent: 'something-else/1' })).toBeUndefined();
-
+    test('the lock file decides; a folder without one is npm, however Propmaster was started', () => {
+        expect(packageManager(root)).toBe('npm');
         write({ 'bun.lock': '{}' });
-        expect(packageManager(root, {})).toBe('bun');
+        expect(packageManager(root)).toBe('bun');
         fs.rmSync(path.join(root, 'bun.lock'));
         write({ 'bun.lockb': '' });
-        expect(packageManager(root, {})).toBe('bun');
+        expect(packageManager(root)).toBe('bun');
         fs.rmSync(path.join(root, 'bun.lockb'));
+        write({ 'pnpm-lock.yaml': '' });
+        expect(packageManager(root)).toBe('pnpm');
+    });
+
+    test('a new project: its lock file, else the command that started init', () => {
+        expect(packageManagerForNewProject(root, {})).toBe('npm');
+        expect(packageManagerForNewProject(root, BUN_AGENT)).toBe('bun');
+        expect(packageManagerForNewProject(root, { npm_config_user_agent: 'pnpm/10.0.0 npm/? node/v24' })).toBe('pnpm');
+        expect(packageManagerFromAgent({ npm_config_user_agent: 'something-else/1' })).toBeUndefined();
         write({ 'package-lock.json': '{}' });
-        expect(packageManager(root, BUN_AGENT)).toBe('npm');
+        expect(packageManagerForNewProject(root, BUN_AGENT)).toBe('npm');
     });
 
     test('install, run a script, run a tool, rebuild', () => {
@@ -114,6 +122,11 @@ test.describe('package manager — a Bun project', () => {
         const lines: string[] = [];
         initProject(root, (l = '') => lines.push(l));
         expect(read('AGENTS.md')).toContain('bun run next-id API');
+        fs.rmSync(root, { recursive: true });
+        fs.mkdirSync(root);
+        // A new folder, started with bunx: no lock file yet.
+        initProject(root, (l = '') => lines.push(l), BUN_AGENT);
+        expect(read('AGENTS.md')).toContain('bun run next-id API');
         expect(read('AGENTS.md')).not.toMatch(/\bnpm run\b|\bnpx /);
         expect(read('SKILLS.md')).not.toMatch(/\bnpm run\b|\bnpx /);
         expect(JSON.parse(read('package.json')).scripts.verify).toBe('bun run typecheck && bun run lint:tests');
@@ -142,17 +155,35 @@ test.describe('package manager — doctor and the reporter', () => {
         });
     const by = (findings: Finding[], check: string) => findings.filter((f) => f.check === check);
 
-    test('--bun in scripts and CI files is pointed out; plain bunx is fine', async () => {
+    test('--bun in scripts and CI files: supported from Bun 1.4.3 and Playwright 1.65, older ones warned about', async () => {
         project({
             'package.json': JSON.stringify({ name: 's', scripts: { test: 'bunx --bun playwright test', ok: 'bunx playwright test', also: 'bun add --bundle' } }, null, 2),
             '.github/workflows/ci.yml': 'steps:\n  - run: bun install\n  - run: bun --bun run test\n',
+            'node_modules/@playwright/test/package.json': '{ "name": "@playwright/test", "version": "1.65.1" }',
         });
         expect(bunRuntimeLines(root)).toEqual([
             'package.json:4: "test": "bunx --bun playwright test",',
             '.github/workflows/ci.yml:3: - run: bun --bun run test',
         ]);
-        const warn = by((await doctor()).findings, 'playwright').find((f) => f.status === 'warn' && /Bun's runtime/.test(f.message));
-        expect(warn?.message).toContain('.github/workflows/ci.yml:3');
+        const bunFinding = async (bunVersion: string | null) =>
+            by((await doctor({ bunVersion })).findings, 'playwright').find((f) => /Bun/.test(f.message))!;
+        expect(await bunFinding('1.4.5')).toMatchObject({ status: 'ok', message: 'tests run on Bun 1.4.5 with Playwright 1.65.1 (package.json:4, .github/workflows/ci.yml:3)' });
+        expect(await bunFinding('1.3.12')).toMatchObject({ status: 'warn', message: expect.stringContaining('Bun 1.3.12 is older than 1.4.3') });
+        expect(await bunFinding(null)).toMatchObject({ status: 'warn', message: "Bun isn't installed, but package.json:4, .github/workflows/ci.yml:3 run the tests with --bun." });
+
+        write({ 'package.json': JSON.stringify({ name: 's', scripts: { test: 'bunx playwright test' } }) });
+        fs.rmSync(path.join(root, '.github'), { recursive: true });
+        expect(by((await doctor({ bunVersion: '1.3.12' })).findings, 'playwright').filter((f) => /Bun/.test(f.message))).toEqual([]);
+    });
+
+    test('version rules for Bun\'s runtime', () => {
+        expect(compareVersions('1.4.3', '1.4.3')).toBe(0);
+        expect(compareVersions('1.4.10', '1.4.3')).toBeGreaterThan(0);
+        expect(compareVersions('1.65.0-alpha-1', '1.65.0')).toBe(0);
+        expect(bunRuntimeProblem('1.4.3', '1.65.0')).toBeUndefined();
+        expect(bunRuntimeProblem('1.5.0', undefined)).toBeUndefined();
+        expect(bunRuntimeProblem('1.4.5', '1.64.2')).toBe('@playwright/test 1.64.2 doesn\'t run on Bun: it needs 1.65.0 or later. Upgrade, or run `bunx playwright test` without --bun to run the tests on Node.js.');
+        expect(bunRuntimeProblem('1.3.12', '1.65.1')).toContain('Bun 1.3.12 is older than 1.4.3');
     });
 
     test('a driver installed without its native binding fails, and the fix is bun pm trust', async () => {
@@ -182,17 +213,29 @@ test.describe('package manager — doctor and the reporter', () => {
         expect(fixes).not.toMatch(/\bnpx |\bnpm /);
     });
 
-    test('the reporter warns when the run is on Bun\'s runtime', () => {
+    test('the reporter warns only about a Bun or Playwright too old for each other', () => {
         const logged: string[] = [];
         const original = console.log;
         console.log = (line: string) => logged.push(line);
         try {
-            const config = { rootDir: root, configFile: path.join(root, 'playwright.config.ts') } as never;
-            new PropmasterReporter({ onBun: () => true, quarantine: false, history: false }).onBegin(config, {} as never);
-            new PropmasterReporter({ onBun: () => false, quarantine: false, history: false }).onBegin(config, {} as never);
+            const begin = (bun: string | undefined, version: string) =>
+                new PropmasterReporter({ bunVersion: () => bun, quarantine: false, history: false }).onBegin({ rootDir: root, configFile: path.join(root, 'playwright.config.ts'), version } as never, {} as never);
+            begin(undefined, '1.65.1'); // Node.js
+            begin('1.4.5', '1.65.1'); // supported
+            begin('1.3.12', '1.65.1');
         } finally {
             console.log = original;
         }
-        expect(logged).toEqual([`Propmaster: ${BUN_RUNTIME_WARNING}`]);
+        expect(logged).toEqual([`Propmaster: ${bunRuntimeProblem('1.3.12', '1.65.1')}`]);
+    });
+});
+
+test.describe('package manager — installed packages', () => {
+    test('a package counts as installed only when a node_modules folder has it', () => {
+        write({ 'a/b/package.json': '{}', 'node_modules/ajv/package.json': '{ "name": "ajv" }', 'node_modules/@scope/pkg/package.json': '{}' });
+        expect(installedPackageDir(path.join(root, 'a/b'), 'ajv')).toBe(path.join(root, 'node_modules/ajv'));
+        expect(installedPackageDir(path.join(root, 'a/b'), '@scope/pkg')).toBe(path.join(root, 'node_modules/@scope/pkg'));
+        // Not installed anywhere above: undefined, even where Bun's auto-install would resolve it from its cache.
+        expect(installedPackageDir(path.join(root, 'a/b'), 'surely-not-installed-xyz')).toBeUndefined();
     });
 });

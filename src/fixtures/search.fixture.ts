@@ -20,6 +20,7 @@
  * clients each refuse to talk to the other engine).
  */
 
+import { errorReason } from '../network-error.js';
 import type { SearchFixtureConfig } from '../config/schema.js';
 import type { ContainerManager } from '../containers/container-manager.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
@@ -244,15 +245,8 @@ const short = (value: unknown, max = 200) => {
 };
 
 function reasonOf(error: unknown): string {
-    if (error instanceof Error) {
-        if (error.name === 'TimeoutError') return 'request timed out';
-        // fetch puts the real reason (ECONNREFUSED, a DNS failure, a bad port) in `cause`.
-        const cause = (error as { cause?: { code?: string; message?: string; errors?: { code?: string }[] } }).cause;
-        const code = cause?.code ?? cause?.errors?.find((e) => e.code)?.code;
-        const detail = [cause?.message, code && !cause?.message?.includes(code) ? code : undefined].filter(Boolean).join(' ');
-        return detail ? `${error.message}: ${detail}` : error.message;
-    }
-    return String(error);
+    if (error instanceof Error && error.name === 'TimeoutError') return 'request timed out';
+    return errorReason(error);
 }
 
 class EngineError extends Error {

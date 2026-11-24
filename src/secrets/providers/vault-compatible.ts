@@ -21,6 +21,7 @@
  * error details, and are scrubbed from any server text echoed into an error.
  */
 
+import { errorReason } from '../../network-error.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Agent as HttpsAgent, request as httpsRequest, type AgentOptions } from 'node:https';
@@ -334,7 +335,7 @@ export abstract class VaultCompatibleProvider implements SecretsProvider {
                 this.name,
                 'fetch',
                 undefined,
-                { reason: `${method} login failed: ${this.redact((error as Error).message)}`, authMount: mount, ...this.location() },
+                { reason: `${method} login failed: ${this.redact(errorReason(error))}`, authMount: mount, ...this.location() },
                 error as Error
             );
         }
@@ -397,7 +398,7 @@ export abstract class VaultCompatibleProvider implements SecretsProvider {
                 this.name,
                 'fetch',
                 secretPath,
-                { reason: this.redact((error as Error).message), ...this.location() },
+                { reason: this.redact(errorReason(error)), ...this.location() },
                 error as Error
             );
         }

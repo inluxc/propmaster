@@ -13,7 +13,7 @@ Propmaster extends [Playwright Test](https://playwright.dev/) with fixtures for 
 npm install --save-dev @playwright/test @inluxc/propmaster
 ```
 
-With Bun: `bun add -d @playwright/test @inluxc/propmaster`. The tests still run on Node.js; see [Using Bun](./bun).
+With Bun: `bun add -d @playwright/test @inluxc/propmaster`, then run the tests with `bunx --bun playwright test` (Bun 1.4.3 or later). See [Using Bun](./bun).
 
 Propmaster itself has no runtime dependencies. Each fixture's driver is an optional peer dependency, so you install only the ones for the fixtures you use. The quickest way is to let Propmaster set the fixture up: driver, config, variables, a local service and a starter test ([more](./cli#adding-and-removing-fixtures)):
 

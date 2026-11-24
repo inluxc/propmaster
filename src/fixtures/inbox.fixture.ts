@@ -13,6 +13,7 @@
  * deleted when the test ends.
  */
 
+import { errorReason } from '../network-error.js';
 import type { InboxFixtureConfig } from '../config/schema.js';
 import { FixtureInitError, FixtureOperationError } from '../errors.js';
 
@@ -350,7 +351,7 @@ export const inboxFixture = {
             throw new FixtureInitError(
                 'inbox',
                 'connect',
-                { url: inboxConfig.url, reason: error instanceof Error ? error.message : String(error) },
+                { url: inboxConfig.url, reason: errorReason(error) },
                 error instanceof Error ? error : undefined,
             );
         }

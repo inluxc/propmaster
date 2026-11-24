@@ -5,11 +5,10 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
 import { collect, findProjectRoot, loadConfig, nextIds, walk } from './check-tests.js';
 import { ConfigLoader } from '../config/loader.js';
-import { packageCommand, packageManager } from '../package-manager.js';
+import { installedPackageDir, packageCommand, packageManager } from '../package-manager.js';
 import { loadOpenApiDocument } from '../openapi/load.js';
 import { coveredOperations, generateApiTests, type GenerateResult } from '../openapi/generate.js';
 
@@ -104,12 +103,7 @@ export function parseGenerateArgs(argv: string[], cwd: string = process.cwd()): 
 }
 
 function hasPackage(root: string, name: string): boolean {
-    try {
-        createRequire(join(root, 'package.json')).resolve(name);
-        return true;
-    } catch {
-        return false;
-    }
+    return installedPackageDir(root, name) !== undefined;
 }
 
 export interface GenerateRun {

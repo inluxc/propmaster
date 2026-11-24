@@ -1099,3 +1099,103 @@ jobs:
           name: test-results-browser
           path: test-results/
           retention-days: 7
+
+  # ─── Bun ──────────────────────────────────────────────────────────────────
+  # The same suites installed with Bun and run on Bun's runtime
+  # (bunx --bun playwright test). Bun 1.4.3 is the oldest that runs Playwright
+  # Test; this is the version we test. Services come from compose.test.yaml on
+  # the runner, one backend per matrix entry, reached on localhost.
+  bun-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.5
+      - run: bun install
+      - uses: ./.github/actions/test-history
+      - name: Unit, property and OTP tests on Bun
+        run: bunx --bun playwright test --project=property-tests --project=unit-tests --project=otp
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-bun-unit
+          path: test-results/
+          retention-days: 7
+
+  bun-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: postgres, service: postgres, project: integration-database, schema: true, env: "PW_DB_TYPE=postgresql PW_DB_HOST=localhost PW_DB_PORT=5432 PW_DB_NAME=testdb PW_DB_USERNAME=testuser PW_DB_PASSWORD=testpass" }
+          - { name: mysql, service: mysql, project: integration-database, schema: true, env: "PW_DB_TYPE=mysql PW_DB_HOST=localhost PW_DB_PORT=3306 PW_DB_NAME=testdb PW_DB_USERNAME=testuser PW_DB_PASSWORD=testpass" }
+          - { name: mssql, service: mssql, project: integration-database, schema: true, env: "PW_DB_TYPE=mssql PW_DB_HOST=localhost PW_DB_PORT=1433 PW_DB_NAME=master PW_DB_USERNAME=sa PW_DB_PASSWORD=TestPass123! PW_DB_ENCRYPT=false PW_DB_TRUST_SERVER_CERTIFICATE=true" }
+          - { name: sqlite, service: "", project: integration-database, schema: true, env: "PW_DB_TYPE=sqlite PW_DB_NAME=/tmp/propmaster-test.db" }
+          - { name: redis, service: redis, project: integration-redis, env: "PW_REDIS_HOST=localhost PW_REDIS_PORT=6379" }
+          - { name: mongodb, service: mongodb, project: integration-mongodb, env: "PW_MONGODB_HOST=localhost PW_MONGODB_DATABASE=testdb" }
+          - { name: cassandra, service: scylla, project: integration-cassandra, env: "PW_CASSANDRA_CONTACT_POINTS=localhost PW_CASSANDRA_KEYSPACE=propmaster_examples PW_CASSANDRA_CREATE_KEYSPACE=true" }
+          - { name: neo4j, service: neo4j, project: integration-neo4j, env: "PW_NEO4J_URI=bolt://localhost:7687 PW_NEO4J_USERNAME=neo4j PW_NEO4J_PASSWORD=testpassword" }
+          - { name: kafka, service: kafka, project: integration-kafka, env: "PW_KAFKA_BROKERS=localhost:9092" }
+          - { name: rabbitmq, service: rabbitmq, project: integration-amqp, env: "PW_AMQP_URL=amqp://testuser:testpass@localhost:5672" }
+          - { name: elasticsearch, service: elasticsearch, project: integration-search, env: "PW_SEARCH_URL=http://localhost:9200" }
+          - { name: opensearch, service: opensearch, project: integration-search, env: "PW_SEARCH_URL=http://localhost:9201" }
+          - { name: grpc, service: grpcbin, project: grpc, env: "PW_GRPC_ADDRESS=localhost:9000 PW_GRPC_PROTO_FILES=tests/examples/protos/hello.proto" }
+          - { name: realtime, service: echo-server, project: realtime, env: "PW_REALTIME_URL=http://localhost:8091" }
+          - { name: aws, service: moto, project: integration-aws, env: "PW_AWS_ENDPOINT=http://localhost:4566 PW_AWS_REGION=us-east-1 PW_AWS_S3_BUCKET=propmaster-examples" }
+          - { name: dynamodb, service: moto, project: integration-dynamodb, env: "PW_AWS_ENDPOINT=http://localhost:4566 PW_AWS_REGION=us-east-1" }
+          - { name: mocks, service: wiremock, project: integration-mocks, env: "PW_MOCK_URL=http://localhost:8089" }
+          - { name: inbox, service: mailpit, project: integration-inbox, env: "PW_INBOX_URL=http://localhost:8025" }
+    name: bun-integration (${{ matrix.name }})
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.5
+      - run: bun install
+      - name: Start ${{ matrix.service }}
+        if: matrix.service != ''
+        run: docker compose -f compose.test.yaml up -d --wait ${{ matrix.service }}
+      - name: Set the connection variables
+        run: for pair in ${{ matrix.env }}; do echo "$pair" >> "$GITHUB_ENV"; done
+      - name: Create test schema
+        if: matrix.schema
+        run: bun .github/scripts/create-test-schema.js
+      - uses: ./.github/actions/test-history
+        with:
+          name: bun-integration-${{ matrix.name }}
+      - name: Run the ${{ matrix.name }} tests on Bun
+        run: bunx --bun playwright test --project=${{ matrix.project }}
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
+          name: bun-integration-${{ matrix.name }}
+      - name: Service logs
+        if: failure() && matrix.service != ''
+        run: docker compose -f compose.test.yaml logs --tail=200 ${{ matrix.service }}
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-bun-${{ matrix.name }}
+          path: test-results/
+          retention-days: 7

@@ -22,6 +22,7 @@
  *   - WebdriverIO's own errors for commands inside the test
  */
 
+import { errorReason } from '../network-error.js';
 import type {} from 'webdriverio'; // brings in the global WebdriverIO types
 import { loadOptional } from './optional-package.js';
 import type { AppiumFixtureConfig } from '../config/schema.js';
@@ -226,7 +227,7 @@ export function createGadsHubClient(config: AppiumFixtureConfig): GadsHubClient 
         } catch (error) {
             throw new FixtureInitError('gads', 'connect', {
                 hubUrl,
-                reason: redactSecret(error instanceof Error ? error.message : String(error), secret),
+                reason: redactSecret(errorReason(error), secret),
             }, error instanceof Error ? error : undefined);
         }
         if (response.status !== 200) {
