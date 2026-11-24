@@ -15,6 +15,8 @@
  *   └── ContractError           — an API request or response doesn't match the OpenAPI spec
  */
 
+import { packageCommand, packageManager } from './package-manager.js';
+
 /**
  * Base error class for all framework errors.
  */
@@ -156,7 +158,7 @@ export class MissingPackageError extends FrameworkError {
         packages: string[] = [packageName],
         options?: ErrorOptions,
     ) {
-        const installCommand = `npm install --save-dev ${packages.join(' ')}`;
+        const installCommand = packageCommand(packageManager(process.cwd()), 'install', packages).join(' ');
         super(
             `The "${fixtureName}" fixture needs the "${packageName}" package, which isn't installed.\n` +
                 `  Install it with: ${installCommand}`,

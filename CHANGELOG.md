@@ -6,6 +6,9 @@ What changed in Propmaster, newest first. Nothing has been published to npm yet,
 
 ### Added
 
+- **Bun as the package manager.** In a Bun project (`bun.lock`, or `bunx propmaster init`), every command Propmaster prints or writes uses Bun: `bun add -d` for drivers, `bun run` for scripts, `bunx` for tools and for the MCP server in editor configs. Tests keep running on Node.js. [Using Bun](https://propmaster.dev/guide/bun)
+  - The reporter warns when a run is on Bun's runtime (`--bun`), which Playwright doesn't support: it was 2.7× slower on our unit tests, and some drivers don't work.
+  - `propmaster doctor` warns about `--bun` in `package.json` scripts and CI files, and finds Confluent's Kafka client installed without its native binding (`--fix` runs `bun pm trust`, or `npm rebuild`).
 - **`propmaster mcp setup`** connects the MCP server to your editors by writing the config file each one reads. [#76](https://github.com/inluxc/propmaster/pull/76) · [Setup](https://propmaster.dev/mcp-server#setup)
   - Editors: Claude Code (`.mcp.json`), VS Code (`.vscode/mcp.json`), Cursor (`.cursor/mcp.json`), Windsurf (`~/.codeium/windsurf/mcp_config.json`) and Zed (`.zed/settings.json`).
   - A menu opens with the editors the project already uses selected. `--client claude,vscode` names them instead.

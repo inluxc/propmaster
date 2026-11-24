@@ -31,6 +31,7 @@ import {
 } from './fixture.js';
 import { gitIgnores, isProduction } from './env.js';
 import { valueAt } from './json-edit.js';
+import { adaptCommands, execCommand, rebuildCommand } from '../package-manager.js';
 import { ConfigLoader } from '../config/loader.js';
 import type { FrameworkConfig } from '../config/schema.js';
 import { styleFor } from './style.js';
@@ -71,6 +72,11 @@ export interface DoctorOptions {
     /** Node.js version (tests replace it). */
     nodeVersion?: string;
 }
+
+/** Drivers with a native binding their install script builds or downloads, and where it ends up. */
+const NATIVE_BINDINGS: Record<string, string> = {
+    '@confluentinc/kafka-javascript': 'build/Release/confluent-kafka-javascript.node',
+};
 
 /** Propmaster's own Node.js requirement. */
 export const MIN_NODE = '22.12.0';
@@ -280,7 +286,18 @@ function checkDrivers(ctx: Context): Finding[] {
         const missing = variant.packages.filter((p) => !packageResolvable(ctx.root, p));
         if (!variant.packages.length) continue;
         if (!missing.length) {
-            installedOk.push(...variant.packages);
+            const unbuilt = variant.packages.filter((p) => NATIVE_BINDINGS[p] && !fs.existsSync(path.join(ctx.root, 'node_modules', ...p.split('/'), NATIVE_BINDINGS[p])));
+            if (unbuilt.length) {
+                const pm = packageManager(ctx.root);
+                const command = rebuildCommand(pm, unbuilt);
+                findings.push({
+                    check: 'drivers',
+                    status: 'fail',
+                    message: `${unbuilt.join(', ')} ${unbuilt.length > 1 ? 'are' : 'is'} installed without ${unbuilt.length > 1 ? 'their' : 'its'} native binding: ${unbuilt.length > 1 ? 'their install scripts' : 'its install script'} didn't run${pm === 'bun' ? ' (Bun runs only the scripts of trusted packages)' : ''}.`,
+                    fix: { text: command.join(' '), safe: true, apply: () => ctx.runner(command, ctx.root).ok },
+                });
+            }
+            installedOk.push(...variant.packages.filter((p) => !unbuilt.includes(p)));
             continue;
         }
         const notListed = missing.filter((p) => !listed.has(p));
@@ -329,6 +346,15 @@ function checkPlaywright(ctx: Context): Finding[] {
     }
     const text = fs.readFileSync(path.join(ctx.root, configFile), 'utf-8');
     findings.push(ok('playwright', configFile));
+    const onBun = bunRuntimeLines(ctx.root);
+    if (onBun.length) {
+        findings.push({
+            check: 'playwright',
+            status: 'warn',
+            message: `${onBun.length > 1 ? 'these run' : 'this runs'} on Bun's runtime, which Playwright Test doesn't support (slower, and some drivers don't work): ${onBun.join('; ')}`,
+            fix: { text: 'drop --bun: `bunx playwright test` runs Playwright on Node.js, with Bun still the package manager', safe: false },
+        });
+    }
     if (!/propmaster\/reporter|src\/reporter/.test(text)) {
         findings.push({
             check: 'playwright',
@@ -356,7 +382,7 @@ function checkPlaywright(ctx: Context): Finding[] {
             });
             findings.push(
                 missing.length
-                    ? { check: 'playwright', status: 'fail', message: `browser${missing.length > 1 ? 's' : ''} not installed: ${missing.join(', ')}.`, fix: { text: `npx playwright install ${missing.join(' ')}`, safe: false } }
+                    ? { check: 'playwright', status: 'fail', message: `browser${missing.length > 1 ? 's' : ''} not installed: ${missing.join(', ')}.`, fix: { text: execCommand(packageManager(ctx.root), 'playwright', ['install', ...missing]).join(' '), safe: false } }
                     : ok('playwright', `browsers installed: ${browsers.join(', ')}`),
             );
         } catch {
@@ -364,6 +390,23 @@ function checkPlaywright(ctx: Context): Finding[] {
         }
     }
     return findings;
+}
+
+/** Lines in package.json scripts and CI files that run commands on Bun's runtime (`bun --bun`, `bunx --bun`). */
+export function bunRuntimeLines(root: string): string[] {
+    const found: string[] = [];
+    for (const file of ['package.json', ...ciFiles(root)]) {
+        let text: string;
+        try {
+            text = fs.readFileSync(path.join(root, file), 'utf-8');
+        } catch {
+            continue;
+        }
+        text.split('\n').forEach((line, i) => {
+            if (/\bbunx? (?:[^\s]+ )*--bun\b/.test(line)) found.push(`${file}:${i + 1}: ${line.trim()}`);
+        });
+    }
+    return found;
 }
 
 /** CI files that may name the Playwright image. */
@@ -539,6 +582,9 @@ export async function diagnose(root: string, options: DoctorOptions = {}): Promi
         ...(await checkMcp(ctx)),
         ...checkTests(ctx),
     ];
+    // Commands in the fixes, for the project's package manager (bunx, bun add -d, ...).
+    const pm = packageManager(root, ctx.options.env ?? process.env);
+    for (const f of findings) if (f.fix) f.fix.text = adaptCommands(f.fix.text, pm);
     return { environment: ctx.environment, findings };
 }
 

@@ -17,6 +17,7 @@
  *   tests/<type>/       a starter test with a fresh TestCaseID (optional)
  */
 
+import { packageCommand, packageManager, type PackageManager } from '../package-manager.js';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -536,26 +537,7 @@ export function planRemove(root: string, id: string): FixturePlan {
 
 // ─── Applying ───────────────────────────────────────────────────────────────
 
-export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
-
-/** The project's package manager, from its lock file (npm when there's none). */
-export function packageManager(root: string): PackageManager {
-    if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) return 'pnpm';
-    if (fs.existsSync(path.join(root, 'yarn.lock'))) return 'yarn';
-    if (fs.existsSync(path.join(root, 'bun.lockb')) || fs.existsSync(path.join(root, 'bun.lock'))) return 'bun';
-    return 'npm';
-}
-
-/** The command that installs (as dev dependencies) or removes `packages`. */
-export function packageCommand(pm: PackageManager, action: 'install' | 'uninstall', packages: string[]): string[] {
-    const verbs: Record<PackageManager, [string[], string[]]> = {
-        npm: [['install', '--save-dev'], ['uninstall']],
-        pnpm: [['add', '-D'], ['remove']],
-        yarn: [['add', '-D'], ['remove']],
-        bun: [['add', '-d'], ['remove']],
-    };
-    return [pm, ...verbs[pm][action === 'install' ? 0 : 1], ...packages];
-}
+export { packageCommand, packageManager, type PackageManager };
 
 export type CommandRunner = (command: string[], cwd: string) => { ok: boolean; output: string };
 

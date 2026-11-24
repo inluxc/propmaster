@@ -23,6 +23,7 @@ import { findProjectRoot } from './check-tests.js';
 import { objectAt, parseJsonSpans, removeMember, sameJson, setMember, type JsonEditOptions } from './json-edit.js';
 import { isInteractive, multiselect, type Choice } from './prompts.js';
 import { styleFor } from './style.js';
+import { packageManager } from '../package-manager.js';
 
 export type ClientId = 'claude' | 'vscode' | 'cursor' | 'windsurf' | 'zed';
 
@@ -148,7 +149,8 @@ export function globalEntryName(root: string): string {
 
 /** The key and the server the client gets. */
 export function serverFor(client: McpClient, ctx: SetupContext, options: ServerOptions): { key: string; server: ServerEntry } {
-    if (!client.global) return { key: 'propmaster', server: { command: 'npx', args: ['propmaster', ...serverArgs(options)] } };
+    // Bun projects start it with bunx: the bin still runs on Node.js, and bunx starts faster than npx.
+    if (!client.global) return { key: 'propmaster', server: { command: packageManager(ctx.root) === 'bun' ? 'bunx' : 'npx', args: ['propmaster', ...serverArgs(options)] } };
     const bin = installedBin(ctx.root);
     const server = bin
         ? { command: 'node', args: [bin, ...serverArgs(options), '--root', ctx.root] }
