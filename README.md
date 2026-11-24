@@ -611,6 +611,14 @@ See [docs/flaky-tests.md](docs/flaky-tests.md).
 
 ---
 
+## Coverage
+
+`npx propmaster coverage` shows what the tests cover per layer of the pyramid (unit, integration, e2e): what each layer's tests touch (API operations, tables, topics, queues, routes, ...), the OpenAPI operations and status codes no test asserts, configured backends no test uses, tests that never ran or fail, and the code-coverage reports already in the project (LCOV, Istanbul, Cobertura, JaCoCo, Clover, OpenCover, Go, coverage.py, SimpleCov). The application can be in any language: its own tests in Python, Go, Java/Kotlin, C#, Ruby, PHP, Rust, Swift or Elixir count too. It reads files only. The MCP server has it as `coverage_report`, so an agent can weigh the gaps against the backends and the code before writing tests.
+
+See [docs/coverage.md](docs/coverage.md).
+
+---
+
 ## Running in CI
 
 Integration tests run in GitHub Actions against real services started as containers. Each backend gets its own job, and all jobs run in parallel:

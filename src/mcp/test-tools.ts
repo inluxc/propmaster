@@ -1,7 +1,8 @@
 /**
  * MCP tools for the test loop: run tests and read why they failed
- * (run_tests, last_failures), the flake ranking (flaky_tests) and the API
- * tests the OpenAPI spec gives (generate_api_tests).
+ * (run_tests, last_failures), the flake ranking (flaky_tests), what the tests
+ * cover per layer (coverage_report) and the API tests the OpenAPI spec gives
+ * (generate_api_tests).
  *
  * run_tests runs `playwright test` in the project with the Propmaster
  * reporter, which writes the failures with their steps and errors to the
@@ -12,12 +13,15 @@
 import { spawn } from 'node:child_process';
 import { installedPackageDir, packageCommand, packageManager } from '../package-manager.js';
 import { createRequire } from 'node:module';
-import { extname, join, relative } from 'node:path';
+import { extname, isAbsolute, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLastRun, type LastRunTest } from '../reporter/last-run.js';
 import { lastFailures, lastRunFile } from '../cli/failures.js';
 import { flakyRows } from '../cli/flaky.js';
 import { generateOpenApiTests } from '../cli/generate.js';
+import type { FrameworkConfig } from '../config/schema.js';
+import { coverageReport } from '../coverage/report.js';
+import { LAYERS, type Layer } from '../coverage/inventory.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 export const DEFAULT_RUN_TIMEOUT_S = 300;
@@ -239,6 +243,8 @@ export interface TestToolsContext {
     environment: string;
     /** A production environment: run_tests isn't offered. */
     production: boolean;
+    /** The environment's config: the OpenAPI spec and which backends are configured, for coverage_report. */
+    config?: FrameworkConfig;
 }
 
 export function testTools(ctx: TestToolsContext): ToolDefinition[] {
@@ -317,6 +323,43 @@ export function testTools(ctx: TestToolsContext): ToolDefinition[] {
                 const { runs, rows } = flakyRows(ctx.root, { window: integer(args, 'runs', 1, 1000) ?? 30, minRate: minRate as number | undefined });
                 if (runs === 0) return { runs, tests: [], message: 'No test history yet: add the Propmaster reporter to playwright.config.ts and run the tests.' };
                 return { runs, tests: rows.slice(0, limit), ...(rows.length > limit ? { more: rows.length - limit } : {}) };
+            },
+        },
+        {
+            name: 'coverage_report',
+            title: 'Coverage report',
+            description:
+                "What the project's tests cover, per layer of the test pyramid: unit (no service, browser or device; property tests; Vitest/Jest files; the application's own tests in other languages), integration (API and backend clients) and e2e (browser and device). For each layer: tests, files, skipped/fixme tests, the last run and pass rate from the test history, the fixtures used and what the tests touch (API operations, HTTP paths, GraphQL operations, gRPC methods, tables, collections, topics, queues, indexes, routes, deep links). Then the OpenAPI operations and documented status codes no test asserts, backends configured for the environment that no test uses, tests that never ran or fail, and the code-coverage reports already in the project, from any language's tools (LCOV, Istanbul, Cobertura, JaCoCo, Clover, OpenCover, Go cover profiles, coverage.py JSON, SimpleCov), with their least-covered files. The application can be in any language: its own tests in Python, Go, Java/Kotlin/Scala, C#, Ruby, PHP, Rust, Swift and Elixir are counted and layered, and their HTTP calls are matched to the spec's operations by method and path. Read statically from files: runs nothing, touches no backend. Use it to build a picture of coverage before deciding what to test next: weigh the gaps against the application code and the real backends (db_query, kafka_topics, openapi_operations), not by the numbers alone.",
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    layer: { type: 'string', enum: [...LAYERS], description: 'Only this layer (default: all three)' },
+                    tests: { type: 'boolean', description: 'Include every test with its fixtures, what it touches, asserted statuses and recent outcomes (default false)' },
+                    spec: { type: 'string', description: 'OpenAPI spec path or URL (default: openapi.specPath of the environment)' },
+                    reports: { type: 'array', items: { type: 'string' }, description: 'Code-coverage report files, relative to the project (default: the ones found in the project)' },
+                    runs: { type: 'integer', minimum: 1, maximum: 1000, description: 'Newest test-history runs to read (default 30)' },
+                    limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Most items in each list (default 50)' },
+                },
+                additionalProperties: false,
+            },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+            handler: async (args) => {
+                const layer = text(args, 'layer');
+                if (layer !== undefined && !LAYERS.includes(layer as Layer)) throw new ToolInputError(`layer must be one of ${LAYERS.join(', ')}`);
+                const reports = strings(args, 'reports');
+                for (const r of reports ?? []) {
+                    if (isAbsolute(r) || r.split(/[\\/]/).includes('..')) throw new ToolInputError(`reports must be paths inside the project, not "${r}"`);
+                }
+                return coverageReport({
+                    root: ctx.root,
+                    config: ctx.config,
+                    spec: text(args, 'spec'),
+                    layer: layer as Layer | undefined,
+                    reports,
+                    runs: integer(args, 'runs', 1, 1000),
+                    tests: flag(args, 'tests', false),
+                    limit: integer(args, 'limit', 1, 500),
+                });
             },
         },
         {

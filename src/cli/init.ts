@@ -10,6 +10,7 @@ import { NotInteractiveError, PromptCancelledError, isInteractive, select, text,
 import { styleFor } from './style.js';
 import { runFlaky } from './flaky.js';
 import { runFailures } from './failures.js';
+import { runCoverage } from './coverage.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
 import { adaptCommands, packageManagerForNewProject } from '../package-manager.js';
@@ -644,6 +645,7 @@ const HELP = `
     npx propmaster next-id <CATEGORY> [count] [--root <dir>]
     npx propmaster flaky [--history <file|dir>] [--runs <n>] [--limit <n>] [--json]
     npx propmaster failures [--no-flaky] [--json]
+    npx propmaster coverage [--layer unit|integration|e2e] [--report <file>] [--json]
     npx propmaster generate openapi [--tag <tag>] [--operation <id>] [--dry-run] [--prism]
     npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
     npx propmaster mcp setup [--client <names>] [-e <env>] [--allow-writes] [--check] [--remove]
@@ -687,6 +689,11 @@ const HELP = `
               \`propmaster flaky --help\` for details.
     failures  What failed in the last run and why: the step, the error, where
               it was thrown and the trace, with each test's recent history.
+    coverage  What the tests cover per layer (unit, integration, e2e): what
+              each touches, untested API operations and status codes,
+              configured backends no test uses, recent outcomes, and the
+              code-coverage reports already in the project.
+              \`propmaster coverage --help\` for details.
     generate  Scaffold API tests from the OpenAPI spec into tests/api: one file
               per tag, a test per operation and documented status code, with
               real TestCaseIDs and test.step() blocks. Never overwrites a file;
@@ -932,11 +939,12 @@ const COMMAND_MENU: Choice<string>[] = [
     { value: 'check', label: 'check', hint: 'check test conventions' },
     { value: 'flaky', label: 'flaky', hint: 'rank tests by flake rate' },
     { value: 'failures', label: 'failures', hint: 'what failed in the last run and why' },
+    { value: 'coverage', label: 'coverage', hint: 'what the tests cover, per layer' },
     { value: 'help', label: 'help', hint: 'every command and option' },
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'mcp-setup', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'failures', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'mcp-setup', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'failures', 'coverage', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -990,6 +998,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     }
     if (command === 'flaky') return runFlaky(rest);
     if (command === 'failures') return runFailures(rest);
+    if (command === 'coverage') return runCoverage(rest);
     if (command === 'standards') {
         const { runStandards } = await import('./standards.js');
         return runStandards(rest, findProjectRoot());

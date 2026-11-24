@@ -2,6 +2,18 @@
 
 What changed in Propmaster, newest first. Nothing has been published to npm yet, so everything here is in the first release, `1.0.0`. Each entry links to its pull request; **Breaking** marks a change that needs something done in an existing project.
 
+## 2026-11-24: what the tests cover, per layer
+
+### Added
+
+- **`propmaster coverage`** and the **`coverage_report`** MCP tool: what the tests cover per layer of the pyramid (unit, integration, e2e), read from the test sources, the test history, the OpenAPI spec and the code-coverage reports already in the project. Nothing runs. [Coverage](https://propmaster.dev/coverage)
+  - Each layer has its tests, the ones marked `skip`/`fixme`, its last run and pass rate, the fixtures it uses, and what its tests touch: API operations, HTTP paths, GraphQL operations, gRPC methods, tables, collections, topics, queues, indexes, routes and deep links.
+  - With a spec, it lists the operations no test calls, the tested ones that assert no error status the spec documents, and the other documented codes nobody asserts.
+  - Gaps also cover configured backends no test uses, tests that never ran or failed last, quarantined tests, and code coverage under 60% or older than 30 days.
+  - The application can be in any language. Its own tests count, in Python, Go, Java, Kotlin, Scala, Groovy, C#, Ruby, PHP, Rust, Swift and Elixir. Each gets a layer from its folder, the language's convention (`*IT`, Rust's `tests/`, Go build tags) or its markers (`@pytest.mark.integration`, `@Tag`, `[Trait]`). Their HTTP calls are matched to the spec's operations by method and path template, and their asserted statuses are read as numbers or names (`isNotFound()`, `HttpStatusCode.NotFound`).
+  - It reads code-coverage reports from any language's tools: LCOV, Istanbul `coverage-summary.json`, Cobertura, JaCoCo, Clover, OpenCover, Go cover profiles, coverage.py JSON and SimpleCov. They can be anywhere in the project, or wherever `--report` points, and it shows the least-covered files.
+  - For agents, the report says what to compare next: tables in the database, Kafka topics, and the application's routes.
+
 ## 2026-11-24: agents run the tests, and every editor gets the MCP server
 
 ### Added

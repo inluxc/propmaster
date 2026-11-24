@@ -104,6 +104,10 @@ npx propmaster doctor --fix        # apply the safe fixes, then check again
 
 `propmaster failures` shows what failed in the last run and why: the step, the error, where it was thrown and the trace to open, with each test's recent history. The Propmaster reporter writes it after every run. See [What failed in the last run](../flaky-tests#what-failed-in-the-last-run).
 
+## Coverage
+
+`propmaster coverage` shows what the tests cover per layer (unit, integration, e2e): what each layer's tests touch, the API operations and status codes no test asserts, configured backends no test uses, tests that never ran or fail, and the code-coverage reports already in the project. `--json` for scripts and agents. See [Coverage](../coverage).
+
 ## QA standards
 
 `propmaster standards init` writes a sample `propmaster.standards.json` and `standards/` pages; `propmaster check` then enforces the team's rules alongside the built-in conventions. See [QA standards](../qa-standards).
