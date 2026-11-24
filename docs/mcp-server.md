@@ -16,44 +16,48 @@ The server talks MCP over stdio. You don't run it yourself; your MCP client star
 
 ## Setup
 
-### Claude Code
+`propmaster mcp setup` writes the config each editor reads. With no options it opens a menu with the editors this project already uses selected (`.vscode/`, `.cursor/`, `.zed/`, ...); with none of them, Claude Code.
 
-Add `.mcp.json` at the project root, so everyone on the team gets the server:
-
-```json
-{
-    "mcpServers": {
-        "propmaster": {
-            "command": "npx",
-            "args": ["propmaster", "mcp"]
-        }
-    }
-}
+```bash
+npx propmaster mcp setup                          # pick the editors from a menu
+npx propmaster mcp setup --client claude,vscode   # or name them; --client all for every one
+npx propmaster mcp setup -e dev --allow-writes    # the server for "dev", with write tools
+npx propmaster mcp setup --check                  # start each configured server and list its tools
+npx propmaster mcp setup --remove                 # take the entry out again
 ```
 
-Or add it from the command line: `claude mcp add propmaster -- npx propmaster mcp`. Claude Code asks you to approve a project's servers the first time it starts one. Run `/mcp` to check that `propmaster` is connected.
+| `--client` | Editor | File | Entry |
+|---|---|---|---|
+| `claude` | Claude Code | `.mcp.json` | `mcpServers.propmaster` |
+| `vscode` | VS Code (Copilot agent mode) | `.vscode/mcp.json` | `servers.propmaster`, `"type": "stdio"` |
+| `cursor` | Cursor | `.cursor/mcp.json` | `mcpServers.propmaster` |
+| `windsurf` | Windsurf | `~/.codeium/windsurf/mcp_config.json` | `mcpServers.propmaster-<folder>` |
+| `zed` | Zed | `.zed/settings.json` | `context_servers.propmaster`, `"source": "custom"` |
 
-### VS Code (GitHub Copilot agent mode)
+The entry is added next to the servers already in the file, and the rest of the file stays as it was, comments included (VS Code and Zed allow them). Running it again changes nothing; a different `-e` or `--allow-writes` updates the entry in place. `--remove` gives back the file as it was, and deletes a file that has nothing else left in it. `--dry-run` shows what would change, and `--json` is for scripts. A file that isn't valid JSON is left alone, with the entry to add by hand.
 
-Add `.vscode/mcp.json`:
+Windsurf has one config for every project, so its entry is named after the project's folder and starts the installed server with absolute paths (`node <project>/node_modules/@inluxc/propmaster/... mcp --root <project>`). Run `mcp setup --client windsurf` in each project that should have it. The other files belong to the project: commit them, and everyone on the team gets the server.
 
-```json
-{
-    "servers": {
-        "propmaster": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["propmaster", "mcp"]
-        }
-    }
-}
+`propmaster init` sets up Claude Code and the editors the project already uses (all but Windsurf, whose file isn't in the project). `propmaster doctor` warns when no editor is set up (`--fix` sets them up), and starts the server the same way `--check` does.
+
+### Checking the connection
+
+`--check` starts each configured server as its editor would: the command and arguments from the file, in the project folder, spoken to over stdio. It sends `initialize` and `tools/list` and prints the tools.
+
+```text
+  ✓ Claude Code, VS Code  .mcp.json, .vscode/mcp.json
+    propmaster 1.0.0 started in 1.2 s with 24 tools: environment_info, db_query, ...
 ```
 
-Open the file and select **Start** above the server, or run **MCP: List Servers** from the command palette.
+When a server doesn't start, it prints why and the server's last log lines, for example `Refusing to start for environment "prod"`, and exits 1.
 
-### Other clients
+### In the editor
 
-Cursor, Windsurf, Zed and other MCP clients take the same command: `npx propmaster mcp`, with any options as extra arguments. To pick an environment, add `"-e", "dev"` to `args`, or set `"env": { "PW_ENVIRONMENT": "dev" }`.
+- **Claude Code** asks you to approve a project's servers the first time it starts one. Run `/mcp` to check that `propmaster` is connected. Without the file: `claude mcp add propmaster -- npx propmaster mcp`.
+- **VS Code:** open `.vscode/mcp.json` and select **Start** above the server, or run **MCP: List Servers** from the command palette.
+- **Cursor, Windsurf and Zed** read the file when they start: the server shows in their MCP settings. Reload the window if it doesn't.
+
+Other MCP clients take the same command: `npx propmaster mcp`, with any options as extra arguments (`"-e", "dev"`), or `"env": { "PW_ENVIRONMENT": "dev" }`.
 
 ---
 

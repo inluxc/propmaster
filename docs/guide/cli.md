@@ -91,10 +91,14 @@ npx propmaster doctor --fix        # apply the safe fixes, then check again
 | `playwright` | A `playwright.config.*`, the Propmaster reporter in it, a `tsconfig.json`, and, when tests use a browser, the browsers it names |
 | `ci` | The Playwright image in your CI files (`mcr.microsoft.com/playwright:vX.Y.Z`) is the installed `@playwright/test` version. `--fix` updates the tag |
 | `secrets` | `.env` files are in `.gitignore` (`--fix` adds them) and not committed |
-| `mcp` | An editor is set up to start the MCP server, and the server starts for the environment |
+| `mcp` | An editor is set up to start the MCP server (`--fix` sets up the editors the project uses), and the server starts for the environment, in its own process over stdio, as `mcp setup --check` starts it |
 | `tests` | The test conventions (`propmaster check`) and `quarantine.json` |
 
 `✖` is a problem and makes the exit code 1; `!` is a warning and doesn't. `--fix` applies only the fixes marked `(--fix)`: installing packages, adding config placeholders, `.gitignore` entries and the CI image tag. It prints the rest. `--problems` hides what passed, and `--json` is for scripts. Agents run it through the [MCP server](../mcp-server#project-tools-always-on)'s `doctor` tool.
+
+## MCP server setup
+
+`propmaster mcp setup` connects the MCP server to your editors: Claude Code, VS Code, Cursor, Windsurf and Zed. It picks them from a menu, with the ones the project uses already selected, adds the entry next to the servers already in each file, and changes nothing the second time. `--check` starts the server as the editor would and lists its tools; `--remove` takes it out again. See [Setup](../mcp-server#setup).
 
 ## Failures
 
@@ -134,7 +138,7 @@ Every answer can be given as an argument or flag, and then nothing is asked. Wit
 
 ## Banner and version
 
-Commands you run yourself (`init`, `doctor`, `fixture`, `env`, `standards`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` never prints it: its output is the MCP protocol.
+Commands you run yourself (`init`, `mcp setup`, `doctor`, `fixture`, `env`, `standards`, `organize`, `auth-setup`, `generate`, `flaky`, `--help`) start with the logo and version. It's left out when the output isn't a terminal, in CI, with `--json` or `--quiet`, and when `PROPMASTER_NO_BANNER` is set. `propmaster mcp` (the server) never prints it: its output is the MCP protocol.
 
 ```bash
 npx propmaster --version        # or -v: prints just the version, e.g. 1.0.0

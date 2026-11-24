@@ -18,6 +18,7 @@ npx propmaster generate openapi --dry-run   # API test skeletons from the spec, 
 npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 npx propmaster env add stg --from dev --dry-run  # a new environment: CHANGE_ME values, no credentials, .env.stg to fill in
 npx propmaster standards                          # the team's own rules (propmaster.standards.json) and pages (standards/)
+npx propmaster mcp setup --client claude,vscode   # connect the MCP server to editors (also cursor, windsurf, zed); --check starts it and lists its tools
 npx propmaster doctor --problems --offline        # setup problems (config, drivers, CI image, .env in git, conventions) and their fixes; --fix applies the safe ones
 ```
 
@@ -36,7 +37,7 @@ The Propmaster reporter (`src/reporter/`, in `playwright.config.ts`) adds every 
 
 ### Propmaster MCP server
 
-When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/mcp-server.md](docs/mcp-server.md)), use its tools to see the real backends instead of guessing:
+When the `propmaster` MCP server is connected (`npx propmaster mcp`; `npx propmaster mcp setup` writes each editor's config, see [docs/mcp-server.md](docs/mcp-server.md)), use its tools to see the real backends instead of guessing:
 
 - **Before writing any test:** if the project has `propmaster.standards.json` or `standards/`, call `standards` and read the pages that apply; follow them as you follow this file.
 - **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
@@ -137,7 +138,8 @@ src/
                                 #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours;
                                 #   fixture.ts = `fixture add|remove|list` from fixture-catalog.ts (what each fixture needs),
                                 #   json-edit.ts = edits JSON in place, keeping its formatting; env.ts = `env add|list`;
-                                #   doctor.ts = `doctor` checks and safe fixes; standards.ts = the team's rules and pages
+                                #   doctor.ts = `doctor` checks and safe fixes; standards.ts = the team's rules and pages;
+                                #   mcp-setup.ts = `mcp setup`: each editor's MCP config, --check over stdio, --remove
 
 docs/                           # Fixture guides + VitePress site (published to GitHub Pages)
 ├── .vitepress/config.mts       # Site nav/sidebar: add new pages here

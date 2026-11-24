@@ -589,12 +589,12 @@ See [docs/secrets.md](docs/secrets.md) for every provider's options.
 
 `npx propmaster mcp` lets a coding agent (Claude Code, VS Code, Cursor, ...) see the backends while it writes or debugs tests. It can query the database, read MongoDB, Redis, Kafka and Neo4j, list the OpenAPI operations, and get the next free TestCaseID. It uses the project's `environments.json` and secrets, is read-only unless you pass `--allow-writes`, refuses production environments, and never shows credentials.
 
-```json
-// .mcp.json (Claude Code)
-{ "mcpServers": { "propmaster": { "command": "npx", "args": ["propmaster", "mcp"] } } }
+```bash
+npx propmaster mcp setup           # writes the config for Claude Code, VS Code, Cursor, Windsurf or Zed (menu)
+npx propmaster mcp setup --check   # starts the server as the editor would and lists its tools
 ```
 
-See [docs/mcp-server.md](docs/mcp-server.md) for every tool and the VS Code setup.
+See [docs/mcp-server.md](docs/mcp-server.md) for every tool and each editor's setup.
 
 ---
 
