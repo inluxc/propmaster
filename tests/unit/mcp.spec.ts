@@ -304,13 +304,13 @@ test.describe('mcp — server tools (SQLite project)', () => {
             'environment_info', 'db_query', 'mongo_find', 'mongo_aggregate', 'redis_get', 'redis_keys', 'kafka_topics',
             'kafka_peek', 'neo4j_read', 'openapi_operations', 'otp_generate', 'next_test_id', 'check_tests',
             'fixtures_list', 'fixture_add', 'fixture_remove', 'environments_list', 'environment_add', 'standards', 'doctor',
-            'run_tests', 'last_failures', 'flaky_tests', 'generate_api_tests',
+            'run_tests', 'last_failures', 'flaky_tests', 'coverage_report', 'generate_api_tests',
         ]);
         // The project tools change project files (only with apply: true), never backend data.
         expect(names.filter((t) => t.annotations?.readOnlyHint !== true).map((t) => t.name)).toEqual(['fixture_add', 'fixture_remove', 'environment_add', 'doctor', 'run_tests', 'generate_api_tests']);
         const write = await server.server.handle({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'db_execute', arguments: { sql: 'DELETE FROM users' } } });
         expect(write?.error).toMatchObject({ message: 'Unknown tool: db_execute' });
-        expect(server.logs[0]).toContain('backends read-only, 24 tools');
+        expect(server.logs[0]).toContain('backends read-only, 25 tools');
     });
 
     test('db_query returns rows, honours params and maxRows', async () => {

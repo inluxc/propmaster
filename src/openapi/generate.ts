@@ -137,6 +137,25 @@ interface SecurityScheme {
     scheme?: string;
 }
 
+/** The spec's operations in brief: operationId, method, path, tags and documented status codes (for coverage). */
+export interface SpecOperation {
+    operationId?: string;
+    method: string;
+    path: string;
+    tags: string[];
+    statuses: string[];
+}
+
+export function specOperations(doc: OpenApiDocument): SpecOperation[] {
+    return readOperations(doc).map((op) => ({
+        ...(op.operationId ? { operationId: op.operationId } : {}),
+        method: op.method,
+        path: op.path,
+        tags: op.tags,
+        statuses: [...op.responses.keys()].sort((a, b) => statusOrder(a) - statusOrder(b)),
+    }));
+}
+
 const isJson = (contentType: string) => /^application\/(.+\+)?json\b/i.test(contentType) || contentType === '*/*';
 
 function readOperations(doc: OpenApiDocument): Operation[] {

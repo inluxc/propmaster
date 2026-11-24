@@ -14,6 +14,7 @@ npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line
 npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
 npm run flaky                   # tests ranked by flake rate, from .propmaster/test-history.json (--json for scripts)
 npx propmaster failures         # what failed in the last run: the step, the error, where, the trace (--json)
+npx propmaster coverage         # what the tests cover per layer (unit, integration, e2e) and the gaps (--json --tests)
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 npx propmaster env add stg --from dev --dry-run  # a new environment: CHANGE_ME values, no credentials, .env.stg to fill in
@@ -49,6 +50,7 @@ When the `propmaster` MCP server is connected (`npx propmaster mcp`; `npx propma
 - **After changing tests:** `check_tests` (same rules as `npm run lint:tests`), then `run_tests` with the IDs you changed (`ids: ["TC-API-005"]`).
 - **A test fails:** read `failedStep` and `errors` in the `run_tests` result, or `last_failures` for a run started elsewhere; its `recent` outcomes tell a new failure from a flaky one (`flaky_tests`).
 - **Writing API tests:** `generate_api_tests` previews what the spec gives; `apply: true` writes it.
+- **Asked what to test next, or how well something is tested:** `coverage_report` (per layer: what the tests touch, untested operations and status codes, untested backends, tests that never ran or fail, code-coverage reports), then compare its gaps with the real backends (`openapi_operations`, `db_query`, `kafka_topics`) and the application code, and weigh them by risk rather than by percentage.
 
 `run_tests` isn't offered for a production environment, and its runs aren't added to the test history unless `history: true`.
 
@@ -130,7 +132,10 @@ src/
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction;
 │                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add / doctor / standards
-│                               #   test-tools.ts = run_tests / last_failures / flaky_tests / generate_api_tests
+│                               #   test-tools.ts = run_tests / last_failures / flaky_tests / coverage_report / generate_api_tests
+├── coverage/                   # Coverage report: test inventory per layer and what each test touches (inventory.ts),
+│                               #   other languages' tests (languages.ts), coverage-report readers for any language
+│                               #   (code-coverage.ts), gaps (report.ts)
 ├── reporter/                   # Propmaster reporter: test history (history.ts), quarantine (quarantine.ts),
 │                               #   last run's failures with step, error and trace (last-run.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
@@ -763,6 +768,7 @@ npm run lint:tests                                # Test conventions (IDs, tags,
 npm run verify                                    # typecheck + lint:tests + unit + property tests
 npm run flaky                                     # Flake ranking from the test history
 npx propmaster failures                           # The last run's failures: step, error, trace
+npx propmaster coverage                           # Coverage per layer: what tests touch, untested operations, gaps
 ```
 
 ### Running in CI

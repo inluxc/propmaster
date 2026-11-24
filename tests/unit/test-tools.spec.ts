@@ -250,7 +250,7 @@ test.describe('last_failures, flaky_tests and generate_api_tests — from files'
 
     test('no run_tests for a production environment', () => {
         const names = testTools({ root, environment: 'prod', production: true }).map((t) => t.name);
-        expect(names).toEqual(['last_failures', 'flaky_tests', 'generate_api_tests']);
+        expect(names).toEqual(['last_failures', 'flaky_tests', 'coverage_report', 'generate_api_tests']);
     });
 
     test('the text output lists failures first and skips flaky tests on request', () => {

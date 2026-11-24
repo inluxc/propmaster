@@ -101,13 +101,14 @@ They're marked as not read-only, so clients that ask before such tools run ask b
 
 ### Test tools (always on)
 
-The test loop: run tests, read why they failed, and see which ones are flaky.
+The test loop: run tests, read why they failed, see which ones are flaky, and what they cover.
 
 | Tool | What it does |
 |---|---|
 | `run_tests` | Runs `playwright test` in the project for the server's environment. Select tests by `ids` (TestCaseIDs), `files`, `projects` or `grep`; with none, every test runs. Returns the counts and, for each failure, the `test.step()` that failed, the error message, where it was thrown with the code around it, and the trace. Flaky tests (passed on a retry) are listed too, and `command` is the same run for a terminal. Also takes `timeout` (seconds for the whole run, default 300, up to 1800), `retries`, `workers` and `history` |
 | `last_failures` | The failed and flaky tests of the last run, whoever ran it (`run_tests`, a terminal, an IDE), with the same details, plus each test's recent outcomes from the test history (`✓✓✓✗`: new; `✓✗✓✗`: keeps coming back). `flaky: false` leaves the flaky ones out |
 | `flaky_tests` | The [flake ranking](./flaky-tests#finding-flaky-tests), the same as `npm run flaky`. Takes `runs`, `limit` and `minRate` |
+| `coverage_report` | [What the tests cover](./coverage) per layer (unit, integration, e2e): tests, skipped ones, last run and pass rate, fixtures, and what they touch (operations, tables, topics, queues, routes, ...); the OpenAPI operations and status codes no test asserts; configured backends no test uses; and the code-coverage reports in the project (LCOV, Istanbul, Cobertura, JaCoCo, Clover, OpenCover, Go, coverage.py, SimpleCov). The application's own tests count too, in Python, Go, Java/Kotlin, C#, Ruby, PHP, Rust, Swift or Elixir, and their HTTP calls are matched to the spec's operations. Read-only, runs nothing. Takes `layer`, `tests` (every test with what it touches), `spec`, `reports`, `runs` and `limit` |
 | `generate_api_tests` | The tests [`propmaster generate openapi`](./guide/cli) would write from the spec: the files, their tests (TestCaseID, `operationId`, status) and their content. A preview unless called with `apply: true`, which writes them and never over an existing file. Takes `tags`, `operations`, `spec`, `out`, `category`, `prism` and `content` |
 
 A `run_tests` result, shortened:
@@ -170,6 +171,7 @@ When `secrets.provider` is set, the server resolves the secrets on start. If the
 - **After changing tests:** `check_tests`, and fix what it reports; then `run_tests` with the IDs of the tests you changed.
 - **When a test fails:** the `failedStep` and `errors` of `run_tests` or `last_failures` first. The `recent` outcomes tell a new failure (your change) from one that keeps coming back (`flaky_tests`, and the [flaky tests guide](./flaky-tests)).
 - **Before writing API tests by hand:** `generate_api_tests` for what the spec already gives.
+- **When asked what to test next, or how well something is tested:** `coverage_report`, then compare its gaps with the backends (`openapi_operations`, `db_query`, `kafka_topics`) and the application code. Weigh the gaps; don't chase the percentages.
 
 The tests still create their own data through the fixtures (`databaseClient.insert`, `testData`, ...). The MCP server is for looking around, not for setting up test data.
 

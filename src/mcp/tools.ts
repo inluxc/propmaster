@@ -439,7 +439,7 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
             },
         },
         ...projectTools(ctx.root, undefined, ctx.environment),
-        ...testTools({ root: ctx.root, environment: ctx.environment, production: ctx.production === true }),
+        ...testTools({ root: ctx.root, environment: ctx.environment, production: ctx.production === true, config: ctx.config }),
     ];
 
     if (!ctx.allowWrites) return tools;
