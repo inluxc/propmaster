@@ -13,6 +13,7 @@ npm run lint:tests              # IDs, tags, uniqueness, test.step(), imports (s
 npm run lint:tests -- --json    # same, as JSON: { ok, violations: [{ file, line, rule, test, message }] }
 npm run verify                  # typecheck + lint:tests + unit + property tests — run before finishing any task
 npm run flaky                   # tests ranked by flake rate, from .propmaster/test-history.json (--json for scripts)
+npx propmaster failures         # what failed in the last run: the step, the error, where, the trace (--json)
 npx propmaster generate openapi --dry-run   # API test skeletons from the spec, one file per tag (drop --dry-run to write)
 npx propmaster fixture add redis --dry-run  # what setting a fixture up changes: driver, config, variables, service, starter test
 npx propmaster env add stg --from dev --dry-run  # a new environment: CHANGE_ME values, no credentials, .env.stg to fill in
@@ -44,7 +45,11 @@ When the `propmaster` MCP server is connected (`npx propmaster mcp`, see [docs/m
 - **Tests fail before reaching the code under test** (connection refused, MissingPackageError, config error): `doctor` first; `doctor` with `fix: true` applies the safe fixes.
 - **A test needs a backend the project doesn't have:** `fixtures_list`, then `fixture_add` (it returns the plan), then `fixture_add` with `apply: true`. Never hand-edit `environments.json` for a fixture the catalog knows.
 - **A new environment (staging, a feature stack):** `environment_add` (plan first, then `apply: true`); never copy credentials into `environments.json` yourself.
-- **After changing tests:** `check_tests` (same rules as `npm run lint:tests`).
+- **After changing tests:** `check_tests` (same rules as `npm run lint:tests`), then `run_tests` with the IDs you changed (`ids: ["TC-API-005"]`).
+- **A test fails:** read `failedStep` and `errors` in the `run_tests` result, or `last_failures` for a run started elsewhere; its `recent` outcomes tell a new failure from a flaky one (`flaky_tests`).
+- **Writing API tests:** `generate_api_tests` previews what the spec gives; `apply: true` writes it.
+
+`run_tests` isn't offered for a production environment, and its runs aren't added to the test history unless `history: true`.
 
 The server's backend tools are read-only unless it was started with `--allow-writes`; the project tools (`fixture_add`, `fixture_remove`) change only project files, and only with `apply: true`. Even then, tests create their data through the fixtures (`databaseClient.insert`, `testData`, ...), never through MCP write tools: MCP writes aren't cleaned up. Results never contain credentials; don't try to read them some other way.
 
@@ -124,7 +129,9 @@ src/
 ├── mcp/                        # `propmaster mcp`: MCP server (stdio) with read/write tools per backend,
 │                               #   read-only SQL guard, production refusal, credential redaction;
 │                               #   project-tools.ts = fixtures_list / fixture_add / fixture_remove / environments_list / environment_add / doctor / standards
-├── reporter/                   # Propmaster reporter: test history (history.ts) and quarantine (quarantine.ts)
+│                               #   test-tools.ts = run_tests / last_failures / flaky_tests / generate_api_tests
+├── reporter/                   # Propmaster reporter: test history (history.ts), quarantine (quarantine.ts),
+│                               #   last run's failures with step, error and trace (last-run.ts)
 └── cli/                        # `propmaster` CLI: init (scaffolding), organize (sort tests by type), mcp, generate,
                                 #   check + next-id (test conventions), flaky (flake ranking); layout.ts = the scaffolded layout;
                                 #   prompts.ts = menus (select, multiselect, confirm, text), banner.ts + style.ts = logo, colours;
@@ -753,6 +760,7 @@ npm run typecheck                                 # Type checking only
 npm run lint:tests                                # Test conventions (IDs, tags, steps, imports)
 npm run verify                                    # typecheck + lint:tests + unit + property tests
 npm run flaky                                     # Flake ranking from the test history
+npx propmaster failures                           # The last run's failures: step, error, trace
 ```
 
 ### Running in CI

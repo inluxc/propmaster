@@ -20,6 +20,7 @@ import { createKafka, type KafkaAdminLike, type KafkaLike } from '../fixtures/ka
 import { loadOpenApiDocument } from '../openapi/load.js';
 import { readOnlySqlProblem, writingPipelineStage } from './guards.js';
 import { projectTools } from './project-tools.js';
+import { testTools } from './test-tools.js';
 import { ToolInputError, type ToolDefinition } from './protocol.js';
 
 type Redis = Awaited<ReturnType<typeof createRedisClient>>['client'];
@@ -36,6 +37,8 @@ export interface McpContext {
     configError?: string;
     /** Write tools are offered. */
     allowWrites: boolean;
+    /** A production environment: no write tools, and no run_tests. */
+    production?: boolean;
 }
 
 const DEFAULT_ROWS = 100;
@@ -436,6 +439,7 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
             },
         },
         ...projectTools(ctx.root, undefined, ctx.environment),
+        ...testTools({ root: ctx.root, environment: ctx.environment, production: ctx.production === true }),
     ];
 
     if (!ctx.allowWrites) return tools;

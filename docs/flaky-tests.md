@@ -145,6 +145,36 @@ The quarantine applies only through the reporter. Without the reporter in the co
 
 ---
 
+## What failed in the last run
+
+After every run the reporter also writes `.propmaster/last-run.json`: the failed and flaky tests of that run with the `test.step()` that failed, the error, where it was thrown, the code around it, and the trace and screenshots. It holds only the last run.
+
+```bash
+npx propmaster failures
+```
+
+```
+Last run 2026-11-23 10:12:40: failed. 41 passed, 1 failed, 1 flaky, 2 skipped.
+
+✗ failed  [TC-API-007] PUT /pet returns 404  (api, tests/api/pet.spec.ts:31)
+  in step: Step 2: Verify the response
+  history: ✓✓✓✓✓✓✗ (oldest first)
+  Error: expect(received).toBe(expected)
+
+  Expected: 404
+  Received: 200
+  at tests/api/pet.spec.ts:38:35
+  trace: npx playwright show-trace test-results/pet-PUT-pet-returns-404-api/trace.zip
+```
+
+`history` comes from the test history: one failure after a run of passes is likely new, while one that keeps coming back is in the flake ranking. `--no-flaky` shows only the failures, and `--json` is for scripts. Agents use the [MCP server](./mcp-server#test-tools-always-on)'s `last_failures` and `run_tests`.
+
+| Reporter option | Default | |
+|---|---|---|
+| `lastRun` | `.propmaster/last-run.json` (or `PW_LAST_RUN_FILE`) | Relative to the config file; `false` for none |
+
+---
+
 ## The history file
 
 ```json
