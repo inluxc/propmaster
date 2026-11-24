@@ -23,9 +23,12 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase, TestError } from '@playwright/test/reporter';
 import { appendRun, DEFAULT_HISTORY_FILE, DEFAULT_MAX_RUNS, runContext, type HistoryTest, type TestOutcome } from './history.js';
 import { DEFAULT_LAST_RUN_FILE, MAX_RUN_ERRORS, describeTest, runErrorText, writeLastRun, type LastRunTest } from './last-run.js';
+import { bunRuntimeProblem, bunVersion } from '../package-manager.js';
 import { describeEntry, loadQuarantine, quarantinePath, testIdOf, type LoadedQuarantine } from './quarantine.js';
 
 export interface PropmasterReporterOptions {
+    /** The Bun version the run is on, undefined on Node.js (tests replace it). */
+    bunVersion?: () => string | undefined;
     /** History file, relative to the config file (default `.propmaster/test-history.json`, or PW_TEST_HISTORY); `false` for none. */
     history?: string | false;
     /** Runs to keep in the history (default 100). */
@@ -84,6 +87,9 @@ export default class PropmasterReporter implements Reporter {
         this.config = config;
         this.suite = suite;
         this.startedAt = new Date();
+        const bun = (this.options.bunVersion ?? bunVersion)();
+        const problem = bun ? bunRuntimeProblem(bun, config.version) : undefined;
+        if (problem) console.log(`Propmaster: ${problem}`);
         if (this.options.quarantine !== false) {
             try {
                 this.quarantine = loadQuarantine(quarantinePath(this.baseDir, this.options.quarantine || undefined));

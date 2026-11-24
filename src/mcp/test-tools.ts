@@ -10,6 +10,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { installedPackageDir, packageCommand, packageManager } from '../package-manager.js';
 import { createRequire } from 'node:module';
 import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -97,9 +98,11 @@ function reporterPath(): string {
 
 function playwrightCli(root: string): string {
     try {
-        return createRequire(join(root, 'package.json')).resolve('@playwright/test/cli');
+        const dir = installedPackageDir(root, '@playwright/test');
+        if (!dir) throw new Error('not installed');
+        return createRequire(join(dir, 'package.json')).resolve('@playwright/test/cli');
     } catch {
-        throw new ToolInputError(`@playwright/test isn't installed in ${root}: npm install --save-dev @playwright/test`);
+        throw new ToolInputError(`@playwright/test isn't installed in ${root}: ${packageCommand(packageManager(root), 'install', ['@playwright/test']).join(' ')}`);
     }
 }
 

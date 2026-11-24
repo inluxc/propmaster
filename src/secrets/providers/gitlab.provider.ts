@@ -5,6 +5,7 @@
  * Uses the native `fetch` API for HTTP requests (available in Node.js 18+).
  */
 
+import { errorReason } from '../../network-error.js';
 import type { SecretsProvider } from '../provider.interface.js';
 import { SecretsError } from '../../errors.js';
 
@@ -66,7 +67,7 @@ export class GitLabSecretsProvider implements SecretsProvider {
                 'fetch',
                 key,
                 {
-                    reason: (error as Error).message,
+                    reason: errorReason(error),
                     projectId: this.projectId,
                     apiUrl: this.apiUrl,
                 },

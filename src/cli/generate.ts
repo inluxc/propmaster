@@ -5,10 +5,10 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
 import { collect, findProjectRoot, loadConfig, nextIds, walk } from './check-tests.js';
 import { ConfigLoader } from '../config/loader.js';
+import { installedPackageDir, packageCommand, packageManager } from '../package-manager.js';
 import { loadOpenApiDocument } from '../openapi/load.js';
 import { coveredOperations, generateApiTests, type GenerateResult } from '../openapi/generate.js';
 
@@ -103,12 +103,7 @@ export function parseGenerateArgs(argv: string[], cwd: string = process.cwd()): 
 }
 
 function hasPackage(root: string, name: string): boolean {
-    try {
-        createRequire(join(root, 'package.json')).resolve(name);
-        return true;
-    } catch {
-        return false;
-    }
+    return installedPackageDir(root, name) !== undefined;
 }
 
 export interface GenerateRun {
@@ -153,7 +148,7 @@ export async function generateOpenApiTests(o: GenerateCliOptions): Promise<Gener
     let contractNote: string | undefined;
     if (o.contract === undefined && !(hasPackage(o.root, 'ajv') && hasPackage(o.root, 'ajv-formats'))) {
         contract = false;
-        contractNote = 'No response-schema steps: ajv and ajv-formats aren\'t installed (npm install --save-dev ajv ajv-formats, then run again with --contract).';
+        contractNote = `No response-schema steps: ajv and ajv-formats aren't installed (${packageCommand(packageManager(o.root), 'install', ['ajv', 'ajv-formats']).join(' ')}, then run again with --contract).`;
     }
 
     const result = generateApiTests(doc, {

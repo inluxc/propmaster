@@ -11,6 +11,7 @@
  * @requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
  */
 
+import { packageCommand, packageManager } from '../../src/package-manager';
 import { test, expect } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -267,7 +268,7 @@ test.describe('OpenAPI Fixture', () => {
             const error = await resolveSpecDefinition('./specs/api.yaml', dir, missing).catch((e) => e);
             expect(error).toBeInstanceOf(MissingPackageError);
             expect(error.packageName).toBe('js-yaml');
-            expect(error.installCommand).toBe('npm install --save-dev js-yaml');
+            expect(error.installCommand).toBe(packageCommand(packageManager(process.cwd()), 'install', ['js-yaml']).join(' '));
             expect(error.message).toContain('openApiClient (YAML spec)');
         });
 

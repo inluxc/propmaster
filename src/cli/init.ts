@@ -12,6 +12,7 @@ import { runFlaky } from './flaky.js';
 import { runFailures } from './failures.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
+import { adaptCommands, packageManagerForNewProject } from '../package-manager.js';
 import { MCP_CLIENTS, applyChange, clientById, planSetup, type ClientId } from './mcp-setup.js';
 import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
 
@@ -742,12 +743,15 @@ export interface InitResult {
  * moves one: in a project that already has Playwright tests or a config, it
  * adds only what's missing and reports where the existing tests belong.
  */
-export function initProject(targetDir: string, log: (line?: string) => void = console.log): InitResult {
+export function initProject(targetDir: string, log: (line?: string) => void = console.log, env: NodeJS.ProcessEnv = {}): InitResult {
     const existingConfigs = existingPlaywrightConfigs(targetDir);
     const before = fs.existsSync(targetDir) ? planOrganize(targetDir) : null;
     const testCount = before ? before.moves.length + before.inPlace.length + before.ambiguous.length + before.conflicts.length : 0;
     const plan = testCount > 0 ? before : null;
     const result: InitResult = { created: [], skipped: [], existingConfigs, plan };
+    // Commands in the files and the next steps, for the project's package manager (bunx propmaster init → bun).
+    const pm = packageManagerForNewProject(targetDir, env);
+    const say = (line?: string) => log(line === undefined ? line : adaptCommands(line, pm));
     // Before AGENTS.md and the rest are written: the editors the project already uses.
     const mcpEditors = fs.existsSync(targetDir) ? MCP_CLIENTS.filter((c) => c.detect({ root: targetDir, home: os.homedir() })).map((c) => c.id) : [];
 
@@ -775,7 +779,7 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
             continue;
         }
         fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-        fs.writeFileSync(fullPath, content, 'utf-8');
+        fs.writeFileSync(fullPath, /\.(md|json)$/.test(filePath) ? adaptCommands(content, pm) : content, 'utf-8');
         log(`  ✓ Created ${filePath}`);
         result.created.push(filePath);
     }
@@ -785,7 +789,7 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
     for (const id of new Set<ClientId>(['claude', ...mcpEditors])) {
         const client = clientById(id)!;
         if (client.global) continue;
-        const change = planSetup(client, mcpCtx, {});
+        const change = planSetup(client, mcpCtx, { packageManager: pm });
         applyChange(change);
         if (change.kind === 'create') {
             log(`  ✓ Created ${change.file}`);
@@ -808,17 +812,17 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
     if (plan || existingConfigs.length) {
         reportExisting(result, log);
     } else {
-        log('  Next steps:');
-        log('    1. npm install');
-        log('    2. Set up the fixtures you use: driver, config, local service, starter test');
-        log('         npx propmaster fixture add            (pick from a menu)');
-        log('         npx propmaster fixture add openapi database redis');
-        log('    3. npx playwright install');
-        log('    4. Update environments.json with your service URLs; npx propmaster doctor checks the setup');
-        log('    5. Get a TestCaseID: npm run next-id -- API');
-        log('    6. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
-        log('    7. Check conventions: npm run lint:tests');
-        log("    8. Add the team's testing standards: npx propmaster standards init");
+        say('  Next steps:');
+        say('    1. npm install');
+        say('    2. Set up the fixtures you use: driver, config, local service, starter test');
+        say('         npx propmaster fixture add            (pick from a menu)');
+        say('         npx propmaster fixture add openapi database redis');
+        say('    3. npx playwright install');
+        say('    4. Update environments.json with your service URLs; npx propmaster doctor checks the setup');
+        say('    5. Get a TestCaseID: npm run next-id -- API');
+        say('    6. Create your first spec in the folder for its type, e.g. tests/api/users.spec.ts');
+        say('    7. Check conventions: npm run lint:tests');
+        say("    8. Add the team's testing standards: npx propmaster standards init");
         log();
     }
     return result;
@@ -1022,7 +1026,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     const s = styleFor();
     console.log(`  ${s.bold('Initializing project')} in ${s.cyan(isCurrentDir ? '.' : path.relative(process.cwd(), targetDir))}`);
     console.log('');
-    initProject(targetDir);
+    initProject(targetDir, console.log, process.env);
     return 0;
 }
 

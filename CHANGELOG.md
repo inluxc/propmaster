@@ -6,6 +6,11 @@ What changed in Propmaster, newest first. Nothing has been published to npm yet,
 
 ### Added
 
+- **Bun support**, as the package manager and as the runtime (`bunx --bun playwright test`, Bun 1.4.3 or later with Playwright 1.65 or later). CI runs every suite on Bun 1.4.5. [#78](https://github.com/inluxc/propmaster/pull/78) · [Using Bun](https://propmaster.dev/guide/bun)
+  - In a Bun project (`bun.lock`, or `bunx propmaster init`), every command Propmaster prints or writes uses Bun: `bun add -d` for drivers, `bun run` for scripts, `bunx` for tools and for the MCP server in editor configs.
+  - The reporter and `propmaster doctor` warn when the tests run on a Bun or Playwright too old for each other. `doctor` also finds a native driver installed without its binding (`--fix` runs `bun pm trust`, or `npm rebuild`).
+  - Every backend passes on Bun except Kafka with Confluent's client, whose native binding exists only for Node.js: on Bun, use kafkajs (the default), or run the Kafka tests on Node.js. The fixture and `doctor` say so.
+  - Errors from a failed request read the same on Node.js and Bun (`fetch failed: ECONNREFUSED (...)`), and on Node.js they now include the cause instead of just "fetch failed".
 - **`propmaster mcp setup`** connects the MCP server to your editors by writing the config file each one reads. [#76](https://github.com/inluxc/propmaster/pull/76) · [Setup](https://propmaster.dev/mcp-server#setup)
   - Editors: Claude Code (`.mcp.json`), VS Code (`.vscode/mcp.json`), Cursor (`.cursor/mcp.json`), Windsurf (`~/.codeium/windsurf/mcp_config.json`) and Zed (`.zed/settings.json`).
   - A menu opens with the editors the project already uses selected. `--client claude,vscode` names them instead.

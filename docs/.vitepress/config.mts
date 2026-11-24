@@ -54,6 +54,7 @@ export default defineConfig({
                     { text: 'Project Layout', link: '/guide/project-layout' },
                     { text: 'Writing Tests', link: '/guide/writing-tests' },
                     { text: 'Generating API Tests', link: '/guide/generate-api-tests' },
+                    { text: 'Using Bun', link: '/guide/bun' },
                 ],
             },
             {

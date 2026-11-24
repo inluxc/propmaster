@@ -168,11 +168,31 @@ function confluentDriver(mod: ConfluentModule, config: KafkaFixtureConfig, optio
     };
 }
 
+/**
+ * Confluent's client on Bun: its native binding is downloaded for Node.js,
+ * and Confluent publishes none for Bun's ABI, so loading it fails with a
+ * NODE_MODULE_VERSION mismatch. That error, said with what to do instead.
+ */
+export function confluentOnBunError(error: unknown, bun: string | null = (process.versions as Record<string, string | undefined>).bun ?? null): Error | undefined {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!bun || !/NODE_MODULE_VERSION|different Node\.js ABI/.test(message)) return undefined;
+    return new Error(
+        `Confluent's Kafka client doesn't load on Bun ${bun}: its native binding is built for Node.js, and Confluent publishes none for Bun. ` +
+            'Use the kafkajs driver (driver: \'kafkajs\', the default), or run these tests on Node.js (`bunx playwright test`, without --bun).',
+        { cause: error },
+    );
+}
+
 /** A Kafka connection on the configured driver. Loads the driver's package on first use. */
 export async function createKafka(config: KafkaFixtureConfig, options: KafkaConnectOptions): Promise<KafkaLike> {
     const driver = kafkaDriverOf(config);
     if (driver === 'confluent') {
-        const mod = await loadOptional<ConfluentModule & { default?: ConfluentModule }>('@confluentinc/kafka-javascript', 'kafkaClient (confluent)');
+        let mod: ConfluentModule & { default?: ConfluentModule };
+        try {
+            mod = await loadOptional<ConfluentModule & { default?: ConfluentModule }>('@confluentinc/kafka-javascript', 'kafkaClient (confluent)');
+        } catch (error) {
+            throw confluentOnBunError(error) ?? error;
+        }
         return confluentDriver(mod.default ?? mod, config, options);
     }
     const mod = await loadOptional<KafkaJsModule & { default?: KafkaJsModule }>('kafkajs', 'kafkaClient');

@@ -13,6 +13,7 @@
  * Uses Node's built-in fetch; no package needed.
  */
 
+import { errorReason } from '../network-error.js';
 import type { AuthConfig, AuthRoleConfig } from '../config/schema.js';
 import { FixtureInitError } from '../errors.js';
 
@@ -146,7 +147,7 @@ export class TokenManager {
                 })
                 .catch((error: unknown) => {
                     this.endpoints.delete(issuer);
-                    throw new FixtureInitError('auth', 'connect', { issuer, reason: error instanceof Error ? error.message : String(error) });
+                    throw new FixtureInitError('auth', 'connect', { issuer, reason: errorReason(error) });
                 });
             this.endpoints.set(issuer, endpoint);
         }
@@ -195,7 +196,7 @@ export class TokenManager {
         try {
             res = await this.fetchImpl(endpoint, { method: 'POST', headers, body });
         } catch (error) {
-            throw new FixtureInitError('auth', 'connect', { ...context, reason: error instanceof Error ? error.message : String(error) });
+            throw new FixtureInitError('auth', 'connect', { ...context, reason: errorReason(error) });
         }
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         if (!res.ok || typeof data.access_token !== 'string') {

@@ -38,7 +38,7 @@ npm install --save-dev @confluentinc/kafka-javascript
 
 Pick Confluent's with `driver: 'confluent'` in the config, or `PW_KAFKA_DRIVER=confluent`. Tests don't change: `produce()`, `consume()`, the options and the errors are the same on both, and this repository's CI runs the Kafka suite on each.
 
-Confluent's client needs its install script to run. It doesn't load (`Could not locate the bindings file`) when it was installed with `--ignore-scripts`, with pnpm 10 or Bun without allowing its scripts (`pnpm approve-builds`, `trustedDependencies`), or where GitHub downloads are blocked and there's no compiler to fall back on. Stay on kafkajs in those setups.
+Confluent's client needs its install script to run. It doesn't load (`Could not locate the bindings file`) when it was installed with `--ignore-scripts`, with pnpm 10 or Bun without allowing its scripts (`pnpm approve-builds`, `bun pm trust @confluentinc/kafka-javascript`; `propmaster doctor` finds it), or where GitHub downloads are blocked and there's no compiler to fall back on. Stay on kafkajs in those setups.
 
 ### Run it in a container
 
