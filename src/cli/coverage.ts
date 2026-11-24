@@ -84,7 +84,7 @@ export async function runCoverage(argv: string[], log: (line?: string) => void =
             reports: reports.length ? reports : undefined,
             runs,
             tests: argv.includes('--tests'),
-            limit: 1000,
+            limit: argv.includes('--json') ? 100_000 : 1000,
         });
         log(argv.includes('--json') ? JSON.stringify(report, null, 2) : formatCoverageReport(report));
         return 0;

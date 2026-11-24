@@ -71,7 +71,8 @@ const SPECS: LanguageSpec[] = [
     {
         language: 'csharp',
         file: (_p, n) => /Tests?\.cs$|Specs?\.cs$/.test(n),
-        test: /\[(?:Fact|Theory|Test|TestMethod|TestCase|DataTestMethod|SkippableFact)\b[^\]]*\][\s\S]{0,300}?\b(?:public|internal)[ \t]+(?:async[ \t]+)?(?:static[ \t]+)?[\w<>]+[ \t]+(\w+)[ \t]*\(/g,
+        // The attribute, then any number of attributes ([InlineData] rows, over several lines too) and comments, then the method
+        test: /\[(?:Fact|Theory|Test|TestMethod|TestCase|DataTestMethod|SkippableFact|SkippableTheory)\b[^\]\n]*\](?:\s*(?:\[(?:[^[\]"]|"(?:\\.|[^"\\])*"|\[[^[\]]*\])*\]|\/\/[^\n]*|\/\*[\s\S]*?\*\/))*\s*(?:(?:public|internal|private|protected|static|async|virtual|override)[ \t]+)*[\w<>[\],.? ]+?[ \t]+(\w+)[ \t]*\(/g,
         skip: /\[(?:Fact|Theory)\([^)]*\bSkip\s*=|\[Ignore\b/,
     },
     {
@@ -83,19 +84,19 @@ const SPECS: LanguageSpec[] = [
     {
         language: 'php',
         file: (_p, n) => /Test\.php$/.test(n),
-        test: /function[ \t]+(test\w*)[ \t]*\(|(?:#\[Test\]|@test\b)[\s\S]{0,200}?function[ \t]+(\w+)[ \t]*\(|^[ \t]*(?:it|test)[ \t]*\([ \t]*["']([^"'\n]+)["']/gm,
+        test: /function[ \t]+(test\w*)[ \t]*\(|(?:#\[Test\](?:\s*#\[[^\n]*\])*|@test\b[^\n]*\n(?:[ \t]*\*[^\n]*\n)*?[ \t]*\*\/)\s*(?:(?:public|protected|private|static|final)[ \t]+)*function[ \t]+(\w+)[ \t]*\(|^[ \t]*(?:it|test)[ \t]*\([ \t]*["']([^"'\n]+)["']/gm,
         skip: /#\[(?:Group\(['"]skip|Ignore)|@group[ \t]+skip/,
     },
     {
         language: 'rust',
         file: (_p, n) => n.endsWith('.rs'),
-        test: /#\[(?:tokio::|async_std::|actix_rt::|rstest|test_case|sqlx::)?test(?:\([^\n]*\))?\][\s\S]{0,300}?\bfn[ \t]+(\w+)/g,
+        test: /#\[(?:tokio::|async_std::|actix_rt::|sqlx::)?(?:test|rstest)(?:\([^\n]*\))?\](?:\s*(?:#\[[^\n]*\]|\/\/[^\n]*))*\s*(?:pub(?:\([^)]*\))?[ \t]+)?(?:async[ \t]+)?(?:unsafe[ \t]+)?fn[ \t]+(\w+)/g,
         skip: /#\[ignore\b/,
     },
     {
         language: 'swift',
         file: (_p, n) => /Tests?\.swift$/.test(n),
-        test: /\bfunc[ \t]+(test\w*)[ \t]*\(|@Test(?:\([^\n]*\))?[\s\S]{0,200}?\bfunc[ \t]+(\w+)[ \t]*\(/g,
+        test: /\bfunc[ \t]+(test\w*)[ \t]*\(|@Test(?:\([^\n]*\))?(?:\s*@\w+(?:\([^\n]*\))?)*\s*(?:(?:public|private|internal|static|mutating|nonisolated)[ \t]+)*func[ \t]+(\w+)[ \t]*\(/g,
         skip: /@Test\([^)]*\.disabled/,
     },
     {
@@ -144,7 +145,20 @@ export function layerFromMarkers(markers: string): 'integration' | 'e2e' | null 
     return null;
 }
 
-/** The layer a whole file says, beyond its folder: Maven/Gradle `*IT`, Rust's `tests/`, Go build tags. */
+/** Harnesses that start the real application or a real backend: integration. */
+const INTEGRATION_HARNESS =
+    /\bTestcontainers\b|\btestcontainers[./:]|WebApplicationFactory|@SpringBootTest\b|@DataJpaTest\b|@JdbcTest\b|@DataMongoTest\b|@QuarkusTest\b|@MicronautTest\b|@Testcontainers\b|DockerComposeContainer|ActionDispatch::IntegrationTest|\btype:\s*:request\b|LiveServerTestCase|\bdockertest\b|\bembedded-postgres\b|\bpytest_postgresql\b/;
+/** Harnesses that drive a browser or a device: e2e. */
+const E2E_HARNESS =
+    /Microsoft\.Playwright|playwright\.(?:sync|async)_api|com\.microsoft\.playwright|\bselenium\b|\bWebDriver\b|\bCapybara\b|\btype:\s*:(?:system|feature)\b|ApplicationSystemTestCase|XCUIApplication|androidx\.test\.espresso|\bchromedp\b|\bgo-rod\b|\bAppiumDriver\b/i;
+/** A folder or file named for a real backend (`Postgres/`, `OrderRepositoryPostgresTests`): it talks to one. */
+const BACKEND_NAME = /(?:^|[^a-z])(?:postgres(?:ql)?|mysql|mariadb|sqlserver|mssql|redis|kafka|rabbit(?:mq)?|mongo(?:db)?|dynamo(?:db)?|localstack|elasticsearch|opensearch|cassandra|scylla|neo4j)(?:[^a-z]|$)/i;
+
+/**
+ * The layer a whole file says, beyond its folder: Maven/Gradle `*IT`, Rust's
+ * `tests/`, Go build tags, a harness it uses (Testcontainers, WebApplicationFactory,
+ * @SpringBootTest, Selenium, XCUITest, ...), or a backend in its folder or name.
+ */
 export function layerFromFile(path: string, src: string, language: Language): 'integration' | 'e2e' | null {
     const name = path.split('/').pop() ?? '';
     if (['java', 'kotlin', 'scala', 'groovy'].includes(language) && /(IT|ITCase|IntegrationTests?)\.\w+$/.test(name)) return 'integration';
@@ -154,5 +168,9 @@ export function layerFromFile(path: string, src: string, language: Language): 'i
         if (/\be2e\b/.test(tag)) return 'e2e';
         if (/\bintegration\b/.test(tag)) return 'integration';
     }
+    // CamelCase split, so OrderRepositoryPostgresTests names Postgres
+    const words = path.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+    if (E2E_HARNESS.test(src)) return 'e2e';
+    if (INTEGRATION_HARNESS.test(src) || BACKEND_NAME.test(words)) return 'integration';
     return null;
 }
