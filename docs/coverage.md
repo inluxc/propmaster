@@ -79,7 +79,7 @@ They're unit tests unless something says otherwise:
 - **A folder:** `integration/`, `it/`, `functional/`, `e2e/`, `acceptance/`.
 - **The language's convention:** Maven and Gradle `*IT`, Rust's `tests/` folder, a Go `//go:build integration` tag.
 - **A harness the file uses:** Testcontainers, `WebApplicationFactory`, `@SpringBootTest`, `@DataJpaTest`, `@QuarkusTest`, Rails request specs or `ActionDispatch::IntegrationTest` and Django's `LiveServerTestCase` make it integration. Playwright, Selenium, Capybara, XCUITest, Espresso and chromedp make it e2e.
-- **A real backend in its folder or name:** `Postgres/`, `OrderRepositoryPostgresTests`, `redis_cache_test.go`. The same goes for MySQL, SQL Server, Redis, Kafka, RabbitMQ, MongoDB, DynamoDB, LocalStack, Elasticsearch, OpenSearch, Cassandra and Neo4j.
+- **A real backend in its folder or name:** `Postgres/`, `OrderRepositoryPostgresTests`, `redis_cache_test.go`. The same goes for MySQL, SQL Server, Redis, Kafka, RabbitMQ, MongoDB, DynamoDB, LocalStack, Elasticsearch, OpenSearch, Cassandra, ClickHouse and Neo4j.
 - **A marker on the test:** `@pytest.mark.integration`, `@Tag("integration")`, `[Trait("Category", "Integration")]`. Skip markers (`@pytest.mark.skip`, `@Disabled`, `[Fact(Skip = ...)]`, `#[ignore]`, `xit`, `@tag :skip`) mark the test as not active. Each layer lists its tests per language.
 
 ## What a test touches
@@ -91,7 +91,7 @@ Read from each test's body:
 | `operation` | Calls to an `operationId` (any `.listOrders(` when there's a spec, else calls on `client`), `checkResponse(res, 'id')` |
 | `http` | `request.get('/path')`, `authRequest.post(...)`; in any language: `client.get("/orders")` (pytest, supertest, Laravel), `get("/orders")` (MockMvc, Rails), `GetAsync("/orders")`, `PostAsJsonAsync($"/orders/{id}", ...)`, `GetFromJsonAsync<T>(...)` and `new HttpRequestMessage(HttpMethod.Post, "/orders")` (.NET), `http.NewRequest("GET", "/orders", ...)` (Go). URLs kept in a variable (`client.GetAsync(ordersUrl)`) aren't followed |
 | `graphql`, `grpc` | `query GetUser {`, `'orders.v1.Orders/Get'` |
-| `table` | Table names in SQL statements sent through `databaseClient` / `cassandraClient` (in any string literal, for other languages), and `insert('table', ...)`; DynamoDB tables |
+| `table` | Table names in SQL statements sent through `databaseClient` / `cassandraClient` / `clickHouseClient` (in any string literal, for other languages), and `insert('table', ...)`; DynamoDB tables |
 | `collection`, `label` | MongoDB collections, Neo4j labels in Cypher |
 | `topic`, `queue`, `exchange`, `channel`, `index`, `bucket`, `stream` | The first argument of the Kafka, RabbitMQ, SQS/SNS, Redis pub/sub, search, S3 and realtime client calls |
 | `route`, `deeplink` | `page.goto('/cart')`, `appiumDriver.url('myapp://...')` |

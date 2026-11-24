@@ -168,6 +168,7 @@ export function backendAddresses(config: FrameworkConfig): Array<{ block: string
     if (c.cassandra && Array.isArray(c.cassandra.contactPoints) && str(c.cassandra.contactPoints[0])) {
         add('cassandra', fromHostPort(String(c.cassandra.contactPoints[0]), Number(c.cassandra.port) || 9042));
     }
+    if (c.clickhouse && str(c.clickhouse.url)) add('clickhouse', fromUrl(String(c.clickhouse.url)));
     if (c.kafka && Array.isArray(c.kafka.brokers) && str(c.kafka.brokers[0])) add('kafka', fromHostPort(String(c.kafka.brokers[0]), 9092));
     if (c.amqp) {
         if (str(c.amqp.url)) add('amqp', fromUrl(String(c.amqp.url)));

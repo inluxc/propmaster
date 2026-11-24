@@ -74,6 +74,7 @@ export default defineConfig({
                     { text: 'MongoDB', link: '/mongodb-fixture' },
                     { text: 'Neo4j', link: '/neo4j-fixture' },
                     { text: 'Cassandra / ScyllaDB', link: '/cassandra-fixture' },
+                    { text: 'ClickHouse', link: '/clickhouse-fixture' },
                     { text: 'OTP (2FA)', link: '/otp-fixture' },
                     { text: 'Inbox (email)', link: '/inbox-fixture' },
                     { text: 'Mock server (third-party APIs)', link: '/mock-server-fixture' },

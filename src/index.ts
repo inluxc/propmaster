@@ -78,6 +78,14 @@ export type {
     CassandraWaitForRowOptions,
     CassandraKeyspaceOptions,
     CassandraPrimaryKey,
+    ClickHouseClient,
+    ClickHouseRow,
+    ClickHouseParams,
+    ClickHouseQueryOptions,
+    ClickHouseInsertOptions,
+    ClickHouseWaitOptions,
+    ClickHouseWaitForRowOptions,
+    ClickHouseColumn,
     SearchClient,
     SearchQuery,
     SearchOptions,
@@ -183,6 +191,9 @@ export { createDynamoDbClient } from './fixtures/dynamodb.fixture.js';
 
 // Cassandra / ScyllaDB client outside the fixture (e.g. a global setup that creates the schema)
 export { createCassandraClient } from './fixtures/cassandra.fixture.js';
+
+// ClickHouse client outside the fixture (e.g. a global setup that creates the schema)
+export { createClickHouseClient } from './fixtures/clickhouse.fixture.js';
 
 // Search client outside the fixture (e.g. a global setup that creates index templates)
 export { createSearchClient } from './fixtures/search.fixture.js';

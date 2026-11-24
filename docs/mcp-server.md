@@ -46,7 +46,7 @@ Windsurf has one config for every project, so its entry is named after the proje
 
 ```text
   ✓ Claude Code, VS Code  .mcp.json, .vscode/mcp.json
-    propmaster 1.0.0 started in 1.2 s with 24 tools: environment_info, db_query, ...
+    propmaster 1.0.0 started in 1.2 s with 26 tools: environment_info, db_query, ...
 ```
 
 When a server doesn't start, it prints why and the server's last log lines, for example `Refusing to start for environment "prod"`, and exits 1.
@@ -76,6 +76,7 @@ Other MCP clients take the same command: `npx propmaster mcp`, with any options 
 | `kafka_topics` | Topics with partition and message counts |
 | `kafka_peek` | The latest messages on a topic, read with a throwaway consumer group that's deleted afterwards |
 | `neo4j_read` | Cypher in a read transaction: Neo4j itself rejects writes |
+| `clickhouse_query` | One read-only statement with `{name:Type}` parameters; ClickHouse itself refuses writes for it (`readonly=2`) |
 | `openapi_operations` | The spec's operations: `operationId` (the method on `openApiClient.client`), method, path, parameters, request body, status codes |
 | `otp_generate` | The current TOTP code for the configured secret, or one you pass |
 | `next_test_id` | The next free TestCaseID(s) in a category, same as `npm run next-id` |

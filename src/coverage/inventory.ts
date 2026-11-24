@@ -173,12 +173,13 @@ const CLIENT_ARGS: Record<string, Array<[RegExp, TouchKind]>> = {
     redisClient: [[/^(publish|subscribe)$/, 'channel']],
     databaseClient: [[/^insert$/, 'table']],
     cassandraClient: [[/^insert$/, 'table']],
+    clickHouseClient: [[/^(insert|count|columns)$/, 'table']],
     s3Client: [[/^createBucket$/, 'bucket']],
     realtimeClient: [[/^(connect|subscribe)$/, 'stream']],
     grpcClient: [[/^(call|invoke|serverStream|clientStream|bidiStream)$/, 'grpc']],
 };
 
-const SQL_CLIENT = /\b(databaseClient|cassandraClient)\s*\.\s*(query|execute|waitForRows|waitForRow|batch)\s*(?:<[^>()]*>)?\s*\(/;
+const SQL_CLIENT = /\b(databaseClient|cassandraClient|clickHouseClient)\s*\.\s*(query|execute|waitForRows|waitForRow|batch)\s*(?:<[^>()]*>)?\s*\(/;
 const SQL_TABLE = /\b(?:FROM|JOIN|INTO|UPDATE|TABLE(?:\s+IF\s+(?:NOT\s+)?EXISTS)?)\s+[`"[]?([A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)?)/gi;
 /** A literal that is a statement, not a step title ("Update at the current version"): upper-case keywords, or lower-case SQL shapes. */
 const SQL_STATEMENT =

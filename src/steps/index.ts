@@ -39,3 +39,5 @@ export { RealtimeSteps } from './realtime.steps.js';
 export type { RealtimeClient, WebSocketConnection, WebSocketMessage, SseConnection, SseEvent } from './realtime.steps.js';
 export { CassandraSteps } from './cassandra.steps.js';
 export type { CassandraClient, CassandraRow, CqlParams } from './cassandra.steps.js';
+export { ClickHouseSteps } from './clickhouse.steps.js';
+export type { ClickHouseClient, ClickHouseRow, ClickHouseParams } from './clickhouse.steps.js';

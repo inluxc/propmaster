@@ -123,6 +123,7 @@ const BACKENDS: Array<{ backend: keyof FrameworkConfig; fixtures: string[] }> = 
     { backend: 'mongodb', fixtures: ['mongoDbClient'] },
     { backend: 'neo4j', fixtures: ['neo4jClient'] },
     { backend: 'cassandra', fixtures: ['cassandraClient'] },
+    { backend: 'clickhouse', fixtures: ['clickHouseClient'] },
     { backend: 'kafka', fixtures: ['kafkaClient'] },
     { backend: 'amqp', fixtures: ['amqpClient'] },
     { backend: 'aws', fixtures: ['s3Client', 'sqsClient', 'dynamoDbClient'] },

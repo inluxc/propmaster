@@ -23,7 +23,7 @@ import { TEST_TYPES, configSnippet, typeInfo, type TestType } from './layout.js'
 
 const MOBILE = new Set(['appiumDriver', 'gadsHub']);
 const E2E = new Set(['page', 'context', 'browser', 'browserName']);
-const INTEGRATION = new Set(['databaseClient', 'kafkaClient', 'amqpClient', 's3Client', 'sqsClient', 'dynamoDbClient', 'searchClient', 'redisClient', 'mongoDbClient', 'neo4jClient', 'cassandraClient']);
+const INTEGRATION = new Set(['databaseClient', 'kafkaClient', 'amqpClient', 's3Client', 'sqsClient', 'dynamoDbClient', 'searchClient', 'redisClient', 'mongoDbClient', 'neo4jClient', 'cassandraClient', 'clickHouseClient']);
 const API = new Set(['openApiClient', 'graphqlClient', 'grpcClient', 'realtimeClient', 'request']);
 /** Fixtures that say nothing about the test type: options, configs, OTP. */
 const NEUTRAL = new Set([
@@ -39,6 +39,7 @@ const NEUTRAL = new Set([
     'mongodb',
     'neo4j',
     'cassandra',
+    'clickhouse',
     'graphql',
     'grpc',
     'realtime',

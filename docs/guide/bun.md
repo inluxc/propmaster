@@ -34,7 +34,7 @@ CI runs every suite on Bun 1.4.5, installed with `bun install` and run with `bun
 | Backend | On Bun |
 |---|---|
 | PostgreSQL, MySQL, MSSQL, SQLite | ✅ |
-| Redis, MongoDB, Neo4j, Cassandra / ScyllaDB | ✅ |
+| Redis, MongoDB, Neo4j, Cassandra / ScyllaDB, ClickHouse | ✅ |
 | Kafka (kafkajs, the default driver) | ✅ |
 | RabbitMQ, AWS (S3, SQS, SNS), DynamoDB | ✅ |
 | Elasticsearch, OpenSearch | ✅ |

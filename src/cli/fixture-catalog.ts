@@ -160,6 +160,21 @@ const SERVICES = {
         '  start_period: 10s',
         '  retries: 30',
     ]),
+    clickhouse: service('clickhouse', [
+        'image: clickhouse/clickhouse-server:26.10',
+        'environment:',
+        '  CLICKHOUSE_USER: testuser',
+        '  CLICKHOUSE_PASSWORD: testpass',
+        '  CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1',
+        'ulimits:',
+        '  nofile: { soft: 262144, hard: 262144 }',
+        'ports: ["127.0.0.1:8123:8123"]',
+        'healthcheck:',
+        '  test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping > /dev/null"]',
+        '  interval: 3s',
+        '  timeout: 5s',
+        '  retries: 30',
+    ]),
     kafka: service('kafka', [
         'image: apache/kafka:latest',
         'environment:',
@@ -511,6 +526,39 @@ export const FIXTURE_CATALOG: readonly CatalogEntry[] = [
                 {
                     name: 'Step 1: Read the release version',
                     code: "const rows = await cassandraClient.query<{ release_version: string }>('SELECT release_version FROM system.local');\nexpect(rows[0].release_version).toBeTruthy();",
+                },
+            ],
+        },
+    },
+    {
+        id: 'clickhouse',
+        label: 'ClickHouse',
+        fixtures: ['clickHouseClient'],
+        testType: 'integration',
+        category: 'CH',
+        variants: one({
+            packages: ['@clickhouse/client'],
+            config: [{ path: ['clickhouse'], value: { url: 'http://localhost:8123', database: 'tests', createDatabase: true } }],
+            env: [
+                section('clickhouse', 'ClickHouse', [
+                    { name: 'PW_CLICKHOUSE_URL', value: 'http://localhost:8123' },
+                    { name: 'PW_CLICKHOUSE_DATABASE', value: 'tests' },
+                    { name: 'PW_CLICKHOUSE_CREATE_DATABASE', value: 'true' },
+                    { name: 'PW_CLICKHOUSE_USERNAME', value: 'testuser' },
+                    { name: 'PW_CLICKHOUSE_PASSWORD', value: 'testpass' },
+                ]),
+            ],
+            services: [SERVICES.clickhouse],
+        }),
+        starter: {
+            file: 'clickhouse',
+            describe: 'ClickHouse — starter',
+            title: 'the server answers a query',
+            params: 'clickHouseClient',
+            steps: [
+                {
+                    name: 'Step 1: Read the server version',
+                    code: "const [row] = await clickHouseClient.query<{ version: string }>('SELECT version() AS version');\nexpect(row.version).toBeTruthy();",
                 },
             ],
         },

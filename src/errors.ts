@@ -89,7 +89,7 @@ export class FixtureOperationError extends FrameworkError {
             | 'call' | 'serverStream' | 'clientStream' | 'bidiStream' | 'loadProtos' | 'reflection'
             | 'connect' | 'subscribe' | 'waitForClose'
             | 'put' | 'update' | 'delete' | 'scan' | 'createTable' | 'deleteTable' | 'waitForItem'
-            | 'execute' | 'batch' | 'createKeyspace' | 'waitForRows',
+            | 'execute' | 'batch' | 'createKeyspace' | 'waitForRows' | 'createDatabase',
         public readonly details: Record<string, unknown>,
         public readonly cause?: Error
     ) {

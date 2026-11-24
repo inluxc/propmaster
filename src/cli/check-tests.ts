@@ -110,6 +110,7 @@ export const KNOWN_CATEGORIES: ReadonlyArray<{ code: string; description: string
     { code: 'MDB', description: 'MongoDB' },
     { code: 'NEO', description: 'Neo4j' },
     { code: 'CAS', description: 'Cassandra / ScyllaDB' },
+    { code: 'CH', description: 'ClickHouse' },
     { code: 'RDS', description: 'Redis' },
     { code: 'KFK', description: 'Kafka' },
     { code: 'AMQ', description: 'RabbitMQ / AMQP' },

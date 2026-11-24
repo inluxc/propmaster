@@ -285,6 +285,24 @@ script:
   - npx playwright test --project=integration-cassandra --reporter=line,junit
 ```
 
+```yaml [ClickHouse]
+services:
+  - name: clickhouse/clickhouse-server:26.10
+    alias: clickhouse
+variables:
+  CLICKHOUSE_USER: testuser
+  CLICKHOUSE_PASSWORD: testpass
+  CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+  PW_CLICKHOUSE_URL: http://clickhouse:8123
+  PW_CLICKHOUSE_USERNAME: testuser
+  PW_CLICKHOUSE_PASSWORD: testpass
+  PW_CLICKHOUSE_DATABASE: propmaster_examples
+  PW_CLICKHOUSE_CREATE_DATABASE: "true"
+script:
+  - wait_for clickhouse 8123
+  - npx playwright test --project=integration-clickhouse --reporter=line,junit
+```
+
 :::
 
 ## Secrets and environments

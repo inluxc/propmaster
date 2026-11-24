@@ -152,7 +152,7 @@ const INTEGRATION_HARNESS =
 const E2E_HARNESS =
     /Microsoft\.Playwright|playwright\.(?:sync|async)_api|com\.microsoft\.playwright|\bselenium\b|\bWebDriver\b|\bCapybara\b|\btype:\s*:(?:system|feature)\b|ApplicationSystemTestCase|XCUIApplication|androidx\.test\.espresso|\bchromedp\b|\bgo-rod\b|\bAppiumDriver\b/i;
 /** A folder or file named for a real backend (`Postgres/`, `OrderRepositoryPostgresTests`): it talks to one. */
-const BACKEND_NAME = /(?:^|[^a-z])(?:postgres(?:ql)?|mysql|mariadb|sqlserver|mssql|redis|kafka|rabbit(?:mq)?|mongo(?:db)?|dynamo(?:db)?|localstack|elasticsearch|opensearch|cassandra|scylla|neo4j)(?:[^a-z]|$)/i;
+const BACKEND_NAME = /(?:^|[^a-z])(?:postgres(?:ql)?|mysql|mariadb|sqlserver|mssql|redis|kafka|rabbit(?:mq)?|mongo(?:db)?|dynamo(?:db)?|localstack|elasticsearch|opensearch|cassandra|scylla|clickhouse|neo4j)(?:[^a-z]|$)/i;
 
 /**
  * The layer a whole file says, beyond its folder: Maven/Gradle `*IT`, Rust's

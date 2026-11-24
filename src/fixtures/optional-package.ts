@@ -28,6 +28,7 @@ export const FIXTURE_PACKAGES = {
     mongoDbClient: ['mongodb'],
     neo4jClient: ['neo4j-driver'],
     cassandraClient: ['cassandra-driver'],
+    clickHouseClient: ['@clickhouse/client'],
     kafkaClient: ['kafkajs'],
     'kafkaClient (confluent)': ['@confluentinc/kafka-javascript'],
     amqpClient: ['amqplib'],
