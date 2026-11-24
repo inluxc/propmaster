@@ -116,6 +116,8 @@ test.describe('clickhouse — errors', () => {
         const error = Object.assign(new Error('Unknown table expression identifier \'x\'. Stack trace:\n0. foo\n1. bar'), { code: '60', type: 'UNKNOWN_TABLE' });
         expect(clickHouseReason(error)).toBe('Unknown table expression identifier \'x\'. (UNKNOWN_TABLE)');
         expect(clickHouseReason(Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:1'), { code: 'ECONNREFUSED' }))).toBe('connect ECONNREFUSED 127.0.0.1:1');
+        const both = Object.assign(new AggregateError([new Error('connect ECONNREFUSED ::1:8123'), new Error('connect ECONNREFUSED 127.0.0.1:8123')], ''), { code: 'ECONNREFUSED' });
+        expect(clickHouseReason(both)).toBe('connect ECONNREFUSED ::1:8123; connect ECONNREFUSED 127.0.0.1:8123');
     });
 
     test('a server that can\'t be reached is a FixtureInitError naming it, without credentials', async () => {

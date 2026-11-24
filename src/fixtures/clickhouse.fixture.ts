@@ -270,9 +270,11 @@ export function previewRows(value: unknown, max = 300): string {
 
 /** A driver error as one readable line: ClickHouse's message without its stack, or why the connection failed. */
 export function clickHouseReason(error: unknown): string {
-    const e = error as { message?: string; code?: string; type?: string; cause?: { code?: string; message?: string } } | null;
+    const e = error as { message?: string; code?: string; type?: string; errors?: Array<{ message?: string }> } | null;
     if (!e) return String(error);
-    const message = String(e.message ?? error).replace(/\s*Stack trace:[\s\S]*$/, '').trim();
+    // A host name with several addresses (localhost: ::1 and 127.0.0.1) fails with an AggregateError and no message of its own.
+    const inner = Array.isArray(e.errors) ? e.errors.map((x) => x?.message).filter(Boolean).join('; ') : '';
+    const message = (String(e.message || inner || error)).replace(/\s*Stack trace:[\s\S]*$/, '').trim();
     if (e.type && !message.includes(e.type)) return `${message} (${e.type})`;
     if (!e.type && e.code && /^E[A-Z]+$/.test(e.code) && !message.includes(e.code)) return `${message} (${e.code})`;
     return message;

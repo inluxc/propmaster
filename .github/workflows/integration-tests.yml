@@ -1086,6 +1086,7 @@ jobs:
       PW_NEO4J_CONTAINER: "true"
       PW_CASSANDRA_CONTAINER: "true"
       PW_CASSANDRA_KEYSPACE: propmaster_examples
+      PW_CLICKHOUSE_CONTAINER: "true"
       PW_KAFKA_CONTAINER: "true"
       PW_AMQP_CONTAINER: "true"
       PW_AWS_CONTAINER: "true"
