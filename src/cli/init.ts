@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { KNOWN_CATEGORIES, collect, findProjectRoot, isCategory, nextIds, runCheck, runNextId } from './check-tests.js';
@@ -11,6 +12,7 @@ import { runFlaky } from './flaky.js';
 import { runFailures } from './failures.js';
 import { ROOT_CONFIG_TEMPLATE, SUPPORT_DIRS, TEST_TYPES, configSnippet, projectsTemplate } from './layout.js';
 import { planOrganize, runOrganize } from './organize.js';
+import { MCP_CLIENTS, applyChange, clientById, planSetup, type ClientId } from './mcp-setup.js';
 import { FIXTURE_PACKAGES } from '../fixtures/optional-package.js';
 
 export * from './check-tests.js';
@@ -45,16 +47,6 @@ blob-report/
 `,
 
     'playwright.config.ts': ROOT_CONFIG_TEMPLATE,
-
-    '.mcp.json': `{
-    "mcpServers": {
-        "propmaster": {
-            "command": "npx",
-            "args": ["propmaster", "mcp"]
-        }
-    }
-}
-`,
 
     'environments.json': `{
     "environments": {
@@ -198,7 +190,7 @@ npx propmaster generate openapi --dry-run   # API test skeletons from the spec, 
 
 ## Propmaster MCP server
 
-\`.mcp.json\` connects the \`propmaster\` MCP server (\`npx propmaster mcp\`, backends read-only). Use it to see the real backends instead of guessing: \`openapi_operations\` for operation IDs and parameters, \`db_query\` / \`mongo_find\` / \`redis_get\` / \`kafka_peek\` / \`neo4j_read\` for what's actually stored, \`next_test_id\` for new IDs and \`check_tests\` after changing tests. When a test needs a backend the project doesn't have yet, \`fixture_add\` sets it up (it returns the plan; call it again with \`apply: true\`). Tests still create their data through the fixtures, never through MCP write tools.
+\`.mcp.json\` connects the \`propmaster\` MCP server (\`npx propmaster mcp\`, backends read-only); \`npx propmaster mcp setup\` connects it to other editors too (VS Code, Cursor, Windsurf, Zed). Use it to see the real backends instead of guessing: \`openapi_operations\` for operation IDs and parameters, \`db_query\` / \`mongo_find\` / \`redis_get\` / \`kafka_peek\` / \`neo4j_read\` for what's actually stored, \`next_test_id\` for new IDs and \`check_tests\` after changing tests. When a test needs a backend the project doesn't have yet, \`fixture_add\` sets it up (it returns the plan; call it again with \`apply: true\`). Tests still create their data through the fixtures, never through MCP write tools.
 
 ## Structure
 
@@ -653,6 +645,7 @@ const HELP = `
     npx propmaster failures [--no-flaky] [--json]
     npx propmaster generate openapi [--tag <tag>] [--operation <id>] [--dry-run] [--prism]
     npx propmaster mcp [--environment <name>] [--allow-writes] [--allow-prod]
+    npx propmaster mcp setup [--client <names>] [-e <env>] [--allow-writes] [--check] [--remove]
 
   Commands:
     init      Scaffold the project layout: tests/api, tests/integration,
@@ -704,6 +697,10 @@ const HELP = `
               next_test_id and check_tests. Read-only unless --allow-writes;
               refuses production environments unless --allow-prod.
               \`propmaster mcp --help\` for details.
+    mcp setup Connect that server to your editors: Claude Code (.mcp.json),
+              VS Code, Cursor, Windsurf, Zed. --check starts it as the editor
+              would and lists its tools; --remove takes it out again.
+              \`propmaster mcp setup --help\` for details.
 
   Configuration (optional, "propmaster" key in package.json):
     "propmaster": {
@@ -751,6 +748,8 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
     const testCount = before ? before.moves.length + before.inPlace.length + before.ambiguous.length + before.conflicts.length : 0;
     const plan = testCount > 0 ? before : null;
     const result: InitResult = { created: [], skipped: [], existingConfigs, plan };
+    // Before AGENTS.md and the rest are written: the editors the project already uses.
+    const mcpEditors = fs.existsSync(targetDir) ? MCP_CLIENTS.filter((c) => c.detect({ root: targetDir, home: os.homedir() })).map((c) => c.id) : [];
 
     for (const dir of DIRECTORIES) {
         const fullPath = path.join(targetDir, dir);
@@ -780,6 +779,27 @@ export function initProject(targetDir: string, log: (line?: string) => void = co
         log(`  ✓ Created ${filePath}`);
         result.created.push(filePath);
     }
+
+    // The MCP server, for Claude Code and the other editors this project uses (not the ones configured in the home folder).
+    const mcpCtx = { root: targetDir, home: os.homedir() };
+    for (const id of new Set<ClientId>(['claude', ...mcpEditors])) {
+        const client = clientById(id)!;
+        if (client.global) continue;
+        const change = planSetup(client, mcpCtx, {});
+        applyChange(change);
+        if (change.kind === 'create') {
+            log(`  ✓ Created ${change.file}`);
+            result.created.push(change.file);
+        } else if (change.kind === 'add' || change.kind === 'update') {
+            log(`  ✓ Added   the propmaster MCP server to ${change.file}`);
+        } else if (change.kind === 'unchanged') {
+            log(`  · Skipped ${change.file} (already has the propmaster MCP server)`);
+            result.skipped.push(change.file);
+        } else {
+            log(`  ✖ ${change.message}`);
+        }
+    }
+    if (mcpEditors.includes('windsurf')) log('  · Windsurf keeps one MCP config for every project: npx propmaster mcp setup --client windsurf');
 
     log();
     log(`  Done! Created ${result.created.length} files, skipped ${result.skipped.length} existing.`);
@@ -898,6 +918,7 @@ const COMMAND_MENU: Choice<string>[] = [
     { value: 'init', label: 'init', hint: 'scaffold the test layout here' },
     { value: 'fixture', label: 'fixture', hint: 'add or remove a fixture (driver, config, service, starter test)' },
     { value: 'doctor', label: 'doctor', hint: 'find and fix setup problems' },
+    { value: 'mcp-setup', label: 'mcp setup', hint: 'connect the MCP server to your editors', search: 'editor claude vscode cursor' },
     { value: 'env', label: 'env', hint: 'add an environment, or list them' },
     { value: 'standards', label: 'standards', hint: "the team's testing rules and pages" },
     { value: 'organize', label: 'organize', hint: 'see where existing tests belong' },
@@ -911,7 +932,7 @@ const COMMAND_MENU: Choice<string>[] = [
 ];
 
 /** Commands that print the banner (when stdout is a terminal). */
-const BANNER_COMMANDS = new Set(['init', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'failures', 'help', '--help']);
+const BANNER_COMMANDS = new Set(['init', 'mcp-setup', 'doctor', 'fixture', 'env', 'standards', 'organize', 'auth-setup', 'generate', 'flaky', 'failures', 'help', '--help']);
 
 /** `next-id` with no category: a menu of the built-in categories and those in use, each with its next ID. */
 export async function askCategory(root: string = findProjectRoot()): Promise<string> {
@@ -939,6 +960,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         console.log(packageVersion());
         return 0;
     }
+    if (command === 'mcp' && rest[0] === 'setup') {
+        command = 'mcp-setup';
+        rest = rest.slice(1);
+    }
     if (command === 'mcp') {
         // Loaded on demand: the server pulls in every client factory. No banner: stdout is the protocol.
         const { runMcp } = await import('../mcp/server.js');
@@ -964,6 +989,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     if (command === 'standards') {
         const { runStandards } = await import('./standards.js');
         return runStandards(rest, findProjectRoot());
+    }
+    if (command === 'mcp-setup') {
+        const { runMcpSetup } = await import('./mcp-setup.js');
+        return runMcpSetup(rest);
     }
     if (command === 'doctor') {
         const { runDoctor } = await import('./doctor.js');

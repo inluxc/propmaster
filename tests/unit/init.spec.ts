@@ -39,6 +39,19 @@ test.describe('init — layout', () => {
         expect(read('AGENTS.md')).toContain('## Propmaster MCP server');
     });
 
+    test('init adds the MCP server next to existing servers, and for the editors the project uses', () => {
+        fs.writeFileSync(path.join(root, '.mcp.json'), '{\n  "mcpServers": {\n    "github": { "command": "gh-mcp" }\n  }\n}\n');
+        fs.mkdirSync(path.join(root, '.vscode'));
+        const result = initProject(root, quiet);
+        expect(Object.keys(JSON.parse(read('.mcp.json')).mcpServers)).toEqual(['github', 'propmaster']);
+        expect(JSON.parse(read('.vscode/mcp.json'))).toEqual({ servers: { propmaster: { type: 'stdio', command: 'npx', args: ['propmaster', 'mcp'] } } });
+        expect(result.created).toContain('.vscode/mcp.json');
+        expect(exists('.cursor/mcp.json')).toBe(false);
+
+        // A second run finds them set up.
+        expect(initProject(root, quiet).skipped).toEqual(expect.arrayContaining(['.mcp.json', '.vscode/mcp.json']));
+    });
+
     test('the root config imports and spreads every projects.ts', () => {
         initProject(root, quiet);
         const config = read('playwright.config.ts');

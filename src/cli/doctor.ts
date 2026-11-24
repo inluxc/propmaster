@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as net from 'node:net';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { checkQuarantine, collect, findProjectRoot } from './check-tests.js';
 import { FIXTURE_CATALOG, PLACEHOLDER, type CatalogEntry, type FixtureVariant } from './fixture-catalog.js';
@@ -59,6 +60,8 @@ export interface DoctorOptions {
     offline?: boolean;
     /** Skip starting the MCP server (the MCP tool, which is that server). */
     skipMcp?: boolean;
+    /** The home folder, for editors configured there (tests replace it). */
+    home?: string;
     /** Runs the package manager for fixes. */
     runner?: CommandRunner;
     /** Whether host:port accepts a connection (tests replace it). */
@@ -444,33 +447,36 @@ function checkEnvFiles(ctx: Context): Finding[] {
 
 async function checkMcp(ctx: Context): Promise<Finding[]> {
     const findings: Finding[] = [];
-    const configs = ['.mcp.json', '.vscode/mcp.json', '.cursor/mcp.json'].filter((f) => {
-        const json = readJson(path.join(ctx.root, f));
-        const servers = (json?.mcpServers ?? json?.servers) as Record<string, unknown> | undefined;
-        return !!servers && Object.keys(servers).includes('propmaster');
-    });
-    findings.push(
-        configs.length
-            ? ok('mcp', `the propmaster server is set up in ${configs.join(', ')}`)
-            : {
-                  check: 'mcp',
-                  status: 'warn',
-                  message: 'no editor is set up to start the propmaster MCP server, so agents can\'t see the backends.',
-                  fix: { text: 'add it to .mcp.json: { "mcpServers": { "propmaster": { "command": "npx", "args": ["propmaster", "mcp"] } } }', safe: false },
-              },
-    );
-    if (ctx.options.skipMcp || !ctx.config) return findings;
-    try {
-        const { createPropmasterMcpServer } = await import('../mcp/server.js');
-        const created = await createPropmasterMcpServer({ root: ctx.root, environment: ctx.environment, allowWrites: false, allowProd: true }, () => undefined);
-        try {
-            findings.push(ok('mcp', `the server starts for "${ctx.environment}" with ${created.server.toolNames.length} tools`));
-        } finally {
-            await created.close();
-        }
-    } catch (error) {
-        findings.push({ check: 'mcp', status: 'fail', message: `the MCP server doesn't start: ${error instanceof Error ? error.message : String(error)}` });
+    const { applyChange, checkServer, clientById, configuredServers, detectClients, planSetup, selfServer } = await import('./mcp-setup.js');
+    const setup = { root: ctx.root, home: ctx.options.home ?? os.homedir() };
+    const configured = configuredServers(setup);
+    if (configured.length) {
+        findings.push(ok('mcp', `the propmaster server is set up in ${configured.map((c) => c.file).join(', ')}`));
+    } else {
+        const editors = detectClients(setup).filter((id) => !clientById(id)!.global);
+        const ids = editors.length ? editors : (['claude'] as const);
+        findings.push({
+            check: 'mcp',
+            status: 'warn',
+            message: 'no editor is set up to start the propmaster MCP server, so agents can\'t see the backends.',
+            fix: {
+                text: `npx propmaster mcp setup --client ${ids.join(',')}`,
+                safe: true,
+                apply: () => {
+                    for (const id of ids) applyChange(planSetup(clientById(id)!, setup, {}));
+                    return true;
+                },
+            },
+        });
     }
+    if (ctx.options.skipMcp || !ctx.config) return findings;
+    // Started as an editor starts it: a separate process, spoken to over stdio.
+    const result = await checkServer(selfServer(ctx.root, { environment: ctx.environment }), ctx.root);
+    findings.push(
+        result.ok
+            ? ok('mcp', `the server starts for "${ctx.environment}" with ${result.tools.length} tools`)
+            : { check: 'mcp', status: 'fail', message: `the MCP server doesn't start: ${result.error}${result.stderr.length ? ` (${result.stderr.at(-1)})` : ''}` },
+    );
     return findings;
 }
 

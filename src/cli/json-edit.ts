@@ -2,7 +2,15 @@
  * Edits JSON text in place: adds or removes one object member and leaves
  * every other byte as it was (formatting, key order, inline arrays). Adding a
  * member and removing it again gives back the original text.
+ *
+ * `{ jsonc: true }` also accepts comments and trailing commas, as editors'
+ * settings files (Zed's, VS Code's) have them; they're kept as they are.
  */
+
+export interface JsonEditOptions {
+    /** Accept `//` and `/* *\/` comments and trailing commas. */
+    jsonc?: boolean;
+}
 
 interface Span {
     start: number;
@@ -27,14 +35,27 @@ export interface JsonMember {
 }
 
 /** Parses `text` into nodes that know where they are. Throws on invalid JSON. */
-export function parseJsonSpans(text: string): JsonNode {
+export function parseJsonSpans(text: string, options: JsonEditOptions = {}): JsonNode {
+    const jsonc = options.jsonc === true;
     let i = 0;
     const fail = (what: string): never => {
         const line = text.slice(0, i).split('\n').length;
         throw new SyntaxError(`invalid JSON at line ${line}: ${what}`);
     };
     const ws = () => {
-        while (i < text.length && ' \t\n\r'.includes(text[i])) i++;
+        for (;;) {
+            while (i < text.length && ' \t\n\r'.includes(text[i])) i++;
+            if (!jsonc || text[i] !== '/') return;
+            if (text[i + 1] === '/') {
+                while (i < text.length && text[i] !== '\n') i++;
+            } else if (text[i + 1] === '*') {
+                const end = text.indexOf('*/', i + 2);
+                if (end === -1) fail('unterminated comment');
+                i = end + 2;
+            } else {
+                return;
+            }
+        }
     };
     const str = (): string => {
         const start = i;
@@ -58,6 +79,10 @@ export function parseJsonSpans(text: string): JsonNode {
             }
             for (;;) {
                 ws();
+                if (jsonc && text[i] === '}' && members.length) {
+                    i++;
+                    return { kind: 'object', start, end: i, members };
+                }
                 if (text[i] !== '"') fail('expected a key');
                 const keyStart = i;
                 const key = str();
@@ -85,6 +110,11 @@ export function parseJsonSpans(text: string): JsonNode {
                 return { kind: 'array', start, end: i };
             }
             for (;;) {
+                ws();
+                if (jsonc && text[i] === ']') {
+                    i++;
+                    return { kind: 'array', start, end: i };
+                }
                 value();
                 ws();
                 if (text[i] === ',') {
@@ -152,8 +182,8 @@ export function formatJson(value: unknown, indent: string, unit: string): string
  * Adds `key: value` as the last member of the object at `path`. Returns the
  * new text, or the same text when the key is already there.
  */
-export function addMember(text: string, path: readonly string[], key: string, value: unknown): string {
-    const obj = objectAt(parseJsonSpans(text), path);
+export function addMember(text: string, path: readonly string[], key: string, value: unknown, options: JsonEditOptions = {}): string {
+    const obj = objectAt(parseJsonSpans(text, options), path);
     if (!obj) throw new Error(`no object at ${path.join('.') || '(root)'}`);
     if (obj.members.some((m) => m.key === key)) return text;
     const unit = indentUnit(text);
@@ -168,8 +198,8 @@ export function addMember(text: string, path: readonly string[], key: string, va
 }
 
 /** Removes the member `key` from the object at `path`. Returns the same text when it isn't there. */
-export function removeMember(text: string, path: readonly string[], key: string): string {
-    const obj = objectAt(parseJsonSpans(text), path);
+export function removeMember(text: string, path: readonly string[], key: string, options: JsonEditOptions = {}): string {
+    const obj = objectAt(parseJsonSpans(text, options), path);
     const index = obj?.members.findIndex((m) => m.key === key) ?? -1;
     if (!obj || index === -1) return text;
     const member = obj.members[index];
@@ -189,4 +219,44 @@ export function valueAt(text: string, path: readonly string[]): unknown {
         value = (value as Record<string, unknown>)[key];
     }
     return value;
+}
+
+/**
+ * Sets `key` in the object at `path` to `value`: added as the last member,
+ * or its value replaced in place when it's there. Objects missing on the way
+ * to `path` are added. Returns the same text when it already has that value.
+ */
+export function setMember(text: string, path: readonly string[], key: string, value: unknown, options: JsonEditOptions = {}): string {
+    for (let depth = 0; depth < path.length; depth++) {
+        if (!objectAt(parseJsonSpans(text, options), path.slice(0, depth + 1))) text = addMember(text, path.slice(0, depth), path[depth], {}, options);
+    }
+    const obj = objectAt(parseJsonSpans(text, options), path)!;
+    const member = obj.members.find((m) => m.key === key);
+    if (!member) return addMember(text, path, key, value, options);
+    if (sameJson(memberValue(text, member), value)) return text;
+    const unit = indentUnit(text);
+    return `${text.slice(0, member.value.start)}${formatJson(value, lineIndent(text, member.keyStart), unit)}${text.slice(member.value.end)}`;
+}
+
+/** The parsed value of a member, or undefined when it can't be parsed as plain JSON (it has comments). */
+export function memberValue(text: string, member: JsonMember): unknown {
+    try {
+        return JSON.parse(text.slice(member.value.start, member.value.end));
+    } catch {
+        return undefined;
+    }
+}
+
+/** Whether two JSON values are equal, ignoring key order. */
+export function sameJson(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (Array.isArray(a) || Array.isArray(b)) {
+        return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameJson(v, b[i]));
+    }
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+        const ka = Object.keys(a);
+        const kb = Object.keys(b);
+        return ka.length === kb.length && ka.every((k) => sameJson((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+    }
+    return false;
 }
