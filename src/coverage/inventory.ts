@@ -300,9 +300,12 @@ function stateOf(src: string, index: number): TestState {
 /**
  * HTTP calls in any language's test client: `client.get("/orders")` (pytest,
  * supertest, Laravel `->get`), `get("/orders")` (MockMvc, Rails), `.GetAsync("/orders")`
- * (.NET), `http.NewRequest("GET", "/orders", nil)` (Go). Paths only, so they can be matched to the spec.
+ * (.NET, also `PostAsJsonAsync($"/orders/{id}")`), `http.NewRequest("GET", "/orders", nil)` (Go). Paths only, so they can be matched to the spec.
  */
-const ANY_HTTP = /(?<![\w$])(get|post|put|patch|delete|head)(?:Async)?[ \t]*\(?[ \t]*[fr]?(["'`])(\/[^"'`\s]*)\2/gi;
+const ANY_HTTP =
+    /(?<![\w$])(get|post|put|patch|delete|head)(?:AsJson|FromJson|String|ByteArray|Stream)?(?:Async)?(?:<[^<>()]*(?:<[^<>()]*>)?[^<>()]*>)?[ \t]*(?:\(\s*|[ \t])(?:[frbu]|\$@?|@\$?)?(["'`])(\/[^"'`\s]*)\2/gi;
+/** `new HttpRequestMessage(HttpMethod.Post, "/orders")` (.NET), `HttpMethod.POST, "/orders"`. */
+const HTTP_METHOD_ARG = /HttpMethod\.(\w+)\s*,\s*(?:\$@?|@\$?)?"(\/[^"\s]*)"/g;
 const GO_HTTP = /NewRequest(?:WithContext)?\(\s*(?:\w+,\s*)?(?:"(\w+)"|http\.Method(\w+))\s*,\s*"(\/[^"]*)"/g;
 
 /** Status names → codes, for assertions that use names (`isNotFound()`, `HttpStatusCode.NotFound`, `:not_found`, `StatusNotFound`). */
@@ -332,6 +335,7 @@ export function anyTouchesOf(body: string): Touch[] {
     const out: Touch[] = [];
     for (const m of body.matchAll(ANY_HTTP)) out.push({ kind: 'http', name: `${m[1].toUpperCase()} ${m[3].split(/[?#]/)[0]}` });
     for (const m of body.matchAll(GO_HTTP)) out.push({ kind: 'http', name: `${(m[1] ?? m[2]).toUpperCase()} ${m[3].split(/[?#]/)[0]}` });
+    for (const m of body.matchAll(HTTP_METHOD_ARG)) out.push({ kind: 'http', name: `${m[1].toUpperCase()} ${m[2].split(/[?#]/)[0]}` });
     for (const lit of body.matchAll(/(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g)) {
         if (!SQL_STATEMENT.test(lit[2])) continue;
         for (const m of lit[2].matchAll(SQL_TABLE)) if (!SQL_NOT_TABLE.has(m[1].toLowerCase())) out.push({ kind: 'table', name: m[1] });
@@ -350,7 +354,8 @@ const JS_LANGUAGE = (file: string): Language => (/\.[cm]?tsx?$/.test(file) ? 'ty
 /** Tests from a JavaScript/TypeScript file another runner owns (Vitest, Jest, node:test, Mocha), counted by `it(` / `test(` calls. */
 function otherRunnerTests(src: string, file: string): InventoryTest[] {
     const kind = kindFromPath(file);
-    const layerKind: TestKind = kind === 'property' ? 'property' : kind && kind !== 'unit' ? kind : 'unit';
+    const fileLayer = layerFromFile(file, src, JS_LANGUAGE(file));
+    const layerKind: TestKind = kind === 'property' ? 'property' : kind && kind !== 'unit' ? kind : fileLayer ?? 'unit';
     const found = [...src.matchAll(/(?<![\w$.])(?:it|test)(?:\.(skip|todo|only|concurrent|each\([^)]*\)))?\s*\(\s*(['"`])((?:\\.|(?!\2).)*?)\2/g)].map((m) => ({
         index: m.index ?? 0,
         title: m[3],

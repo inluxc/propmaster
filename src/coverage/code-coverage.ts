@@ -49,7 +49,7 @@ export interface CodeCoverageReport {
     branches?: Ratio;
     functions?: Ratio;
     files: number;
-    /** The least-covered files (by uncovered lines), worst first. */
+    /** The least-covered files (by uncovered lines), worst first; generated and vendored code left out. */
     lowest: FileCoverage[];
 }
 
@@ -202,34 +202,57 @@ export function parseCoveragePy(text: string): Parsed {
     };
 }
 
-/** Clover XML (PHPUnit, OpenClover, Istanbul): `<line type="stmt" count="n"/>` per statement, `type="method"` per method. */
+/**
+ * Clover XML (PHPUnit, OpenClover, Istanbul). Each file's own `<metrics>` has
+ * the exact statement, method and condition counts (Istanbul writes one
+ * `<line>` per source line, not per statement); PHPUnit's per-class metrics
+ * inside the file are skipped. Without metrics, the `<line type="stmt">` rows are counted.
+ */
 export function parseClover(text: string): Parsed {
     const files: FileCoverage[] = [];
-    let methods = { covered: 0, total: 0 };
+    const methods = { covered: 0, total: 0 };
+    const conditions = { covered: 0, total: 0 };
     for (const m of text.matchAll(/<file\b([^>]*)>([\s\S]*?)<\/file>/g)) {
         const file = attr(m[1], 'path') ?? attr(m[1], 'name') ?? '?';
+        const body = m[2].replace(/<class\b[\s\S]*?<\/class>/g, '');
+        const all = [...body.matchAll(/<metrics\b[^>]*>/g)].map((x) => x[0]);
+        const metrics = all.find((x) => /\bloc="/.test(x)) ?? all[0];
+        const n = (name: string) => Number(attr(metrics ?? '', name));
+        if (metrics && Number.isFinite(n('statements'))) {
+            files.push({ file, lines: ratio(n('coveredstatements') || 0, n('statements')) });
+            if (Number.isFinite(n('methods'))) {
+                methods.total += n('methods');
+                methods.covered += n('coveredmethods') || 0;
+            }
+            if (Number.isFinite(n('conditionals'))) {
+                conditions.total += n('conditionals');
+                conditions.covered += n('coveredconditionals') || 0;
+            }
+            continue;
+        }
         let covered = 0;
         let total = 0;
-        for (const line of m[2].matchAll(/<line\b[^>]*>/g)) {
+        for (const line of body.matchAll(/<line\b[^>]*>/g)) {
             const type = attr(line[0], 'type');
             const count = Number(attr(line[0], 'count') ?? 0);
             if (type === 'stmt') {
                 total++;
                 if (count > 0) covered++;
             } else if (type === 'method') {
-                methods = { covered: methods.covered + (count > 0 ? 1 : 0), total: methods.total + 1 };
+                methods.total++;
+                if (count > 0) methods.covered++;
             }
-        }
-        if (!total) {
-            // No per-line data: the file's own metrics
-            const metrics = /<metrics\b[^>]*\bloc="[^>]*>/.exec(m[2])?.[0] ?? [...m[2].matchAll(/<metrics\b[^>]*>/g)].at(-1)?.[0] ?? '';
-            total = Number(attr(metrics, 'statements') ?? 0);
-            covered = Number(attr(metrics, 'coveredstatements') ?? 0);
         }
         files.push({ file, lines: ratio(covered, total) });
     }
     const s = sum(files.map((f) => f.lines));
-    return { measure: 'statements', lines: ratio(s.covered, s.total), ...(methods.total ? { functions: ratio(methods.covered, methods.total) } : {}), files };
+    return {
+        measure: 'statements',
+        lines: ratio(s.covered, s.total),
+        ...(conditions.total ? { branches: ratio(conditions.covered, conditions.total) } : {}),
+        ...(methods.total ? { functions: ratio(methods.covered, methods.total) } : {}),
+        files,
+    };
 }
 
 /** OpenCover XML (.NET): sequence points visited, per file. */
@@ -346,6 +369,17 @@ function onePerFolder(paths: string[]): string[] {
     }).sort();
 }
 
+/**
+ * Generated and third-party code: it counts in the totals, as the tool
+ * reported it, but isn't worth a test, so it stays out of the least-covered list.
+ */
+const GENERATED =
+    /(?:^|\/)(?:node_modules|vendor|third_party|generated|gen-src|__generated__|Migrations)\/|\.(?:pb|pb\.gw|pb\.validate)\.go$|_pb2(?:_grpc)?\.py$|\.(?:g|designer|generated|AssemblyInfo)\.cs$|(?:_generated|\.gen|_gen|_string|_mock|mock_[\w]+)\.go$|\.generated\.\w+$|\.d\.ts$/i;
+
+export function isGenerated(file: string): boolean {
+    return GENERATED.test(file.split('\\').join('/'));
+}
+
 export const NOT_A_REPORT = 'not a coverage report Propmaster reads (LCOV, Istanbul summary, Cobertura, JaCoCo, Clover, OpenCover, Go cover profile, coverage.py JSON, SimpleCov)';
 
 const PARSERS: Record<CoverageFormat, (text: string) => Parsed> = {
@@ -365,7 +399,9 @@ const MAX_REPORT_BYTES = 50 * 1024 * 1024;
 /** Reads one report. Returns an error string for a file it can't read. */
 export function readCoverageReport(root: string, path: string, options: { layer?: Layer; lowest?: number } = {}): CodeCoverageReport | { path: string; error: string } {
     const full = resolve(root, path);
-    const rel = relative(root, full).split(sep).join('/');
+    const inside = relative(root, full).split(sep).join('/');
+    // A report outside the project (another checkout, a CI download) keeps its full path.
+    const rel = inside.startsWith('../') ? full : inside;
     try {
         const stat = statSync(full);
         if (stat.size > MAX_REPORT_BYTES) return { path: rel, error: `larger than ${MAX_REPORT_BYTES / 1024 / 1024} MB` };
@@ -374,7 +410,7 @@ export function readCoverageReport(root: string, path: string, options: { layer?
         if (!format) return { path: rel, error: NOT_A_REPORT };
         const parsed = PARSERS[format](text);
         const lowest = parsed.files
-            .filter((f) => f.lines.total > 0 && f.lines.covered < f.lines.total)
+            .filter((f) => f.lines.total > 0 && f.lines.covered < f.lines.total && !isGenerated(f.file))
             .sort((a, b) => b.lines.total - b.lines.covered - (a.lines.total - a.lines.covered) || (a.lines.pct ?? 0) - (b.lines.pct ?? 0))
             .slice(0, options.lowest ?? 10)
             .map((f) => ({ ...f, file: f.file.startsWith(root) ? relative(root, f.file).split(sep).join('/') : f.file }));
