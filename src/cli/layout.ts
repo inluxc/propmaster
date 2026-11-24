@@ -80,6 +80,7 @@ export const integrationProjects = (config: FrameworkConfig) => [
             mongodb: config.mongodb,
             neo4j: config.neo4j,
             cassandra: config.cassandra,
+            clickhouse: config.clickhouse,
         },
     },
 ];

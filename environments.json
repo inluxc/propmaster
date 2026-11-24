@@ -43,6 +43,13 @@
                 "keyspace": "propmaster_examples",
                 "createKeyspace": true
             },
+            "clickhouse": {
+                "url": "http://localhost:8123",
+                "username": "testuser",
+                "password": "testpass",
+                "database": "propmaster_examples",
+                "createDatabase": true
+            },
             "redis": {
                 "host": "localhost",
                 "port": 6379

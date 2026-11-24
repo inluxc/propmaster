@@ -46,6 +46,7 @@ Every job starts at the same time, so a run takes about as long as its slowest j
 | `test-mongodb` | `integration-mongodb` | `mongo:7` | MongoDB fixture |
 | `test-neo4j` | `integration-neo4j` | `neo4j:5` | Neo4j fixture |
 | `test-cassandra` | `integration-cassandra` | `scylladb/scylla:2026.3.6` | Cassandra / ScyllaDB fixture |
+| `test-clickhouse` | `integration-clickhouse` | `clickhouse/clickhouse-server:26.10` | ClickHouse fixture |
 | `test-kafka` | `integration-kafka` | `apache/kafka:latest` (KRaft) | Kafka fixture |
 | `test-rabbitmq` | `integration-amqp` | `rabbitmq:4` | RabbitMQ (AMQP) fixture |
 | `test-aws` | `integration-aws` | `motoserver/moto:5.2.5` | AWS fixtures (S3, SQS, SNS) |
@@ -286,6 +287,30 @@ env:
 ```
 
 For Apache Cassandra, use `cassandra:5` with `MAX_HEAP_SIZE: 512M` and `HEAP_NEWSIZE: 128M` in `env`, and `--health-retries 60`: it needs about a minute.
+
+### ClickHouse
+
+Leave out `CLICKHOUSE_DB` and let the tests create their database (`PW_CLICKHOUSE_CREATE_DATABASE`). With it, the image first runs a temporary server on 127.0.0.1 to create the database, and that one answers the health check before the real server is up:
+
+```yaml
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.10
+    env:
+      CLICKHOUSE_USER: testuser
+      CLICKHOUSE_PASSWORD: testpass
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    options: >-
+      --ulimit nofile=262144:262144
+      --health-cmd "wget -qO- http://127.0.0.1:8123/ping > /dev/null"
+      --health-interval 3s --health-timeout 5s --health-retries 30
+env:
+  PW_CLICKHOUSE_URL: http://clickhouse:8123
+  PW_CLICKHOUSE_USERNAME: testuser
+  PW_CLICKHOUSE_PASSWORD: testpass
+  PW_CLICKHOUSE_DATABASE: propmaster_examples
+  PW_CLICKHOUSE_CREATE_DATABASE: true
+```
 
 ### Kafka
 

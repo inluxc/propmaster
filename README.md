@@ -32,6 +32,7 @@ npm install --save-dev openapi-client-axios pg kafkajs
 | `mongoDbClient` | `mongodb` |
 | `neo4jClient` | `neo4j-driver` |
 | `cassandraClient` | `cassandra-driver` |
+| `clickHouseClient` | `@clickhouse/client` |
 | `kafkaClient` | `kafkajs` (or `@confluentinc/kafka-javascript` with `PW_KAFKA_DRIVER=confluent`) |
 | `amqpClient` | `amqplib` |
 | `s3Client` | `@aws-sdk/client-s3` |
@@ -107,6 +108,7 @@ Already have tests? `init` moves nothing. `npx propmaster organize` shows where 
 | `mongoDbClient` | `MongoDbClient` | MongoDB CRUD and aggregation client | [Setup & Usage](docs/mongodb-fixture.md) |
 | `neo4jClient` | `Neo4jClient` | Neo4j Cypher reads, writes and transactions | [Setup & Usage](docs/neo4j-fixture.md) |
 | `cassandraClient` | `CassandraClient` | Cassandra / ScyllaDB: parameterized CQL, rows as plain objects, wait for a row; inserts undone after the test | [Setup & Usage](docs/cassandra-fixture.md) |
+| `clickHouseClient` | `ClickHouseClient` | ClickHouse: parameterized SQL over HTTP, 64-bit integers as numbers, wait for rows a pipeline writes; inserts deleted after the test | [Setup & Usage](docs/clickhouse-fixture.md) |
 | `graphqlClient` | `GraphQLClient` | GraphQL query/mutation client | [Setup & Usage](docs/graphql-fixture.md) |
 | `grpcClient` | `GrpcClient` | gRPC unary and streaming calls from .proto files or server reflection, with status codes, metadata, deadlines and TLS | [Setup & Usage](docs/grpc-fixture.md) |
 | `realtimeClient` | `RealtimeClient` | WebSocket and SSE: connect, send, wait for a matching message, the HTTP status of a refused connection | [Setup & Usage](docs/realtime-fixture.md) |
@@ -408,6 +410,25 @@ test('placing an order stores it', async ({ cassandraClient, openApiClient, test
 
 Runs on ScyllaDB (`docker compose -f compose.test.yaml up -d --wait scylla`), Cassandra, or a test cluster.
 
+### ClickHouse Client
+
+```typescript
+test('a purchase reaches the analytics tables', async ({ clickHouseClient, openApiClient, testData }) => {
+  const userId = testData.unique('user');
+  await (openApiClient.client as any).createOrder(null, { userId, sku: 'A-1', qty: 2 });
+
+  // Typed {name:Type} parameters; count() and UInt64 come back as numbers. Polls until the pipeline has written it.
+  const [stats] = await clickHouseClient.waitForRows<{ n: number }>(
+    'SELECT count() AS n FROM events WHERE user_id = {user:String}', { user: userId }, { until: ([r]) => r.n === 1 },
+  );
+  expect(stats.n).toBe(1);
+
+  await clickHouseClient.insert('events', { id: testData.unique('ev'), user_id: userId, kind: 'view', at: new Date() }); // deleted after the test
+});
+```
+
+Runs on ClickHouse from the compose file (`docker compose -f compose.test.yaml up -d --wait clickhouse`), a container (`PW_CLICKHOUSE_CONTAINER=true`), or a test server.
+
 ### OTP Client (2FA/MFA Testing)
 
 ```typescript
@@ -536,6 +557,7 @@ PW_ENVIRONMENT=dev npx playwright test
 | `PW_NEO4J_USERNAME` / `PW_NEO4J_PASSWORD` | Neo4j credentials |
 | `PW_NEO4J_DATABASE` | Neo4j database (default: server default) |
 | `PW_CASSANDRA_CONTACT_POINTS` / `PW_CASSANDRA_LOCAL_DC` / `PW_CASSANDRA_KEYSPACE` | Cassandra / ScyllaDB nodes, data center and keyspace (`PW_CASSANDRA_CREATE_KEYSPACE=true` creates it); `PW_CASSANDRA_USERNAME`/`PW_CASSANDRA_PASSWORD` |
+| `PW_CLICKHOUSE_URL` / `PW_CLICKHOUSE_DATABASE` | ClickHouse HTTP URL and database (`PW_CLICKHOUSE_CREATE_DATABASE=true` creates it); `PW_CLICKHOUSE_USERNAME`/`PW_CLICKHOUSE_PASSWORD` |
 | `PW_APPIUM_SERVER_URL` | Appium server (or GADS hub) URL |
 | `PW_APPIUM_PLATFORM` / `PW_APPIUM_UDID` / `PW_APPIUM_DEVICE_NAME` | Device selection |
 | `PW_APPIUM_CAPABILITIES` | Extra capabilities as a JSON object |
@@ -641,7 +663,7 @@ test-redis:
     - run: npx playwright test --project=integration-redis
 ```
 
-See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Cassandra/ScyllaDB, Kafka, RabbitMQ, AWS, DynamoDB, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
+See [docs/ci.md](docs/ci.md) for a job per backend (PostgreSQL, MySQL, MSSQL, SQLite, Redis, MongoDB, Neo4j, Cassandra/ScyllaDB, ClickHouse, Kafka, RabbitMQ, AWS, DynamoDB, Elasticsearch, OpenSearch, OpenAPI, GraphQL, gRPC, WebSocket/SSE, OTP, browsers), combining services in one job, and keeping CI fast.
 
 No services to start at all: set `PW_<BACKEND>_CONTAINER=true` and each backend runs in a throwaway container started by the test run itself ([Testcontainers](docs/testcontainers.md)):
 

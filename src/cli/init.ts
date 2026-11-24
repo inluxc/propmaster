@@ -213,7 +213,7 @@ tests/
     └── config/      # Test configuration helpers
 \`\`\`
 
-**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, RabbitMQ, AWS (S3/SQS/DynamoDB), Elasticsearch/OpenSearch, Redis, MongoDB, Neo4j or Cassandra client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`grpcClient\`/\`realtimeClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx propmaster organize\` to check (it prints where each test belongs).
+**Where a test goes** is decided by its fixtures: \`appiumDriver\` → \`mobile/\`; \`page\`/\`context\`/\`browser\` → \`e2e/\` (even if it also uses API fixtures to set up data); a database, Kafka, RabbitMQ, AWS (S3/SQS/DynamoDB), Elasticsearch/OpenSearch, Redis, MongoDB, Neo4j, Cassandra or ClickHouse client → \`integration/\`; only \`openApiClient\`/\`graphqlClient\`/\`grpcClient\`/\`realtimeClient\`/\`request\` → \`api/\`. Spec files end in \`.spec.ts\`. Run \`npx propmaster organize\` to check (it prints where each test belongs).
 
 ## Writing Tests
 

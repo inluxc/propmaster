@@ -25,6 +25,7 @@ import type {
     AmqpFixtureConfig,
     AwsFixtureConfig,
     CassandraFixtureConfig,
+    ClickHouseFixtureConfig,
     SearchFixtureConfig,
     MongoDbFixtureConfig,
     Neo4jFixtureConfig,
@@ -37,7 +38,7 @@ import { loadOptional } from '../fixtures/optional-package.js';
 
 type Testcontainers = typeof import('testcontainers');
 
-export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'elasticsearch' | 'opensearch' | 'mailpit' | 'wiremock' | 'scylla';
+export type ContainerKind = 'postgresql' | 'mysql' | 'mssql' | 'redis' | 'mongodb' | 'neo4j' | 'kafka' | 'rabbitmq' | 'moto' | 'elasticsearch' | 'opensearch' | 'mailpit' | 'wiremock' | 'scylla' | 'clickhouse';
 
 /** Default image per backend — the same ones as compose.test.yaml and CI. */
 export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
@@ -55,6 +56,7 @@ export const DEFAULT_IMAGES: Record<ContainerKind, string> = {
     mailpit: 'axllent/mailpit:latest',
     wiremock: 'wiremock/wiremock:3.13.2',
     scylla: 'scylladb/scylla:2026.3.6',
+    clickhouse: 'clickhouse/clickhouse-server:26.10',
 };
 
 /** Throwaway credentials used when the config doesn't set its own. */
@@ -334,6 +336,27 @@ export function cassandraSpec(options: ContainerOptions): ContainerSpec {
     };
 }
 
+/**
+ * ClickHouse over HTTP (8123), with the config's credentials (or throwaway
+ * ones). No CLICKHOUSE_DB: the fixture creates the database, and without it
+ * the image skips its init server, which listens on 127.0.0.1 and would pass
+ * the health check before the real server is up.
+ */
+export function clickHouseSpec(config: ClickHouseFixtureConfig, options: ContainerOptions): { spec: ContainerSpec; username: string; password: string } {
+    const username = config.username && config.username !== 'default' ? config.username : DEFAULT_CREDENTIALS.username;
+    const password = config.password || DEFAULT_CREDENTIALS.password;
+    return {
+        spec: {
+            ...baseSpec('clickhouse', 'clickHouseClient', options),
+            env: { CLICKHOUSE_USER: username, CLICKHOUSE_PASSWORD: password, CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1' },
+            port: 8123,
+            healthCheck: 'wget -qO- http://127.0.0.1:8123/ping > /dev/null',
+        },
+        username,
+        password,
+    };
+}
+
 export function motoSpec(options: ContainerOptions): ContainerSpec {
     return {
         ...baseSpec('moto', 's3Client / sqsClient / dynamoDbClient', options),
@@ -553,6 +576,15 @@ export class ContainerManager {
             createKeyspace: config.createKeyspace ?? true,
             container: false,
         };
+    }
+
+    /** ClickHouse: `url` and the credentials point at the container; the database is created. */
+    async clickhouse(config: ClickHouseFixtureConfig): Promise<ClickHouseFixtureConfig> {
+        const options = containerOptions(config.container);
+        if (!options) return config;
+        const { spec, username, password } = clickHouseSpec(config, options);
+        const started = await this.ensure(spec);
+        return { ...config, url: `http://${started.host}:${started.port}`, username, password, createDatabase: config.createDatabase ?? true, container: false };
     }
 
     /** Elasticsearch / OpenSearch: `url` points at the container, without credentials (security is off). */

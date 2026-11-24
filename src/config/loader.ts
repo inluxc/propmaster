@@ -554,6 +554,34 @@ export class ConfigLoader {
                 cfg.cassandra ??= {};
                 cfg.cassandra.container = parseContainerEnv(val);
             },
+            'PW_CLICKHOUSE_URL': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.url = val;
+            },
+            'PW_CLICKHOUSE_USERNAME': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.username = val;
+            },
+            'PW_CLICKHOUSE_PASSWORD': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.password = val;
+            },
+            'PW_CLICKHOUSE_DATABASE': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.database = val;
+            },
+            'PW_CLICKHOUSE_CREATE_DATABASE': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.createDatabase = val.toLowerCase() === 'true';
+            },
+            'PW_CLICKHOUSE_TIMEOUT': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.timeout = parseInt(val, 10);
+            },
+            'PW_CLICKHOUSE_CONTAINER': (cfg, val) => {
+                cfg.clickhouse ??= {};
+                cfg.clickhouse.container = parseContainerEnv(val);
+            },
             'PW_NEO4J_URI': (cfg, val) => {
                 if (!cfg.neo4j) cfg.neo4j = { uri: '', username: '', password: '' };
                 cfg.neo4j.uri = val;

@@ -271,6 +271,18 @@ cassandra:
 # step: size: 2x; export PW_CASSANDRA_CONTACT_POINTS=localhost PW_CASSANDRA_KEYSPACE=propmaster_examples PW_CASSANDRA_CREATE_KEYSPACE=true; wait_for 9042
 ```
 
+```yaml [ClickHouse]
+# No CLICKHOUSE_DB: the tests create their database
+clickhouse:
+  image: clickhouse/clickhouse-server:26.10
+  memory: 1536
+  variables:
+    CLICKHOUSE_USER: testuser
+    CLICKHOUSE_PASSWORD: testpass
+    CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+# step: export PW_CLICKHOUSE_URL=http://localhost:8123 PW_CLICKHOUSE_USERNAME=testuser PW_CLICKHOUSE_PASSWORD=testpass PW_CLICKHOUSE_DATABASE=propmaster_examples PW_CLICKHOUSE_CREATE_DATABASE=true; wait_for 8123
+```
+
 :::
 
 ## Secrets

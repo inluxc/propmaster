@@ -38,6 +38,7 @@ Each client records how to undo its own inserts. When the test ends, the undo ac
 | `redisClient.set(key, ...)` | `DEL` of a new key; a key that already existed gets its previous value back (without its TTL) |
 | `dynamoDbClient.put` / `putMany` / `update` | Deletes a new item; an item that already existed gets its previous content back. Tables made with `createTable()` are deleted |
 | `cassandraClient.insert(table, rows)` | `DELETE` of a new row by its primary key; a row that already existed gets its previous values back (`INSERT JSON`, without its TTL). Keyspaces made with `createKeyspace()` are dropped |
+| `clickHouseClient.insert(table, rows)` | `DELETE` of the rows, matched on `key`, else `id`, else every column the row sets (not floats or maps); a synchronous mutation on `Memory` tables. Databases made with `createDatabase()` are dropped |
 | `neo4jClient.write(cypher, { runId })` | `MATCH (n {runId: $runId}) DETACH DELETE n`, once per run ID. `executeInTransaction` too, once the transaction has committed |
 | `testData.cleanup(fn)` | Your own undo action, for data made another way |
 

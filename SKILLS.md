@@ -36,6 +36,7 @@ This document teaches AI agents the step-by-step skills needed to create tests w
 | `AWS` | AWS tests (S3, SQS, SNS) |
 | `DDB` | DynamoDB tests |
 | `CAS` | Cassandra / ScyllaDB tests |
+| `CH` | ClickHouse tests |
 | `SRCH` | Search tests (Elasticsearch, OpenSearch) |
 | `RDS` | Redis tests |
 | `MDB` | MongoDB tests |
@@ -2131,6 +2132,7 @@ Never put tokens, secret_ids or JWTs in `environments.json`. See [docs/secrets.m
    - `redisClient.set`
    - `dynamoDbClient.put` / `putMany` / `update`
    - `cassandraClient.insert`
+   - `clickHouseClient.insert`
    - `neo4jClient.write` with `{ runId: testData.runId }`
 3. For anything else (an API call, raw SQL, a browser flow), register the undo with `testData.cleanup(label, fn)` right after creating the data.
 4. Only data meant to stay (a seeding setup project) opts out, with `{ keep: true }` or `use: { autoCleanup: false }`.
@@ -3149,6 +3151,69 @@ test.describe('Cassandra — Orders', () => {
 
 ---
 
+## Skill 30: Test What a Backend Writes to ClickHouse
+
+**When to use:** The backend sends events, metrics or facts to ClickHouse (directly, through a Kafka engine table, a materialized view, or a batch loader): check the rows an action produced, wait for an asynchronous pipeline to deliver them, check an aggregate, or seed the rows a report reads.
+
+**Steps:**
+
+1. Use `clickHouseClient`. Configure it with `PW_CLICKHOUSE_URL` (default `http://localhost:8123`), `PW_CLICKHOUSE_DATABASE`, `PW_CLICKHOUSE_USERNAME` and `PW_CLICKHOUSE_PASSWORD`. For local runs, add `PW_CLICKHOUSE_CREATE_DATABASE=true`, or use `PW_CLICKHOUSE_CONTAINER=true` for ClickHouse in Docker. `ClickHouseSteps` from `src/steps` wraps the calls in `test.step()`.
+2. **Always bind parameters** as `{name:Type}` placeholders with an object of values: `WHERE user_id = {user:String} AND at >= {since:DateTime64(3)}`. Never build SQL from strings. Table names without a database use the configured one; write `database.table` for any other.
+3. Rows come back as plain objects. `count()`, `sum()` of integers, `UInt64` and `Int64` are numbers (`bigint` beyond 2^53), so `expect(n).toBe(3)` works. DateTimes are strings like `'2026-01-01 10:00:00.000'`.
+4. For what the **application** writes, poll with `waitForRow(sql, params, { until })` or `waitForRows(sql, params, { count })`, or `ClickHouseSteps.expectRow(..., expected)`. ClickHouse pipelines are usually asynchronous: never `query()` once right after the action, and never sleep.
+5. Match on a value unique to the test, like a `testData.unique()` user ID: other tests and the application write to the same tables.
+6. Seed with `insert(table, rows)`. The rows are deleted after the test, matched on `{ key }`, else `id`, else every column the row sets: give seeded rows a unique `id`, because ClickHouse has no unique keys and an identical row the application wrote would go too. `execute()` (DDL, `ALTER`, `INSERT ... SELECT`) is **not** undone: register `testData.cleanup()` for what it creates.
+7. Scratch tables go in `await clickHouseClient.createDatabase()`, a database of the test's own that is dropped afterwards. `Log`-family tables can't delete rows, so `insert()` into them needs `{ keep: true }` or a database of the test's own.
+8. Get IDs with `npm run next-id -- CH <count>`.
+
+**Template:**
+
+```typescript
+import { test, expect } from '@inluxc/propmaster';
+import { ClickHouseSteps } from '@inluxc/propmaster/steps';
+
+test.describe('ClickHouse — Purchase events', () => {
+    test('[TC-CH-NNN] a purchase is recorded once, with its amount', { tag: ['@TC-CH-NNN'] }, async ({ clickHouseClient, openApiClient, testData }) => {
+        const clickhouse = new ClickHouseSteps(clickHouseClient);
+        const userId = testData.unique('user');
+        const select = 'SELECT kind, amount FROM events WHERE user_id = {user:String}';
+
+        await test.step('Step 1: Buy through the API', async () => {
+            const res = await (openApiClient.client as any).createOrder(null, { userId, sku: 'SKU-1', amount: 30 });
+            expect(res.status).toBe(201);
+        });
+
+        await clickhouse.expectRow('Step 2: Verify the purchase event arrives', select, { user: userId }, { kind: 'purchase', amount: 30 }, { timeout: 30_000 });
+        await clickhouse.expectCount('Step 3: Verify it is recorded once', 'events', 1, { user_id: userId, kind: 'purchase' });
+    });
+
+    test('[TC-CH-NNN] the revenue report sums a user\'s purchases', { tag: ['@TC-CH-NNN'] }, async ({ clickHouseClient, openApiClient, testData }) => {
+        const userId = testData.unique('user');
+
+        await test.step('Step 1: Seed two purchases (deleted after the test)', async () => {
+            await clickHouseClient.insert('events', [
+                { id: testData.unique('ev'), user_id: userId, kind: 'purchase', at: new Date(), amount: 10 },
+                { id: testData.unique('ev'), user_id: userId, kind: 'purchase', at: new Date(), amount: 20 },
+            ]);
+        });
+
+        await test.step('Step 2: Verify the report API returns the sum', async () => {
+            const res = await (openApiClient.client as any).getRevenue({ userId });
+            expect(res.data.total).toBe(30);
+        });
+    });
+});
+```
+
+**Key points:**
+- `{ settings: { final: 1 } }` on a query reads a `ReplacingMergeTree` or `CollapsingMergeTree` as if it were merged. Without it, an updated row can show twice for a while.
+- `{ raw: true }` returns values exactly as ClickHouse writes them (64-bit integers maybe as strings).
+- A wrong parameter type fails with `BAD_QUERY_PARAMETER`, and an unknown table with `UNKNOWN_TABLE`, in the error's reason.
+- `clickHouseClient.driver` is `@clickhouse/client`, for streaming large results or other formats.
+- With the MCP server, `clickhouse_query` shows the real columns and rows before you write the `expect()`.
+
+---
+
 ## Quick Decision Guide
 
 | I want to... | Use Skill |
@@ -3161,6 +3226,7 @@ test.describe('Cassandra — Orders', () => {
 | Test S3 files or SQS/SNS messages | Skill 23 (AWS) |
 | Test what a backend stores in DynamoDB | Skill 27 (DynamoDB) |
 | Test what a backend stores in Cassandra / ScyllaDB | Skill 28 (Cassandra) |
+| Test the events or aggregates a backend writes to ClickHouse | Skill 30 (ClickHouse) |
 | A test fails only sometimes, or CI calls it flaky | Skill 29 (Flaky tests) |
 | Test what reaches a search index, rankings or aggregations | Skill 24 (Search) |
 | Test caching or pub/sub | Skill 4 (Redis) |

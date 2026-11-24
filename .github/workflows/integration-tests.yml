@@ -398,6 +398,61 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  test-clickhouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: node:24
+    services:
+      # No CLICKHOUSE_DB: the tests create their database, and without it the
+      # image skips its init server, which would pass the health check early.
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.10
+        env:
+          CLICKHOUSE_USER: testuser
+          CLICKHOUSE_PASSWORD: testpass
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123
+        options: >-
+          --ulimit nofile=262144:262144
+          --health-cmd "wget -qO- http://127.0.0.1:8123/ping > /dev/null"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      CI: true
+      PW_CLICKHOUSE_URL: http://clickhouse:8123
+      PW_CLICKHOUSE_USERNAME: testuser
+      PW_CLICKHOUSE_PASSWORD: testpass
+      PW_CLICKHOUSE_DATABASE: propmaster_examples
+      PW_CLICKHOUSE_CREATE_DATABASE: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/npm-install
+      - uses: ./.github/actions/test-history
+      - name: Validate environment variables
+        run: bash .github/scripts/validate-env.sh PW_CLICKHOUSE_URL PW_CLICKHOUSE_DATABASE
+      - name: Run ClickHouse integration tests
+        run: npx playwright test --project=integration-clickhouse
+      - uses: ./.github/actions/test-history
+        if: always()
+        with:
+          save: true
+      - name: Upload HTML report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-clickhouse
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-clickhouse
+          path: test-results/
+          retention-days: 7
+
   test-mongodb:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -1031,6 +1086,7 @@ jobs:
       PW_NEO4J_CONTAINER: "true"
       PW_CASSANDRA_CONTAINER: "true"
       PW_CASSANDRA_KEYSPACE: propmaster_examples
+      PW_CLICKHOUSE_CONTAINER: "true"
       PW_KAFKA_CONTAINER: "true"
       PW_AMQP_CONTAINER: "true"
       PW_AWS_CONTAINER: "true"
@@ -1148,6 +1204,7 @@ jobs:
           - { name: redis, service: redis, project: integration-redis, env: "PW_REDIS_HOST=localhost PW_REDIS_PORT=6379" }
           - { name: mongodb, service: mongodb, project: integration-mongodb, env: "PW_MONGODB_HOST=localhost PW_MONGODB_DATABASE=testdb" }
           - { name: cassandra, service: scylla, project: integration-cassandra, env: "PW_CASSANDRA_CONTACT_POINTS=localhost PW_CASSANDRA_KEYSPACE=propmaster_examples PW_CASSANDRA_CREATE_KEYSPACE=true" }
+          - { name: clickhouse, service: clickhouse, project: integration-clickhouse, env: "PW_CLICKHOUSE_URL=http://localhost:8123 PW_CLICKHOUSE_USERNAME=testuser PW_CLICKHOUSE_PASSWORD=testpass PW_CLICKHOUSE_DATABASE=propmaster_examples PW_CLICKHOUSE_CREATE_DATABASE=true" }
           - { name: neo4j, service: neo4j, project: integration-neo4j, env: "PW_NEO4J_URI=bolt://localhost:7687 PW_NEO4J_USERNAME=neo4j PW_NEO4J_PASSWORD=testpassword" }
           - { name: kafka, service: kafka, project: integration-kafka, env: "PW_KAFKA_BROKERS=localhost:9092" }
           - { name: rabbitmq, service: rabbitmq, project: integration-amqp, env: "PW_AMQP_URL=amqp://testuser:testpass@localhost:5672" }

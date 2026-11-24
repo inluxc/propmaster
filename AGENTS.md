@@ -42,7 +42,7 @@ When the `propmaster` MCP server is connected (`npx propmaster mcp`; `npx propma
 
 - **Before writing any test:** if the project has `propmaster.standards.json` or `standards/`, call `standards` and read the pages that apply; follow them as you follow this file.
 - **Writing an API test:** `openapi_operations` for the exact `operationId`, parameters and status codes, then `next_test_id` for the ID.
-- **Asserting on stored data:** `db_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
+- **Asserting on stored data:** `db_query`, `clickhouse_query`, `mongo_find`, `redis_get`, `kafka_peek` or `neo4j_read` to check the real column names, document shapes and values before writing the `expect()`.
 - **A test fails on a backend assertion:** read what's actually stored and compare it with what the test expected, before changing the assertion.
 - **Tests fail before reaching the code under test** (connection refused, MissingPackageError, config error): `doctor` first; `doctor` with `fix: true` applies the safe fixes.
 - **A test needs a backend the project doesn't have:** `fixtures_list`, then `fixture_add` (it returns the plan), then `fixture_add` with `apply: true`. Never hand-edit `environments.json` for a fixture the catalog knows.
@@ -75,6 +75,7 @@ A reusable Playwright test framework with an extensible fixture architecture for
 - **MongoDB:** mongodb (`mongodb ^7.x`)
 - **Neo4j:** neo4j-driver (`neo4j-driver ^6.3.2`)
 - **Cassandra / ScyllaDB:** cassandra-driver (`cassandra-driver ^4.7.0`); ScyllaDB in compose/CI/containers
+- **ClickHouse:** @clickhouse/client (`@clickhouse/client ^1.25.0`), over HTTP
 - **GraphQL:** graphql-request (`graphql-request ^7.x`)
 - **gRPC:** @grpc/grpc-js + @grpc/proto-loader (`@grpc/grpc-js ^1.12`); .proto files or server reflection
 - **WebSocket / SSE:** ws (`ws ^8`) for WebSockets; SSE over the built-in `fetch`
@@ -117,6 +118,7 @@ src/
 │   ├── mongodb.fixture.ts      # MongoDB client fixture (CRUD + aggregation)
 │   ├── neo4j.fixture.ts        # Neo4j graph client fixture (Cypher read/write/transactions)
 │   ├── cassandra.fixture.ts    # Cassandra / ScyllaDB fixture (parameterized CQL, plain rows, inserts undone, waitForRows, keyspaces)
+│   ├── clickhouse.fixture.ts   # ClickHouse fixture ({name:Type} params, 64-bit ints as numbers, inserts deleted, waitForRows, databases)
 │   ├── redis.fixture.ts        # Redis client fixture
 │   ├── otp.fixture.ts          # OTP (TOTP/HOTP) fixture for 2FA/MFA testing
 │   └── appium.fixture.ts       # Appium fixture (WebdriverIO) with GADS device-farm preset
@@ -172,6 +174,7 @@ tests/
 │   ├── mongodb.spec.ts
 │   ├── neo4j.spec.ts
 │   ├── cassandra.spec.ts
+│   ├── clickhouse.spec.ts
 │   ├── redis.spec.ts
 │   ├── otp.spec.ts
 │   ├── appium.spec.ts
@@ -206,6 +209,7 @@ import { test, expect } from '../../src/fixtures';
 | MongoDB | `*.spec.ts` | `tests/examples/` or custom dir |
 | Neo4j | `*.spec.ts` | `tests/examples/` or custom dir |
 | Cassandra / ScyllaDB | `*.spec.ts` | `tests/examples/` or custom dir |
+| ClickHouse | `*.spec.ts` | `tests/examples/` or custom dir |
 | Kafka | `*.spec.ts` | `tests/examples/` or custom dir |
 | RabbitMQ (AMQP) | `*.spec.ts` | `tests/examples/` or custom dir |
 | AWS (S3, SQS, SNS) | `*.spec.ts` | `tests/examples/` or custom dir |
@@ -230,6 +234,7 @@ Request fixtures by name in the test function signature:
 | `mongoDbClient` | `MongoDbClient` | MongoDB with `find`, `findOne`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `aggregate` |
 | `neo4jClient` | `Neo4jClient` | Neo4j with `run<T>(cypher, params?)`, `write(cypher, params?)`, `executeInTransaction(fn)`, `close()` |
 | `cassandraClient` | `CassandraClient` | Cassandra / ScyllaDB with parameterized CQL: `query<T>(cql, params?)` (plain rows), `execute` (`{ applied }` for LWTs), `batch`, `insert(table, rows, { ttl, ifNotExists, keep })` (undone: deleted or restored), `waitForRows` (`count`, `until`), `waitForRow`, `createKeyspace()` (per-test, dropped after), `useKeyspace`, `primaryKey` |
+| `clickHouseClient` | `ClickHouseClient` | ClickHouse over HTTP with `{name:Type}` parameters: `query<T>(sql, params?, { settings, raw })` (plain rows; `count()`/`UInt64` as numbers, `bigint` beyond 2^53), `execute` (`{ writtenRows }`), `insert(table, rows, { key, keep })` (deleted after the test), `waitForRows` (`count`, `until`), `waitForRow`, `count(table, where?)`, `createDatabase()` (per-test, dropped after), `columns` |
 | `kafkaClient` | `KafkaClient` | Kafka with `produce(topic, messages)` and `consume(topic, options?)` |
 | `amqpClient` | `AmqpClient` | RabbitMQ / AMQP: `publish`, `sendToQueue`, `listen(exchange, key)` (temporary queue, doesn't take the app's messages), `consume`, `purge`, `checkQueue`, `assertQueue`/`assertExchange`/`bindQueue` (removed after the test) |
 | `s3Client` | `S3Client` | S3: `prefix`/`key(name)` (per-test prefix, deleted after), `putObject` (undone: deleted or restored), `getObject` (`text()`, `json()`, `content`), `headObject`, `exists`, `listObjects`, `waitForObject`, `deleteObject`, `deletePrefix`, `createBucket` |
@@ -317,7 +322,7 @@ await databaseClient.insert('countries', seedRows, { keep: true }); // leave in 
 **Test Data (factories + automatic cleanup):**
 ```typescript
 // Data created through the clients is undone after the test, pass or fail, newest first:
-// databaseClient.insert, mongoDbClient.insertOne/insertMany, redisClient.set, dynamoDbClient.put/update and cassandraClient.insert (deleted or restored),
+// databaseClient.insert, mongoDbClient.insertOne/insertMany, redisClient.set, dynamoDbClient.put/update and cassandraClient.insert (deleted or restored), clickHouseClient.insert (deleted),
 // neo4jClient.write with a `runId` param. Opt out per call with { keep: true }, or per project with use: { autoCleanup: false }.
 import { defineFactory } from '../../src';
 const user = defineFactory('user', (f) => ({ email: f.email('user'), name: `User ${f.seq}`, id: f.unique('usr') }));
@@ -488,6 +493,20 @@ const order = await cassandraClient.waitForRow('SELECT * FROM orders WHERE custo
 await cassandraClient.waitForRows('SELECT * FROM order_events WHERE order_id = ?', [orderId], { count: 3 });
 const ks = await cassandraClient.createKeyspace();                                               // propmaster_t0_9f2a1c0b, dropped after the test
 await cassandraClient.execute(`CREATE TABLE ${ks}.scratch (id int PRIMARY KEY, v text)`);     // keyspace.table outside the session keyspace
+```
+
+**ClickHouse Client:**
+```typescript
+// Always typed {name:Type} parameters, never string-built SQL. Unqualified tables use clickhouse.database (PW_CLICKHOUSE_DATABASE).
+const events = await clickHouseClient.query<Event>('SELECT * FROM events WHERE user_id = {user:String} AND at >= {since:DateTime64(3)}', { user: userId, since });
+const [{ n }] = await clickHouseClient.query<{ n: number }>('SELECT count() AS n FROM events WHERE user_id = {user:String}', { user: userId }); // UInt64 → number
+await clickHouseClient.insert('events', { id: testData.unique('ev'), user_id: userId, kind: 'view', at: new Date() }); // deleted after the test (by key, else id, else its columns)
+await clickHouseClient.insert('daily_totals', rows, { key: ['user_id', 'day'] });                 // the columns that pick the rows out again
+const row = await clickHouseClient.waitForRow('SELECT * FROM events WHERE order_id = {id:String}', { id: orderId }, { until: (r) => r.kind === 'shipped' }); // what the APP writes: poll
+await clickHouseClient.waitForRows('SELECT * FROM events WHERE order_id = {id:String}', { id: orderId }, { count: 3 });
+expect(await clickHouseClient.count('events', { user_id: userId })).toBe(3);
+const db = await clickHouseClient.createDatabase();                                               // propmaster_t0_9f2a1c0b, dropped after the test
+await clickHouseClient.execute(`CREATE TABLE ${db}.scratch (id UInt64, v String) ENGINE = MergeTree ORDER BY id`); // not undone
 ```
 
 **GADS (device farm preset):**
@@ -668,6 +687,8 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_CASSANDRA_CONTACT_POINTS`, `PW_CASSANDRA_PORT`, `PW_CASSANDRA_LOCAL_DC` | Cassandra / ScyllaDB nodes (`host` or `host:port`, comma-separated; default `localhost`), port (9042), data center (`datacenter1`) |
 | `PW_CASSANDRA_KEYSPACE`, `PW_CASSANDRA_CREATE_KEYSPACE` | Keyspace for unqualified tables; `true` creates it when missing |
 | `PW_CASSANDRA_USERNAME`, `PW_CASSANDRA_PASSWORD`, `PW_CASSANDRA_CONSISTENCY`, `PW_CASSANDRA_TIMEOUT` | Credentials, default consistency (`localQuorum`, ...), default wait (ms) |
+| `PW_CLICKHOUSE_URL`, `PW_CLICKHOUSE_DATABASE`, `PW_CLICKHOUSE_CREATE_DATABASE` | ClickHouse HTTP URL (`http://localhost:8123`), database for unqualified tables (`default`); `true` creates it when missing |
+| `PW_CLICKHOUSE_USERNAME`, `PW_CLICKHOUSE_PASSWORD`, `PW_CLICKHOUSE_TIMEOUT` | Credentials (`default`, no password), default wait (ms) |
 | `PW_GRAPHQL_ENDPOINT` | GraphQL endpoint URL |
 | `PW_GRAPHQL_AUTH_TOKEN` | Bearer token for GraphQL authorization |
 | `PW_REALTIME_URL` | Base URL for WebSocket and SSE (`http://localhost:8080`); http(s) becomes ws(s) for WebSockets |
@@ -684,7 +705,7 @@ Set active environment: `PW_ENVIRONMENT=dev`
 | `PW_APPIUM_NEW_COMMAND_TIMEOUT`, `PW_APPIUM_SESSION_TIMEOUT` | Idle timeout (s), session-create timeout (ms) |
 | `PW_GADS_CLIENT_SECRET` | Enables the GADS preset; client secret from GADS Admin → Client credentials |
 | `PW_GADS_QUEUE_TIMEOUT` | GADS: seconds to wait for a free device |
-| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_CASSANDRA_CONTAINER` (ScyllaDB; `cassandra:5` for Cassandra), `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER`, `PW_AWS_CONTAINER` (Moto), `PW_SEARCH_CONTAINER` (`true` = Elasticsearch, `opensearch` = OpenSearch) | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
+| `PW_DB_CONTAINER`, `PW_REDIS_CONTAINER`, `PW_MONGODB_CONTAINER`, `PW_NEO4J_CONTAINER`, `PW_CASSANDRA_CONTAINER` (ScyllaDB; `cassandra:5` for Cassandra), `PW_CLICKHOUSE_CONTAINER`, `PW_KAFKA_CONTAINER`, `PW_AMQP_CONTAINER`, `PW_AWS_CONTAINER` (Moto), `PW_SEARCH_CONTAINER` (`true` = Elasticsearch, `opensearch` = OpenSearch) | `true` (or an image name) starts that backend in a Testcontainers container for the run; needs Docker and `testcontainers` |
 | `PW_DB_CONTAINER_INIT` | Comma-separated SQL files run once in the database container (PostgreSQL, MySQL, MSSQL) |
 | `PW_MOCK_URL`, `PW_MOCK_ADMIN_URL`, `PW_MOCK_CONTAINER` | WireMock base/admin URL for `mockServer`, or start it in a container |
 | `PW_AUTH_ISSUER` / `PW_AUTH_TOKEN_URL` | OAuth/OIDC token endpoint (issuer uses discovery) for the auth helpers |
@@ -717,7 +738,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `browser-chromium` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-firefox` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
 | `browser-webkit` | `**/examples/browser.spec.ts` | Standard Playwright `page` |
-| `api-integration` | `**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `dynamoDbClient`, `searchClient`, `redisClient`, `mongoDbClient`, `neo4jClient`, `cassandraClient` |
+| `api-integration` | `**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra,clickhouse}.spec.ts` | `databaseClient`, `kafkaClient`, `amqpClient`, `s3Client`, `sqsClient`, `dynamoDbClient`, `searchClient`, `redisClient`, `mongoDbClient`, `neo4jClient`, `cassandraClient`, `clickHouseClient` |
 | `integration-database` | `**/examples/database.spec.ts` | `databaseClient` |
 | `integration-kafka` | `**/examples/kafka.spec.ts` | `kafkaClient` |
 | `integration-amqp` | `**/examples/amqp.spec.ts` | `amqpClient` (needs RabbitMQ) |
@@ -728,6 +749,7 @@ Tests are matched to projects via `testMatch` patterns in `playwright.config.ts`
 | `integration-mongodb` | `**/examples/mongodb.spec.ts` | `mongoDbClient` |
 | `integration-neo4j` | `**/examples/neo4j.spec.ts` | `neo4jClient` |
 | `integration-cassandra` | `**/examples/cassandra.spec.ts` | `cassandraClient` (needs ScyllaDB or Cassandra; `PW_CASSANDRA_KEYSPACE` + `PW_CASSANDRA_CREATE_KEYSPACE=true`) |
+| `integration-clickhouse` | `**/examples/clickhouse.spec.ts` | `clickHouseClient` (needs ClickHouse; `PW_CLICKHOUSE_DATABASE` + `PW_CLICKHOUSE_CREATE_DATABASE=true`) |
 | `otp` | `**/examples/otp.spec.ts` | `otpClient` |
 | `integration-inbox` | `**/examples/inbox.spec.ts` | `inboxClient` (needs Mailpit) |
 | `integration-mocks` | `**/examples/mock-server.spec.ts` | `mockServer` (needs WireMock) |
@@ -809,7 +831,7 @@ Every generated test **must** include a unique TestCaseID in both the test title
 ### Format
 
 - **Pattern:** `TC-XXX-NNN` where `XXX` is a short category code and `NNN` is a zero-padded sequential number.
-- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `DDB` (DynamoDB), `CAS` (Cassandra/ScyllaDB), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `RT` (WebSocket/SSE), `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
+- **Category codes:** `API`, `DB`, `KFK`, `AMQ` (RabbitMQ/AMQP), `AWS` (S3/SQS/SNS), `DDB` (DynamoDB), `CAS` (Cassandra/ScyllaDB), `CH` (ClickHouse), `SRCH` (Elasticsearch/OpenSearch), `RDS`, `MDB`, `NEO`, `GQL`, `GRPC`, `RT` (WebSocket/SSE), `BRW`, `APM` (Appium), `GDS` (GADS), `OTP`, `EML` (email/inbox), `MCK` (mock server), `AUTH`, `INT`, `PROP`, or a custom short code for new domains. `MOB` is retired: the Mobilewright tests that used it were removed, so do not reuse it.
 - **Placement:** The TestCaseID appears in square brackets at the beginning of the test title AND as a tag.
 
 ### Rules

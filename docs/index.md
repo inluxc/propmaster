@@ -27,7 +27,7 @@ features:
     linkText: API fixtures
   - icon: 🗄️
     title: Databases
-    details: One client for PostgreSQL, MySQL, MSSQL and SQLite, plus MongoDB, Neo4j and Cassandra/ScyllaDB. Parameterized queries and typed rows.
+    details: One client for PostgreSQL, MySQL, MSSQL and SQLite, plus MongoDB, Neo4j, Cassandra/ScyllaDB and ClickHouse. Parameterized queries and typed rows.
     link: /database-fixture
     linkText: Database fixture
   - icon: 📨

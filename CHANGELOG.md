@@ -2,6 +2,16 @@
 
 What changed in Propmaster, newest first. Nothing has been published to npm yet, so everything here is in the first release, `1.0.0`. Each entry links to its pull request; **Breaking** marks a change that needs something done in an existing project.
 
+## 2026-11-24: ClickHouse
+
+### Added
+
+- **`clickHouseClient`** for ClickHouse, over its HTTP interface with `@clickhouse/client`. [ClickHouse](https://propmaster.dev/clickhouse-fixture)
+  - Typed `{name:Type}` parameters; rows as plain objects, with `count()`, `UInt64` and the wider integers as numbers (a `bigint` beyond 2^53, never rounded).
+  - `insert()` deletes its rows after the test, `waitForRows()` polls for what an asynchronous pipeline writes, and `createDatabase()` gives a test a database of its own.
+  - `clickhouse_query`, a read-only MCP tool that ClickHouse itself holds to reads (`readonly=2`).
+  - ClickHouse in `compose.test.yaml`, CI (Node.js and Bun), Testcontainers (`PW_CLICKHOUSE_CONTAINER=true`), `propmaster fixture add clickhouse`, `doctor` and the coverage report. Category `CH`, project `integration-clickhouse`, `ClickHouseSteps`.
+
 ## 2026-11-24: what the tests cover, per layer
 
 ### Added

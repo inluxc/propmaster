@@ -1,7 +1,7 @@
 {
     "name": "@inluxc/propmaster",
     "version": "1.0.0",
-    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Cassandra/ScyllaDB, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS, DynamoDB), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
+    "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Cassandra/ScyllaDB, ClickHouse, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS, DynamoDB), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
         "propmaster": "dist/src/cli/init.js"
@@ -74,6 +74,7 @@
         "@aws-sdk/client-sns": "^3.700.0",
         "@aws-sdk/client-sqs": "^3.700.0",
         "@aws-sdk/lib-dynamodb": "^3.700.0",
+        "@clickhouse/client": "^1.25.0",
         "@confluentinc/kafka-javascript": "^1.11.0",
         "@faker-js/faker": "^10.6.0",
         "@grpc/grpc-js": "^1.12.0",
@@ -117,6 +118,9 @@
             "optional": true
         },
         "@aws-sdk/lib-dynamodb": {
+            "optional": true
+        },
+        "@clickhouse/client": {
             "optional": true
         },
         "@faker-js/faker": {
@@ -195,6 +199,7 @@
         "@aws-sdk/client-sns": "^3.1175.0",
         "@aws-sdk/client-sqs": "^3.1175.0",
         "@aws-sdk/lib-dynamodb": "^3.1175.0",
+        "@clickhouse/client": "^1.25.0",
         "@confluentinc/kafka-javascript": "^1.11.0",
         "@faker-js/faker": "^10.6.0",
         "@grpc/grpc-js": "^1.14.7",
@@ -243,6 +248,7 @@
         "neo4j",
         "cassandra",
         "scylladb",
+        "clickhouse",
         "kafka",
         "rabbitmq",
         "amqp",

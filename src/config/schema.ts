@@ -335,6 +335,28 @@ export interface CassandraFixtureConfig {
 }
 
 /**
+ * Configuration for the ClickHouse fixture (`clickHouseClient`), over ClickHouse's HTTP interface.
+ */
+export interface ClickHouseFixtureConfig {
+    /** HTTP(S) URL of the server (default: `http://localhost:8123`). */
+    url?: string;
+    username?: string;
+    password?: string;
+    /** Database for unqualified table names (default: `default`). */
+    database?: string;
+    /** Create `database` when it's missing (local runs and containers). Never dropped. */
+    createDatabase?: boolean;
+    /** ClickHouse settings sent with every statement, e.g. `{ join_use_nulls: 1 }`. */
+    settings?: Record<string, unknown>;
+    /** Default wait for `waitForRows()` / `waitForRow()` in ms (default: 10000). */
+    timeout?: number;
+    /** Per-request timeout in ms (default: the driver's, 30000). */
+    requestTimeout?: number;
+    /** Start ClickHouse in a Docker container for the run (see ContainerOptions). */
+    container?: ContainerSetting;
+}
+
+/**
  * GADS preset for the Appium fixture (https://github.com/shamanec/GADS).
  * When present, `serverUrl` is the GADS hub and sessions go through its `/grid` endpoint.
  */
@@ -574,6 +596,8 @@ export interface FrameworkConfig {
     /** Neo4j fixture configuration. */
     neo4j?: Neo4jFixtureConfig;
     cassandra?: CassandraFixtureConfig;
+    /** ClickHouse fixture configuration. */
+    clickhouse?: ClickHouseFixtureConfig;
     /** Appium fixture configuration (local Appium, grids, cloud farms, GADS). */
     appium?: AppiumFixtureConfig;
     /** OTP fixture configuration. */

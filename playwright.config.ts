@@ -97,7 +97,7 @@ export default defineConfig<ConfigOptions>({
         },
         {
             name: 'api-integration',
-            testMatch: '**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra}.spec.ts',
+            testMatch: '**/examples/{database,kafka,amqp,aws,dynamodb,search,redis,mongodb,neo4j,cassandra,clickhouse}.spec.ts',
             use: {
                 database: config.database,
                 kafka: config.kafka,
@@ -108,6 +108,7 @@ export default defineConfig<ConfigOptions>({
                 mongodb: config.mongodb,
                 neo4j: config.neo4j,
                 cassandra: config.cassandra,
+                clickhouse: config.clickhouse,
             },
         },
         {
@@ -178,6 +179,13 @@ export default defineConfig<ConfigOptions>({
             testMatch: '**/examples/cassandra.spec.ts',
             use: {
                 cassandra: config.cassandra,
+            },
+        },
+        {
+            name: 'integration-clickhouse',
+            testMatch: '**/examples/clickhouse.spec.ts',
+            use: {
+                clickhouse: config.clickhouse,
             },
         },
         {

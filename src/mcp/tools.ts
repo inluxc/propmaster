@@ -15,6 +15,7 @@ import { createRedisClient } from '../fixtures/redis.fixture.js';
 import { createMongoDbClient } from '../fixtures/mongodb.fixture.js';
 import type { MongoDbClient } from '../fixtures/mongodb.fixture.js';
 import { createNeo4jDriver, toPlain } from '../fixtures/neo4j.fixture.js';
+import { createClickHouseClient, type ClickHouseClient } from '../fixtures/clickhouse.fixture.js';
 import { createOtpClient } from '../fixtures/otp.fixture.js';
 import { createKafka, type KafkaAdminLike, type KafkaLike } from '../fixtures/kafka-driver.js';
 import { loadOpenApiDocument } from '../openapi/load.js';
@@ -176,6 +177,15 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
         return connections.get('neo4j', async () => {
             const driver = await createNeo4jDriver(nc);
             return { value: driver, close: () => driver.close() };
+        });
+    };
+
+    const clickhouse = (): Promise<ClickHouseClient> => {
+        const cc = config?.clickhouse;
+        if (!cc) notConfigured('ClickHouse', 'Add "clickhouse" to environments.json or set PW_CLICKHOUSE_URL.');
+        return connections.get('clickhouse', async () => {
+            const client = await createClickHouseClient({ ...cc, createDatabase: false });
+            return { value: client, close: () => client.close() };
         });
     };
 
@@ -380,6 +390,33 @@ export function createTools(ctx: McpContext, connections: Connections): ToolDefi
             },
         },
         {
+            name: 'clickhouse_query',
+            title: 'ClickHouse query',
+            description: 'Runs one read-only statement (SELECT, WITH, SHOW, EXPLAIN, DESCRIBE) against the configured ClickHouse and returns the rows, with 64-bit integers as numbers. ClickHouse itself refuses writes for it (readonly=2). Bind values with {name:Type} placeholders and params, e.g. "WHERE user_id = {user:String}" with {"user": "u1"}.',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    sql: { type: 'string', description: 'A single read-only statement' },
+                    params: { type: 'object', description: 'Values for the {name:Type} placeholders, by name' },
+                    maxRows: ROWS_SCHEMA,
+                },
+                required: ['sql'],
+                additionalProperties: false,
+            },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+            handler: async (args) => {
+                const sql = str(args, 'sql');
+                const problem = readOnlySqlProblem(sql);
+                if (problem) throw new ToolInputError(`clickhouse_query only runs reads, and this statement isn't one: ${problem}.`);
+                const max = count(args, 'maxRows', DEFAULT_ROWS, MAX_ROWS);
+                // readonly=2: no writes or DDL, though settings may still change. The result stops (whole blocks) once past maxRows.
+                const rows = await (await clickhouse()).query(sql, obj(args, 'params'), {
+                    settings: { readonly: '2', max_result_rows: String(max + 1), result_overflow_mode: 'break' },
+                });
+                return limitRows(rows, max);
+            },
+        },
+        {
             name: 'openapi_operations',
             title: 'OpenAPI operations',
             description: 'Lists the operations in the configured OpenAPI spec: operationId (the method name on openApiClient.client), method, path, summary, parameters, request body and documented status codes. Filter by a substring of the operationId, path, summary or tag.',
@@ -574,6 +611,7 @@ export function describeBackends(config: FrameworkConfig | undefined): Record<st
     if (c.redis) out.redis = { host: c.redis.host, port: c.redis.port, db: c.redis.db, keyPrefix: c.redis.keyPrefix, tools: ['redis_get', 'redis_keys'] };
     if (c.mongodb) out.mongodb = { host: c.mongodb.uri ? hostOf(c.mongodb.uri) : c.mongodb.host, port: c.mongodb.port, database: c.mongodb.database, tools: ['mongo_find', 'mongo_aggregate'] };
     if (c.neo4j) out.neo4j = { uri: hostOf(c.neo4j.uri), database: c.neo4j.database, tools: ['neo4j_read'] };
+    if (c.clickhouse) out.clickhouse = { url: hostOf(c.clickhouse.url ?? 'http://localhost:8123'), database: c.clickhouse.database ?? 'default', tools: ['clickhouse_query'] };
     if (c.kafka && c.kafka.brokers.length > 0) out.kafka = { brokers: c.kafka.brokers, tools: ['kafka_topics', 'kafka_peek'] };
     if (c.openapi?.specPath) out.openapi = { specPath: c.openapi.specPath, baseUrl: c.openapi.baseUrl, tools: ['openapi_operations'] };
     if (c.graphql?.endpoint) out.graphql = { endpoint: c.graphql.endpoint };
