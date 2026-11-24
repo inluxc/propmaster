@@ -41,6 +41,7 @@ export default defineConfig({
             { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
             { text: 'Fixtures', link: '/openapi-fixture', activeMatch: '-fixture' },
             { text: 'CI/CD', link: '/ci', activeMatch: '^/ci' },
+            { text: 'Changelog', link: '/changelog' },
             { text: 'npm', link: 'https://www.npmjs.com/package/@inluxc/propmaster' },
         ],
         sidebar: [
@@ -101,6 +102,7 @@ export default defineConfig({
                     { text: 'Flaky tests & quarantine', link: '/flaky-tests' },
                     { text: 'QA standards', link: '/qa-standards' },
                     { text: 'MCP server for agents', link: '/mcp-server' },
+                    { text: 'Changelog', link: '/changelog' },
                 ],
             },
         ],

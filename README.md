@@ -656,6 +656,12 @@ npm run build
 npm publish
 ```
 
+## Changelog
+
+What changed, newest first: [CHANGELOG.md](CHANGELOG.md), also on the site at [propmaster.dev/changelog](https://propmaster.dev/changelog).
+
+---
+
 ## License
 
 MIT
