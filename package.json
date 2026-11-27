@@ -1,6 +1,6 @@
 {
     "name": "@inluxc/propmaster",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Playwright Test fixtures for the services behind your UI: OpenAPI, GraphQL, gRPC, WebSocket/SSE, SQL databases, MongoDB, Neo4j, Cassandra/ScyllaDB, ClickHouse, Kafka, RabbitMQ, Redis, AWS (S3, SQS, SNS, DynamoDB), Elasticsearch/OpenSearch, OTP and Appium/GADS.",
     "type": "module",
     "bin": {
