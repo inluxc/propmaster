@@ -272,6 +272,35 @@ fixtureTest.describe('test data — fixture lifecycle (SQLite)', () => {
         expect(await databaseClient.query<{ name: string }>('SELECT name FROM users')).toEqual([{ name: 'kept' }]);
     });
 
+    // testData.cleanup() is for data made through an API call, so its callbacks
+    // must run while Playwright's `request` is still open — whatever order the
+    // test lists its fixtures in (a client fixture set up before `request`
+    // used to flush the stack after `request` was disposed).
+    const apiCleanups: string[] = [];
+
+    for (const [order, body] of [
+        ['databaseClient, request, testData', async ({ databaseClient, request, testData }: any) => {
+            await databaseClient.query('SELECT 1');
+            testData.cleanup('api delete', async () => {
+                await request.storageState(); // throws once `request` is disposed
+                apiCleanups.push('database first');
+            });
+        }],
+        ['testData, databaseClient, request', async ({ testData, databaseClient, request }: any) => {
+            await databaseClient.query('SELECT 1');
+            testData.cleanup('api delete', async () => {
+                await request.storageState();
+                apiCleanups.push('testData first');
+            });
+        }],
+    ] as const) {
+        fixtureTest(`testData.cleanup() can use request (fixtures: ${order})`, body);
+    }
+
+    fixtureTest('those cleanups ran with request still open', async () => {
+        expect(apiCleanups).toEqual(['database first', 'testData first']);
+    });
+
     fixtureTest.describe('autoCleanup: false (e.g. a seeding project)', () => {
         fixtureTest.use({ autoCleanup: false });
 

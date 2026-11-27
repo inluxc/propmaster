@@ -144,3 +144,5 @@ testData.cleanup('delete the project', () => (openApiClient.client as any).delet
 ```
 
 Custom cleanups share the stack with the tracked ones, so they run in reverse order with everything else, while the clients are still connected.
+
+They also run while Playwright's `request` is still open, whatever order the test lists its fixtures in, so a cleanup can undo an API call made with `request`. A cleanup that uses another fixture, such as `page` or one of your own, needs that fixture to still be open. Playwright tears fixtures down in the reverse of the order it set them up, so list that fixture before `testData`. Or give your fixture its own teardown that undoes what it made.
