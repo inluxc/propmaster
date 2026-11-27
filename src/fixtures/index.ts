@@ -458,8 +458,13 @@ const testDataFixtures = {
         // Whatever no client fixture ran (testData.cleanup() in a test with no client)
         await registry.flush();
     },
+    // `request` is a dependency only so that it outlives testData: Playwright
+    // tears a fixture down before the fixtures it depends on, so the undo
+    // stack below runs while `request` is open, and testData.cleanup() can
+    // undo API calls whatever order the test lists its fixtures in. Creating
+    // an APIRequestContext opens no connection.
     testData: async (
-        { dataCleanup }: { dataCleanup: CleanupRegistry },
+        { dataCleanup, request: _request }: { dataCleanup: CleanupRegistry; request: unknown },
         use: (data: TestData) => Promise<void>,
         testInfo: { workerIndex: number },
     ) => {
@@ -471,6 +476,10 @@ const testDataFixtures = {
             fakerError = error as Error; // only thrown if the test reads testData.faker
         }
         await use(new TestData(dataCleanup, { runId: newRunId(testInfo.workerIndex), faker, fakerError }));
+        // Run the stack here, not only in the client fixtures' teardown: a
+        // client set up before `request` tears down after it. Whichever of
+        // these flushes first runs everything; the later flushes are no-ops.
+        await dataCleanup.flush();
     },
 };
 

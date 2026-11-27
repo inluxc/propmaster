@@ -2,6 +2,12 @@
 
 What changed in Propmaster, newest first. Nothing has been published to npm yet, so everything here is in the first release, `1.0.0`. Each entry links to its pull request; **Breaking** marks a change that needs something done in an existing project.
 
+## 2026-11-27: custom cleanups that use `request`
+
+### Fixed
+
+- **`testData.cleanup()` callbacks can use Playwright's `request`.** In a test that also used a client fixture set up before `request`, such as `databaseClient`, the stack ran after `request` was closed. Undoing an API call then failed with "Target page, context or browser has been closed". `testData` now runs the stack in its own teardown, and `request` stays open until then. [Custom cleanups](https://propmaster.dev/test-data#custom-cleanups)
+
 ## 2026-11-24: ClickHouse
 
 ### Added
