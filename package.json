@@ -288,11 +288,11 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Inluxc/propmaster.git"
+        "url": "git+https://github.com/inluxc/propmaster.git"
     },
     "homepage": "https://propmaster.dev/",
     "bugs": {
-        "url": "https://github.com/Inluxc/propmaster/issues"
+        "url": "https://github.com/inluxc/propmaster/issues"
     },
     "engines": {
         "node": ">=22.12.0"
